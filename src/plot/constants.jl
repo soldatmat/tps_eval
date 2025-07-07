@@ -58,3 +58,15 @@ THRESHOLD = Dict([
     ("isTPS_seq", 0.35),
     ("soluble", 0.5),
 ])
+
+OFFSET = Dict([ # TODO fill values
+    ("sequence_identity", 3.0),
+    ("sequence_identity_self", 3.0),
+    ("sequence_similarity", 3.0),
+    ("sequence_similarity_self", 3.0),
+    ("min_embedding_distance", 3.0),
+    ("min_embedding_distance_self", 3.0),
+    ("isTPS", 3.0),
+    ("isTPS_seq", 3.0),
+    ("soluble", 3.0),
+])

@@ -1,4 +1,5 @@
 include("boxplot_comparison.jl")
+include("density_comparison.jl")
 
 
 FASTA_PATHS = [
@@ -34,6 +35,16 @@ for target in TARGETS
         DATA_NAMES,
         DATA_COLORS,
         target;
+        save_dir=SAVE_DIR,
+    )
+
+    println("Generating density plot for target: $target...")
+    density_comparison(
+        FASTA_PATHS,
+        DATA_NAMES,
+        DATA_COLORS,
+        target;
+        direction=:vertical,
         save_dir=SAVE_DIR,
     )
 end
