@@ -84,8 +84,29 @@ echo "$esm_embedding_sbatch_ret"
 esm_embedding_job_id=${esm_embedding_sbatch_ret##* }
 embeddings_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_embedding_esm1b.csv"
 
+# If `train_embeddings_path` is not provided, check if the embeddings file exists in the same path as `train_path`.
+if [[ -z "$train_embeddings_path" ]] || [[ "$train_embeddings_path" == "" ]]; then
+    potential_train_embeddings_path="$(dirname "$train_path")/$(basename "$train_path" .fasta)_embedding_esm1b.csv"
+    if [[ -f "$potential_train_embeddings_path" ]]; then
+        train_embeddings_path="$potential_train_embeddings_path"
+    fi
+fi
+
 if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != "" ]]; then
-    sbatch "$OUTPUT_ARG" --dependency=afterok:$esm_embedding_job_id \
+    sbatch "$OUTPUT_ARG" \
+        --dependency=afterok:$esm_embedding_job_id \
+        "$JOBS_DIR"/min_embedding_distance.sh \
+        --embeddings_path "$embeddings_path" \
+        --train_embeddings_path "$train_embeddings_path"
+else
+    train_esm_embedding_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/esm_embedding.sh --fasta_path "$train_path")
+    echo "$train_esm_embedding_sbatch_ret"
+    train_esm_embedding_job_id=${train_esm_embedding_sbatch_ret##* }
+    train_embeddings_path="$(dirname "$train_path")/$(basename "$train_path" .fasta)_embedding_esm1b.csv"
+
+    sbatch "$OUTPUT_ARG" \
+        --dependency=afterok:$esm_embedding_job_id \
+        --dependency=afterok:$train_esm_embedding_job_id \
         "$JOBS_DIR"/min_embedding_distance.sh \
         --embeddings_path "$embeddings_path" \
         --train_embeddings_path "$train_embeddings_path"
