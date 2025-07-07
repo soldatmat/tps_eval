@@ -1,50 +1,29 @@
-include("boxplot_comparison.jl")
-include("density_comparison.jl")
+using Pkg
 
+cd(@__DIR__)
+# TODO create julia project in tps_eval
+Pkg.activate("../../../../terpene_generation/src") # TODO delete
+#Pkg.instantiate()
 
-FASTA_PATHS = [
-    "/Users/soldatmat/Documents/terpene_synthases/tps_eval/data/generated/generated_sequences.fasta",
-]
+# --- Script ---------------------------------------------------------
+include("plot_comparison.jl")
 
-DATA_NAMES = [
-    "generated",
-]
+num_args = length(ARGS)
 
-DATA_COLORS = [
-    :goldenrod1,
-]
-
-TARGETS = [
-    "sequence_identity",
-    "sequence_identity_self",
-    "sequence_similarity",
-    "sequence_similarity_self",
-    "min_embedding_distance",
-    "min_embedding_distance_self",
-    "isTPS",
-    "isTPS_seq",
-    "soluble",
-]
-
-SAVE_DIR = "/Users/soldatmat/Documents/terpene_synthases/tps_eval/data/generated/plots/"
-
-for target in TARGETS
-    println("Generating boxplot for target: $target...")
-    boxplot_comparison(
-        FASTA_PATHS,
-        DATA_NAMES,
-        DATA_COLORS,
-        target;
-        save_dir=SAVE_DIR,
-    )
-
-    println("Generating density plot for target: $target...")
-    density_comparison(
-        FASTA_PATHS,
-        DATA_NAMES,
-        DATA_COLORS,
-        target;
-        direction=:vertical,
-        save_dir=SAVE_DIR,
-    )
+if num_args == 4 || num_args == 5
+    fasta_paths = split(ARGS[1], ",")
+    data_names = split(ARGS[2], ",")
+    data_colors = Symbol.(split(ARGS[3], ","))
+    targets = split(ARGS[4], ",")
+    save_dir = num_args == 5 ? ARGS[5] : nothing
+else
+    error("Invalid number of arguments. Expected 4 or 5, got $num_args.")
 end
+
+plot_comparison(
+    fasta_paths,
+    data_names,
+    data_colors,
+    targets;
+    save_dir=save_dir
+)
