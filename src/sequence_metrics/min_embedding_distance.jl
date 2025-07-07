@@ -1,6 +1,6 @@
 using Distances
 
-include("data/embeddings.jl")
+include("../data/embeddings.jl")
 
 get_min_distances(distances) = map(dists -> minimum(dists), eachrow(distances))
 get_second_min_distances(distances) = getindex.(sort.(eachrow(distances), rev = false), 2)

@@ -1,7 +1,7 @@
 using CSV
 using DataFrames
 
-include("data/sequences.jl")
+include("../data/sequences.jl")
 
 convert_to_regex(motif::String)::Regex = Regex(motif)
 convert_motifs(motifs::AbstractVector{String})::AbstractVector{Regex} = map(convert_to_regex, motifs)

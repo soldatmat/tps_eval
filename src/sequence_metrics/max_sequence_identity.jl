@@ -3,7 +3,7 @@ using DataFrames
 using BioSequences
 using BioAlignments
 
-include("data/sequences.jl")
+include("../data/sequences.jl")
 include("count_positives.jl")
 
 SUBSTITUTION_MATRIX = BLOSUM62
