@@ -55,7 +55,8 @@ conda activate terpene_miner
 
 output_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_enzyme_explorer_sequence_only.csv"
 
-python "$ENZYME_EXPLORER_PATH/scripts/easy_predict_sequence_only.py" \
+cd "$ENZYME_EXPLORER_PATH"
+python "scripts/easy_predict_sequence_only.py" \
     --input-fasta-path "$fasta_path" \
     --output-csv-path "$output_path" \
     --detection-threshold 0.0 \

@@ -10,24 +10,30 @@ function plot_comparison(
     save_dir::Union{String,Nothing}=nothing,
 )
     for target in targets
-        println("Generating boxplot for target: $target...")
-        boxplot_comparison(
+        try
+            println("Generating boxplot for target: $target...")
+            boxplot_comparison(
             fasta_paths,
             data_names,
             data_colors,
             target;
             save_dir=save_dir,
-        )
+            )
 
-        println("Generating density plot for target: $target...")
-        density_comparison(
+            println("Generating density plot for target: $target...")
+            density_comparison(
             fasta_paths,
             data_names,
             data_colors,
             target;
             direction=:vertical,
             save_dir=save_dir,
-        )
+            )
+        catch e
+            println("Error while plotting for target $target: $e")
+            println("Stacktrace:")
+            println(stacktrace(catch_backtrace()))
+        end
     end
 end
 

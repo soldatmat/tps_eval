@@ -62,12 +62,12 @@ fi
 
 # Convert fasta_path to absolute path if it's relative
 if [[ "$fasta_path" != /* ]]; then
-    fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
+    fasta_path=$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")
 fi
 
 # Convert train_path to absolute path if it's set and relative
 if [[ -n "$train_path" ]] && [[ "$train_path" != /* ]]; then
-    train_path="$(cd "$(dirname "$train_path")" && pwd)/$(basename "$train_path")"
+    train_path=$(cd "$(dirname "$train_path")" && pwd)/$(basename "$train_path")
 fi
 
 ############################################################
@@ -84,9 +84,7 @@ else
 fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."
 
-
-if train_mode; then
-    cp "${fasta_path%.csv}_max_sequence_identity_self.csv" "${fasta_path%.csv}_max_sequence_identity.csv"
-    echo "Copied self results to non-self results: ${fasta_path%.csv}_max_sequence_identity_self.csv -> ${fasta_path%.csv}_max_sequence_identity.csv"
+if $train_mode; then
+    cp "${fasta_path%.fasta}_max_sequence_identity_self.csv" "${fasta_path%.fasta}_max_sequence_identity.csv"
+    echo "Copied self results to non-self results: ${fasta_path%.fasta}_max_sequence_identity_self.csv -> ${fasta_path%.fasta}_max_sequence_identity.csv"
 fi
-

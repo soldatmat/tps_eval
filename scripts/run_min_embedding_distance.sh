@@ -62,12 +62,12 @@ fi
 
 # Convert embeddings_path to absolute path if it's relative
 if [[ "$embeddings_path" != /* ]]; then
-    embeddings_path="$(cd "$(dirname "$embeddings_path")" && pwd)/$(basename "$embeddings_path")"
+    embeddings_path=$(cd "$(dirname "$embeddings_path")" && pwd)/$(basename "$embeddings_path")
 fi
 
 # Convert train_embeddings_path to absolute path if it's set and relative
 if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != /* ]]; then
-    train_embeddings_path="$(cd "$(dirname "$train_embeddings_path")" && pwd)/$(basename "$train_embeddings_path")"
+    train_embeddings_path=$(cd "$(dirname "$train_embeddings_path")" && pwd)/$(basename "$train_embeddings_path")
 fi
 
 ############################################################
@@ -82,7 +82,7 @@ else
     julia run_min_embedding_distance.jl "$embeddings_path"
 fi
 
-if train_mode; then
+if $train_mode; then
     # Copy self results to non-self results
     cp "${embeddings_path%.csv}_min_embedding_distance_self.csv" "${embeddings_path%.csv}_min_embedding_distance.csv"
     echo "Copied self results to non-self results: ${embeddings_path%.csv}_min_embedding_distance_self.csv -> ${embeddings_path%.csv}_min_embedding_distance.csv"
