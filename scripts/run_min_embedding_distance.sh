@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path>]"
+USAGE="--embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path> --train]"
 
 Help()
 {

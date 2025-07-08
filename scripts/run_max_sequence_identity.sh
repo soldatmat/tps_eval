@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--fasta_path <fasta_path> [--train_path <train_path>]"
+USAGE="--fasta_path <fasta_path> [--train_path <train_path> --train]"
 
 Help()
 {
@@ -13,7 +13,7 @@ Help()
     echo "Arguments:"
     echo "  --fasta_path   Path to the FASTA file (required)"
     echo "  --train_path   Path to the reference FASTA file (optional)"
-    echo "  --train                     Turns on train data mode. "_self" results will be also copied as non-"_self" results."
+    echo "  --train        Turns on train data mode. "_self" results will be also copied as non-"_self" results."
     echo "  -h, --help     Show this help message and exit"
     echo
 }
