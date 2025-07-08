@@ -102,12 +102,12 @@ fi
 
 
 ########## min embedding distance to train data ##########
-if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
-    esm_embedding_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/esm_embedding.sh --fasta_path "$fasta_path")
-    echo "$esm_embedding_sbatch_ret"
-    esm_embedding_job_id=${esm_embedding_sbatch_ret##* }
-    embeddings_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_embedding_esm1b.csv"
+esm_embedding_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/esm_embedding.sh --fasta_path "$fasta_path")
+echo "$esm_embedding_sbatch_ret"
+esm_embedding_job_id=${esm_embedding_sbatch_ret##* }
+embeddings_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_embedding_esm1b.csv"
 
+if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     # If `train_embeddings_path` is not provided, check if the embeddings file exists in the same path as `train_path`.
     if [[ -z "$train_embeddings_path" ]] || [[ "$train_embeddings_path" == "" ]]; then
         potential_train_embeddings_path="$(dirname "$train_path")/$(basename "$train_path" .fasta)_embedding_esm1b.csv"
