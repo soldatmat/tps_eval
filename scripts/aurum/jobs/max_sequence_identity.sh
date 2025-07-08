@@ -11,7 +11,7 @@
 # --mem=32G
 # --partition=a36_any
 
-# Usage: sbatch max_sequence_identity.sh --fasta_path <fasta_path> [--train_path <train_path>]
+# Usage: sbatch max_sequence_identity.sh --fasta_path <fasta_path> [--train_path <train_path> --train]
 
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')
 

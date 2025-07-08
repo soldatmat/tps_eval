@@ -13,11 +13,13 @@ Help()
     echo "Arguments:"
     echo "  --fasta_path   Path to the FASTA file (required)"
     echo "  --train_path   Path to the reference FASTA file (optional)"
+    echo "  --train                     Turns on train data mode. "_self" results will be also copied as non-"_self" results."
     echo "  -h, --help     Show this help message and exit"
     echo
 }
 
 # Parse long options manually
+train_mode=false
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
@@ -29,6 +31,10 @@ while [[ $# -gt 0 ]]; do
         --train_path)
             train_path="$2"
             shift
+            shift
+            ;;
+        --train)
+            train_mode=true
             shift
             ;;
         -h|--help)
@@ -49,6 +55,11 @@ if [[ -z "$fasta_path" ]]; then
     exit 1
 fi
 
+if $train_mode && [[ -n "$train_path" ]]; then
+    echo "Error: --train and --train_path cannot be used together."
+    exit 1
+fi
+
 # Convert fasta_path to absolute path if it's relative
 if [[ "$fasta_path" != /* ]]; then
     fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
@@ -65,8 +76,17 @@ fi
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/sequence_metrics"
 
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting max_sequence_identity computation..."
 if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     julia run_max_sequence_identity.jl "$fasta_path" "$train_path"
 else
     julia run_max_sequence_identity.jl "$fasta_path"
 fi
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."
+
+
+if train_mode; then
+    cp "${fasta_path%.csv}_max_sequence_identity_self.csv" "${fasta_path%.csv}_max_sequence_identity.csv"
+    echo "Copied self results to non-self results: ${fasta_path%.csv}_max_sequence_identity_self.csv -> ${fasta_path%.csv}_max_sequence_identity.csv"
+fi
+

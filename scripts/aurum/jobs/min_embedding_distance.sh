@@ -6,7 +6,7 @@
 #SBATCH --mem=16G
 #SBATCH --partition=a36_96
 
-# Usage: sbatch min_embedding_distance.sh --embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path>]
+# Usage: sbatch min_embedding_distance.sh --embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path> --train]
 
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')
 

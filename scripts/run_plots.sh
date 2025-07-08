@@ -97,7 +97,7 @@ SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/plot"
 
 if [[ -n "$save_dir" ]] && [[ "$save_dir" != "" ]]; then
-    julia run_plots.jl "$fasta_path" "$data_names" "$data_colors" "$targets" "$save_dir"
+    julia run_plots.jl "$fasta_paths" "$data_names" "$data_colors" "$targets" "$save_dir"
 else
-    julia run_plots.jl "$fasta_path" "$data_names" "$data_colors" "$targets"
+    julia run_plots.jl "$fasta_paths" "$data_names" "$data_colors" "$targets"
 fi

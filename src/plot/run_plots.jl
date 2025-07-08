@@ -20,6 +20,11 @@ else
     error("Invalid number of arguments. Expected 4 or 5, got $num_args.")
 end
 
+fasta_paths = Vector{String}(fasta_paths)
+data_names = Vector{String}(data_names)
+data_colors = Vector{Symbol}(data_colors)
+targets = Vector{String}(targets)
+
 plot_comparison(
     fasta_paths,
     data_names,
