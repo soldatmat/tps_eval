@@ -19,12 +19,15 @@ Help()
 }
 
 # Parse long options manually
+fasta_paths=()
+data_names=()
+data_colors=()
+targets=()
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
         --fasta_paths)
             shift
-            fasta_paths=()
             while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
                 fasta_paths+=("$1")
                 shift
@@ -32,7 +35,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --data_names)
             shift
-            data_names=()
             while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
                 data_names+=("$1")
                 shift
@@ -40,7 +42,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --data_colors)
             shift
-            data_colors=()
             while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
                 data_colors+=("$1")
                 shift
@@ -48,7 +49,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --targets)
             shift
-            targets=()
             while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
                 targets+=("$1")
                 shift
@@ -97,7 +97,11 @@ SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/plot"
 
 if [[ -n "$save_dir" ]] && [[ "$save_dir" != "" ]]; then
-    julia run_plots.jl "$fasta_paths" "$data_names" "$data_colors" "$targets" "$save_dir"
+    fasta_paths_str="$(IFS=,; echo "${fasta_paths[*]}")"
+    data_names_str="$(IFS=,; echo "${data_names[*]}")"
+    data_colors_str="$(IFS=,; echo "${data_colors[*]}")"
+    targets_str="$(IFS=,; echo "${targets[*]}")"
+    julia run_plots.jl "$fasta_paths_str" "$data_names_str" "$data_colors_str" "$targets_str" "$save_dir"
 else
-    julia run_plots.jl "$fasta_paths" "$data_names" "$data_colors" "$targets"
+    julia run_plots.jl "$fasta_paths_str" "$data_names_str" "$data_colors_str" "$targets_str"
 fi
