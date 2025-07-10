@@ -74,7 +74,8 @@ function get_max_sequence_identity(
     max_sequence_similarity = zeros(Float64, length(generated))
     max_sequence_identity_index = zeros(Int, length(generated))
     max_sequence_similarity_index = zeros(Int, length(generated))
-    for (i, generated_seq) in enumerate(generated)
+    println("get_max_sequence_identity num threads: ", Threads.nthreads())
+    Threads.@threads for (i, generated_seq) in collect(enumerate(generated))
         for (j, train_seq) in enumerate(train)
             ((self_comparison) && (i == j)) && continue # Skip self-comparison
 
