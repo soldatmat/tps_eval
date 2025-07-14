@@ -3,11 +3,6 @@
 USAGE="--fasta_path <fasta_path> [--train_path <train_path> --train_embeddings_path <train_embeddings_path> --structs_dir <structs_dir> --train_structs_dir <train_structs_dir>]"
 
 ############################################################
-# Parameters                                               #
-############################################################
-MOTIFS=("DD..D" "(N|D)D(L|I|V).(S|T)...E")
-
-############################################################
 # Argument parsing                                         #
 ############################################################
 Help()
@@ -85,7 +80,7 @@ OUTPUT_ARG="--output=$LOGS_DIR/%x.%j.out"
 
 ########## motifs ##########
 # generated data
-sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$fasta_path" "${MOTIFS[@]}"
+sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$fasta_path"
 
 # train data
 if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
@@ -93,7 +88,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$train_motifs_path" ]]; then
         echo "Train motifs file already exists: $train_motifs_path"
     else
-        train_motif_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$train_path" "${MOTIFS[@]}")
+        train_motif_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$train_path")
         echo "$train_motif_sbatch_ret"
         train_motif_job_id=${train_motif_sbatch_ret##* }
     fi

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+############################################################
+# Parameters                                               #
+############################################################
+MOTIFS=("DD..D" "(N|D)D(L|I|V).(S|T)...E")
+
+############################################################
+# Script                                                   #
+############################################################
 USAGE="--fasta_path <fasta_path> [<motif1> <motif2> ...]"
 
 Help()
@@ -44,6 +52,10 @@ fi
 # Convert fasta_path to absolute path if it's relative
 if [[ "$fasta_path" != /* ]]; then
     fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
+fi
+
+if [[ ${#motifs[@]} -eq 0 ]]; then
+    motifs=("${MOTIFS[@]}")
 fi
 
 ############################################################
