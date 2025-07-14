@@ -1,3 +1,15 @@
+TARGETS = [
+    "sequence_identity",
+    "sequence_identity_self",
+    "sequence_similarity",
+    "sequence_similarity_self",
+    "min_embedding_distance",
+    "min_embedding_distance_self",
+    "isTPS",
+    "isTPS_seq",
+    "soluble",
+]
+
 LOAD = Dict([
     ("sequence_identity", [:max_sequence_identity]),
     ("sequence_identity_self", [:max_sequence_identity_self]),

@@ -1,12 +1,12 @@
 include("boxplot_comparison.jl")
 include("density_comparison.jl")
-
+include("constants.jl")
 
 function plot_comparison(
     fasta_paths::Vector{String},
     data_names::Vector{String},
-    data_colors::Vector{Symbol},
-    targets::Vector{String};
+    data_colors::Vector{Symbol};
+    targets::Vector{String}=TARGETS,
     save_dir::Union{String,Nothing}=nothing,
 )
     for target in targets
@@ -67,8 +67,8 @@ function main()
     plot_comparison(
         FASTA_PATHS,
         DATA_NAMES,
-        DATA_COLORS,
-        TARGETS;
+        DATA_COLORS;
+        TARGETS,
         save_dir=SAVE_DIR,
     )
 end

@@ -291,7 +291,6 @@ fi
 
 ########## Plots ##########
 plot_save_dir=$(dirname "$fasta_path")/plots
-plot_targets=("sequence_identity" "sequence_identity_self" "sequence_similarity" "sequence_similarity_self" "min_embedding_distance" "min_embedding_distance_self" "soluble" "isTPS_seq")
 
 # Build dependency string dynamically
 dependency_args=""
@@ -334,29 +333,19 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
         dependency_args+="--dependency=afterok:$train_enzyme_explorer_struct_job_id "
     fi
 
-    if $enzyme_explorer_struct && $train_enzyme_explorer_struct; then
-        plot_targets+=("isTPS")
-    fi
-
     sbatch "$OUTPUT_ARG" \
     $dependency_args \
     "$JOBS_DIR"/plots.sh \
     --fasta_paths "$train_path" "$fasta_path" \
     --data_names "train" "generated" \
     --data_colors "dodgerblue3" "goldenrod1" \
-    --targets "$plot_targets" \
     --save_dir "$plot_save_dir"
 else
-    if $enzyme_explorer_struct; then
-        plot_targets+=("isTPS")
-    fi
-
     sbatch "$OUTPUT_ARG" \
     $dependency_args \
     "$JOBS_DIR"/plots.sh \
     --fasta_paths "$fasta_path" \
     --data_names "generated" \
     --data_colors "goldenrod1" \
-    --targets "$plot_targets" \
     --save_dir "$plot_save_dir"
 fi

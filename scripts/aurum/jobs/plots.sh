@@ -6,7 +6,7 @@
 #SBATCH --mem=32G
 #SBATCH --partition=a36_any
 
-# Usage: sbatch plots.sh --fasta_paths <fasta1.fa> [<fasta2.fa> ...] --data_names <name1> [<name2> ...] --data_colors <color1> [<color2> ...] --targets <target1> [<target2> ...] [--save_dir <save_dir>]"
+# Usage: sbatch plots.sh --fasta_paths <fasta1.fa> [<fasta2.fa> ...] --data_names <name1> [<name2> ...] --data_colors <color1> [<color2> ...] [--targets <target1> <target2> ... --save_dir <save_dir>]"
 
 
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')

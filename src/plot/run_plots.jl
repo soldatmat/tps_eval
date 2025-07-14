@@ -10,25 +10,36 @@ include("plot_comparison.jl")
 
 num_args = length(ARGS)
 
-if num_args == 4 || num_args == 5
-    fasta_paths = split(ARGS[1], ",")
-    data_names = split(ARGS[2], ",")
-    data_colors = Symbol.(split(ARGS[3], ","))
-    targets = split(ARGS[4], ",")
-    save_dir = num_args == 5 ? ARGS[5] : nothing
-else
-    error("Invalid number of arguments. Expected 4 or 5, got $num_args.")
-end
+# Parse required arguments
+num_args < 3 && error("Invalid number of arguments. Expected at least 3: fasta_paths, data_names, data_colors.")
+fasta_paths = Vector{String}(split(ARGS[1], ","))
+data_names = Vector{String}(split(ARGS[2], ","))
+data_colors = Vector{Symbol}(Symbol.(split(ARGS[3], ",")))
 
-fasta_paths = Vector{String}(fasta_paths)
-data_names = Vector{String}(data_names)
-data_colors = Vector{Symbol}(data_colors)
-targets = Vector{String}(targets)
+# Parse optional arguments
+kwargs = Dict{Symbol,Any}()
+i = 4
+while i <= num_args
+    if ARGS[i] == "--targets"
+        if i + 1 > num_args
+            error("Missing value for --targets.")
+        end
+        kwargs[:targets] = Vector{String}(split(ARGS[i+1], ","))
+        global i += 2
+    elseif ARGS[i] == "--save_dir"
+        if i + 1 > num_args
+            error("Missing value for --save_dir.")
+        end
+        kwargs[:save_dir] = ARGS[i+1]
+        global i += 2
+    else
+        error("Unknown argument: $(ARGS[i])")
+    end
+end
 
 plot_comparison(
     fasta_paths,
     data_names,
-    data_colors,
-    targets;
-    save_dir=save_dir
+    data_colors;
+    kwargs...
 )

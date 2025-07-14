@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--fasta_paths <fasta1.fa> [<fasta2.fa> ...] --data_names <name1> [<name2> ...] --data_colors <color1> [<color2> ...] --targets <target1> [<target2> ...] [--save_dir <save_dir>]"
+USAGE="--fasta_paths <fasta1.fa> [<fasta2.fa> ...] --data_names <name1> [<name2> ...] --data_colors <color1> [<color2> ...] [--targets <target1> <target2> ... --save_dir <save_dir>]"
 
 Help()
 {
@@ -11,7 +11,7 @@ Help()
     echo "  --fasta_paths   One or more paths to FASTA files (required, space-separated list)"
     echo "  --data_names    One or more names corresponding to each FASTA file (required, space-separated list)"
     echo "  --data_colors   One or more colors corresponding to each dataset (required, space-separated list)"
-    echo "  --targets       One or more targets corresponding to each dataset (required, space-separated list)"
+    echo "  --targets       One or more targets corresponding to each dataset (optional, space-separated list; if not provided, all possible targets will be used)"
     echo "  --save_dir      Directory to save output plots (optional)"
     echo "  -h, --help      Show this help message and exit"
     echo
@@ -72,12 +72,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-if [[ -z "${fasta_paths[*]}" || -z "${data_names[*]}" || -z "${data_colors[*]}" || -z "${targets[*]}" ]]; then
+if [[ -z "${fasta_paths[*]}" || -z "${data_names[*]}" || -z "${data_colors[*]}" ]]; then
     echo "Usage: $0 $USAGE"
     exit 1
 fi
 
-# Check that all four mandatory arguments have the same number of elements
+# Check that all three mandatory arguments have the same number of elements
 if [[ ${#fasta_paths[@]} -ne ${#data_names[@]} || ${#fasta_paths[@]} -ne ${#data_colors[@]} ]]; then
     echo "Error: --fasta_paths, --data_names, and --data_colors must have the same number of elements."
     exit 1
@@ -96,12 +96,17 @@ done
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/plot"
 
-if [[ -n "$save_dir" ]] && [[ "$save_dir" != "" ]]; then
-    fasta_paths_str="$(IFS=,; echo "${fasta_paths[*]}")"
-    data_names_str="$(IFS=,; echo "${data_names[*]}")"
-    data_colors_str="$(IFS=,; echo "${data_colors[*]}")"
+fasta_paths_str="$(IFS=,; echo "${fasta_paths[*]}")"
+data_names_str="$(IFS=,; echo "${data_names[*]}")"
+data_colors_str="$(IFS=,; echo "${data_colors[*]}")"
+
+args=("$fasta_paths_str" "$data_names_str" "$data_colors_str")
+if [[ -n "${targets[*]}" ]]; then
     targets_str="$(IFS=,; echo "${targets[*]}")"
-    julia run_plots.jl "$fasta_paths_str" "$data_names_str" "$data_colors_str" "$targets_str" "$save_dir"
-else
-    julia run_plots.jl "$fasta_paths_str" "$data_names_str" "$data_colors_str" "$targets_str"
+    args+=("--targets" "$targets_str")
 fi
+if [[ -n "$save_dir" ]]; then
+    args+=("--save_dir" "$save_dir")
+fi
+
+julia run_plots.jl "${args[@]}"
