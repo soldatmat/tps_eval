@@ -1,0 +1,47 @@
+import pandas as pd
+import argparse
+import subprocess
+
+import sys
+import importlib.util
+
+def main():
+    parser = argparse.ArgumentParser(description="Run AlphaFold from CSV")
+    parser.add_argument('--csv_path', required=True, help='Path to the CSV file')
+    parser.add_argument('--working_directory', required=True, help='Working directory for all runs')
+    parser.add_argument('--id_column_name', required=False, default='ID', help='Name of the column containing sequence IDs (default: ID)')
+    parser.add_argument('--sequence_column_name', required=False, default='sequence', help='Name of the column containing sequences (default: sequence)')
+    args = parser.parse_args()
+
+    df = pd.read_csv(args.csv_path)
+    working_directory = str(args.working_directory)
+
+    # Run a separate AlphaFold job for each sequence in the CSV without UniProt ID
+    for _, row in df.iterrows():
+        if pd.notna(row.get('Uniprot_ID')):
+            continue
+
+        sequence_id = row[args.id_column_name]
+        sequence = row[args.sequence_column_name]
+        cmd = [
+            'bash',
+            'run_alphafold.sh',
+            '--working_directory', working_directory,
+            '--sequence_id', str(sequence_id),
+            '--sequence', str(sequence)
+        ]
+        subprocess.run(cmd, check=True)
+
+    spec = importlib.util.spec_from_file_location("alphafold_struct_downloader", "../alphafold_struct_downloader.py")
+    alphafold_struct_downloader = importlib.util.module_from_spec(spec)
+    sys.modules["alphafold_struct_downloader"] = alphafold_struct_downloader
+    spec.loader.exec_module(alphafold_struct_downloader)
+    structs_output_path = working_directory + "/structs"
+    alphafold_struct_downloader.main(
+        structures_output_path=structs_output_path,
+        path_to_file_with_ids=args.csv_path,
+        n_jobs=1,
+    )
+
+if __name__ == "__main__":
+    main()
