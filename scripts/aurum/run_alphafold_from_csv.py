@@ -3,6 +3,7 @@ import argparse
 import subprocess
 
 import sys
+import os
 import importlib.util
 
 def main():
@@ -16,22 +17,7 @@ def main():
     df = pd.read_csv(args.csv_path)
     working_directory = str(args.working_directory)
 
-    # Run a separate AlphaFold job for each sequence in the CSV without UniProt ID
-    for _, row in df.iterrows():
-        if pd.notna(row.get('Uniprot_ID')):
-            continue
-
-        sequence_id = row[args.id_column_name]
-        sequence = row[args.sequence_column_name]
-        cmd = [
-            'bash',
-            'run_alphafold.sh',
-            '--working_directory', working_directory,
-            '--sequence_id', str(sequence_id),
-            '--sequence', str(sequence)
-        ]
-        subprocess.run(cmd, check=True)
-
+    # Run alphafold_struct_downloader to download structures for sequences with UniProt IDs
     spec = importlib.util.spec_from_file_location("alphafold_struct_downloader", "../alphafold_struct_downloader.py")
     alphafold_struct_downloader = importlib.util.module_from_spec(spec)
     sys.modules["alphafold_struct_downloader"] = alphafold_struct_downloader
@@ -41,7 +27,33 @@ def main():
         structures_output_path=structs_output_path,
         path_to_file_with_ids=args.csv_path,
         n_jobs=1,
+        save_name_column_name=args.id_column_name,
     )
+
+    # Run a separate AlphaFold job for each sequence in the CSV without UniProt ID
+    n_skipped = 0
+    for _, row in df.iterrows():
+        # if pd.notna(row.get('Uniprot_ID')):
+        #     continue
+
+        sequence_id = row[args.id_column_name]
+        sequence = row[args.sequence_column_name]
+
+        output_pdb_path = os.path.join(working_directory, "structs", f"{sequence_id}.pdb")
+        if os.path.exists(output_pdb_path):
+            n_skipped += 1
+            continue
+
+        print(f"Running AlphaFold for sequence ID: {sequence_id}")
+        cmd = [
+            'bash',
+            'run_alphafold.sh',
+            '--working_directory', working_directory,
+            '--sequence_id', str(sequence_id),
+            '--sequence', str(sequence)
+        ]
+        subprocess.run(cmd, check=True) # TODO uncomment
+    print(f"Skipped running AlphaFold for {n_skipped} sequences without Uniprot ID that already have PDB files.")
 
 if __name__ == "__main__":
     main()

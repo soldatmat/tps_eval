@@ -57,7 +57,13 @@ def download_af_struct(uniprot_id, root_af, fails_count=0, max_fails_count=3):
             download_af_struct(uniprot_id, root_af, fails_count+1)
 
 
-def main(structures_output_path, path_to_file_with_ids, n_jobs):
+def main(
+        structures_output_path,
+        path_to_file_with_ids,
+        n_jobs,
+        uniprot_id_column_name='Uniprot_ID',
+        save_name_column_name='Enzyme_marts_ID',
+    ):
     """
     This function downloads protein structures predicted by AlphaFold
     """
@@ -72,9 +78,9 @@ def main(structures_output_path, path_to_file_with_ids, n_jobs):
             all_ids_of_interest = [line.strip() for line in file.readlines()]
     elif path_to_file_with_ids.endswith('.csv'):
         df = pd.read_csv(path_to_file_with_ids)
-        df = df.dropna(subset=['Uniprot_ID'])
-        all_ids_of_interest = df['Uniprot_ID'].astype(str).tolist()
-        save_names = df['Enzyme_marts_ID'].astype(str).tolist()
+        df = df.dropna(subset=[uniprot_id_column_name])
+        all_ids_of_interest = df[uniprot_id_column_name].astype(str).tolist()
+        save_names = df[save_name_column_name].astype(str).tolist()
         all_ids_of_interest = list(zip(all_ids_of_interest, save_names))
     else:
         raise ValueError("Unsupported file format for UniProt IDs. Please provide a .txt or .csv file.")
@@ -92,6 +98,8 @@ def main(structures_output_path, path_to_file_with_ids, n_jobs):
             for uniprot_id in all_ids_of_interest
             if not (root_af / f"{uniprot_id}.pdb").exists()
         ]
+    skipped_count = len(all_ids_of_interest) - len(filtered_ids)
+    logger.info(f"Skipped downloading structures for {skipped_count} sequences because the PDB file already exists.")
 
     with Pool(processes=n_jobs) as pool:
         pool.map(download_af_struct_for_current_root, filtered_ids)
