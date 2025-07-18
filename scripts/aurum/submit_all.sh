@@ -73,6 +73,13 @@ SCRIPT_DIR=$(dirname "$0")
 JOBS_DIR="$SCRIPT_DIR"/jobs
 
 LOGS_DIR="$SCRIPT_DIR"/../../logs/submit_all-"$(date '+%Y_%m_%d_%H%M%S')"
+if [[ -d "$LOGS_DIR" ]]; then
+    i=1
+    while [[ -d "${LOGS_DIR}_$i" ]]; do
+        ((i++))
+    done
+    LOGS_DIR="${LOGS_DIR}_$i"
+fi
 mkdir -p "$LOGS_DIR"
 OUTPUT_ARG="--output=$LOGS_DIR/%x.%j.out"
 
