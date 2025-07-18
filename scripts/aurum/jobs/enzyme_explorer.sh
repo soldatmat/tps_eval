@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:geforce_rtx_3090:2
 
 # Usage: sbatch enzyme_explorer.sh [--sequences_csv_path <sequences_csv_path> --fasta_path <fasta_path>] --structs_dir <structs_dir>
 
