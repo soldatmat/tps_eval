@@ -91,6 +91,7 @@ motifs_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_motifs.cs
 if [[ -f "$motifs_path" ]]; then
     echo "Motifs file already exists: $motifs_path"
 else
+    echo "Submitting motif search..."
     motif_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$fasta_path")
     echo "$motif_sbatch_ret"
     motif_job_id=${motif_sbatch_ret##* }
@@ -102,6 +103,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$train_motifs_path" ]]; then
         echo "Train motifs file already exists: $train_motifs_path"
     else
+        echo "Submitting motif search for train data..."
         train_motif_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/motif_search.sh --fasta_path "$train_path")
         echo "$train_motif_sbatch_ret"
         train_motif_job_id=${train_motif_sbatch_ret##* }
@@ -115,6 +117,7 @@ embeddings_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_embed
 if [[ -f "$embeddings_path" ]]; then
     echo "Embeddings file already exists: $embeddings_path"
 else
+    echo "Submitting ESM-1b embedding extraction..."
     esm_embedding_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/esm_embedding.sh --fasta_path "$fasta_path")
     echo "$esm_embedding_sbatch_ret"
     esm_embedding_job_id=${esm_embedding_sbatch_ret##* }
@@ -126,11 +129,13 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
         potential_train_embeddings_path="$(dirname "$train_path")/$(basename "$train_path" .fasta)_embedding_esm1b.csv"
         if [[ -f "$potential_train_embeddings_path" ]]; then
             train_embeddings_path="$potential_train_embeddings_path"
+            echo "Train embeddings file already exists: $train_embeddings_path"
         fi
     fi
 
     # If `train_embeddings_path` is still not set, generate train embeddings.
     if [[ -z "$train_embeddings_path" ]] || [[ "$train_embeddings_path" == "" ]]; then
+        echo "Submitting ESM-1b embedding extraction for train data..."
         train_esm_embedding_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/esm_embedding.sh --fasta_path "$train_path")
         echo "$train_esm_embedding_sbatch_ret"
         train_esm_embedding_job_id=${train_esm_embedding_sbatch_ret##* }
@@ -151,9 +156,10 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$min_embedding_distance_path" ]]; then
         echo "Min embedding distance file already exists: $min_embedding_distance_path"
     else
+        echo "Submitting min embedding distance calculation..."
         min_embedding_distance_sbatch_ret=$(\
         sbatch "$OUTPUT_ARG" \
-            "$min_embedding_distance_dependency_args" \
+            $min_embedding_distance_dependency_args \
             "$JOBS_DIR"/min_embedding_distance.sh \
             --embeddings_path "$embeddings_path" \
             --train_embeddings_path "$train_embeddings_path" \
@@ -171,6 +177,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$max_sequence_identity_path" ]]; then
         echo "Max sequence identity file already exists: $max_sequence_identity_path"
     else
+        echo "Submitting max sequence identity calculation..."
         max_sequence_identity_sbatch_ret=$(\
             sbatch "$OUTPUT_ARG" "$JOBS_DIR"/max_sequence_identity.sh \
                 --fasta_path "$fasta_path" \
@@ -194,9 +201,10 @@ min_embedding_distance_self_path="$(dirname "$fasta_path")/$(basename "$fasta_pa
 if [[ -f "$min_embedding_distance_self_path" ]]; then
     echo "Min embedding distance self file already exists: $min_embedding_distance_self_path"
 else
+    echo "Submitting min embedding distance self calculation..."
     min_embedding_distance_self_sbatch_ret=$(\
         sbatch "$OUTPUT_ARG" \
-            "$min_embedding_distance_self_dependency_args" \
+            $min_embedding_distance_self_dependency_args \
             "$JOBS_DIR"/min_embedding_distance.sh --embeddings_path "$embeddings_path" \
     )
     echo "$min_embedding_distance_self_sbatch_ret"
@@ -213,6 +221,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
         if [[ -n "$train_esm_embedding_job_id" ]]; then
             train_embedding_min_distance_dependency_args+="--dependency=afterok:$train_esm_embedding_job_id "
         fi
+        echo "Submitting min embedding distance self calculation for train data..."
         train_min_embedding_distance_sbatch_ret=$(\
             sbatch "$OUTPUT_ARG" \
                 $train_embedding_min_distance_dependency_args \
@@ -231,6 +240,7 @@ max_sequence_identity_self_path="$(dirname "$fasta_path")/$(basename "$fasta_pat
 if [[ -f "$max_sequence_identity_self_path" ]]; then
     echo "Max sequence identity self file already exists: $max_sequence_identity_self_path"
 else
+    echo "Submitting max sequence identity self calculation..."
     max_sequence_identity_self_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/max_sequence_identity.sh --fasta_path "$fasta_path")
     echo "$max_sequence_identity_self_sbatch_ret"
     max_sequence_identity_self_job_id=${max_sequence_identity_self_sbatch_ret##* }
@@ -242,6 +252,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$train_max_sequence_identity_path" ]]; then
         echo "Train max sequence identity file already exists: $train_max_sequence_identity_path"
     else
+        echo "Submitting max sequence identity self calculation for train data..."
         train_max_sequence_identity_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/max_sequence_identity.sh --fasta_path "$train_path" --train)
         echo "$train_max_sequence_identity_sbatch_ret"
         train_max_sequence_identity_job_id=${train_max_sequence_identity_sbatch_ret##* }
@@ -256,6 +267,7 @@ soluprot_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_solupro
 if [[ -f "$soluprot_path" ]]; then
     echo "Soluprot file already exists: $soluprot_path"
 else
+    echo "Submitting Soluprot calculation..."
     soluprot_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/soluprot.sh --fasta_path "$fasta_path")
     echo "$soluprot_sbatch_ret"
     soluprot_job_id=${soluprot_sbatch_ret##* }
@@ -267,6 +279,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$train_soluprot_path" ]]; then
         echo "Train Soluprot file already exists: $train_soluprot_path"
     else
+        echo "Submitting Soluprot calculation for train data..."
         train_soluprot_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/soluprot.sh --fasta_path "$train_path")
         echo "$train_soluprot_sbatch_ret"
         train_soluprot_job_id=${train_soluprot_sbatch_ret##* }
@@ -281,6 +294,7 @@ enzyme_explorer_sequence_only_path="$(dirname "$fasta_path")/$(basename "$fasta_
 if [[ -f "$enzyme_explorer_sequence_only_path" ]]; then
     echo "EnzymeExplorer sequence only file already exists: $enzyme_explorer_sequence_only_path"
 else
+    echo "Submitting EnzymeExplorer sequence only calculation..."
     enzyme_explorer_sequence_only_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/enzyme_explorer_sequence_only.sh --fasta_path "$fasta_path")
     echo "$enzyme_explorer_sequence_only_sbatch_ret"
     enzyme_explorer_sequence_only_job_id=${enzyme_explorer_sequence_only_sbatch_ret##* }
@@ -292,6 +306,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     if [[ -f "$train_enzyme_explorer_sequence_only_path" ]]; then
         echo "Train EnzymeExplorer sequence only file already exists: $train_enzyme_explorer_sequence_only_path"
     else
+        echo "Submitting EnzymeExplorer sequence only calculation for train data..."
         train_enzyme_explorer_sequence_only_sbatch_ret=$(sbatch "$OUTPUT_ARG" "$JOBS_DIR"/enzyme_explorer_sequence_only.sh --fasta_path "$train_path")
         echo "$train_enzyme_explorer_sequence_only_sbatch_ret"
         train_enzyme_explorer_sequence_only_job_id=${train_enzyme_explorer_sequence_only_sbatch_ret##* }
@@ -310,6 +325,7 @@ if $enzyme_explorer_struct; then
     if [[ -f "$enzyme_explorer_path" ]]; then
         echo "EnzymeExplorer (with structures) file already exists: $enzyme_explorer_path"
     else
+        echo "Submitting EnzymeExplorer (with structures) calculation..."
         enzyme_explorer_struct_sbatch_ret=$(\
             sbatch "$OUTPUT_ARG" "$JOBS_DIR"/enzyme_explorer.sh \
                 --fasta_path "$fasta_path" \
@@ -328,6 +344,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
         echo "Train EnzymeExplorer (with structures) file already exists: $train_enzyme_explorer_struct_path"
         train_enzyme_explorer_struct=true
     else if [[ -n "$train_structs_dir" ]] && [[ "$train_structs_dir" != "" ]]; then
+        echo "Submitting EnzymeExplorer (with structures) calculation for train data..."
         train_enzyme_explorer_struct_sbatch_ret=$(\
             sbatch "$OUTPUT_ARG" "$JOBS_DIR"/enzyme_explorer.sh \
                 --fasta_path "$train_path" \
@@ -388,6 +405,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
         dependency_args+="--dependency=afterok:$train_enzyme_explorer_struct_job_id "
     fi
 
+    echo "Submitting plots for generated and train data..."
     sbatch "$OUTPUT_ARG" \
     $dependency_args \
     "$JOBS_DIR"/plots.sh \
@@ -396,6 +414,7 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
     --data_colors "dodgerblue3" "goldenrod1" \
     --save_dir "$plot_save_dir"
 else
+    echo "Submitting plots for target data only..."
     sbatch "$OUTPUT_ARG" \
     $dependency_args \
     "$JOBS_DIR"/plots.sh \
