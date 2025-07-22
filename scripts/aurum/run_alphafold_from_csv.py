@@ -52,7 +52,7 @@ def main():
             '--sequence_id', str(sequence_id),
             '--sequence', str(sequence)
         ]
-        subprocess.run(cmd, check=True) # TODO uncomment
+        subprocess.run(cmd, check=True)
     print(f"Skipped running AlphaFold for {n_skipped} sequences without Uniprot ID that already have PDB files.")
 
 if __name__ == "__main__":
