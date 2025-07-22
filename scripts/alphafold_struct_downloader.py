@@ -78,6 +78,9 @@ def main(
             all_ids_of_interest = [line.strip() for line in file.readlines()]
     elif path_to_file_with_ids.endswith('.csv'):
         df = pd.read_csv(path_to_file_with_ids)
+        if uniprot_id_column_name not in df.columns:
+            print(f"Column with Uniprot IDs '{uniprot_id_column_name}' not found in the CSV file. No structures downloaded.")
+            return
         df = df.dropna(subset=[uniprot_id_column_name])
         all_ids_of_interest = df[uniprot_id_column_name].astype(str).tolist()
         save_names = df[save_name_column_name].astype(str).tolist()
