@@ -33,10 +33,9 @@
 # conda activate terpene_miner
 # ```
 
-import os
-
 # Has to be run in `TerpeneMiner/scripts/` directory
-os.chdir("/home2/soldat/documents/TerpeneMiner_easy/scripts")
+# import os
+# os.chdir("/home2/soldat/documents/TerpeneMiner_easy/scripts")
 
 
 print("Hello world!")

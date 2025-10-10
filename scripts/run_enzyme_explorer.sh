@@ -69,6 +69,7 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
+. "scripts/paths.sh" # Load ENZYME_EXPLORER_PATH, TPS_EVAL_ROOT variables
 
 eval "$(conda shell.bash hook)"
 conda activate terpene_miner
@@ -84,7 +85,10 @@ echo "  sequences CSV path: $sequences_csv_path"
 echo "  structures directory: $structs_dir"
 
 output_path="$(dirname "$sequences_csv_path")/$(basename "$sequences_csv_path" .csv)_enzyme_explorer.csv"
-python src/enzyme_explorer/easy_predict-batching.py \
+
+# The easy_predict-batching.py scripts has to be run in EnzymeExplorer/scripts/ directory
+cd "$ENZYME_EXPLORER_PATH/scripts"
+python "$TPS_EVAL_ROOT/src/enzyme_explorer/easy_predict-batching.py" \
     --input-directory-with-structures "$structs_dir" \
     --needed-proteins-csv-path "$sequences_csv_path" \
     --csv-id-column ID \

@@ -48,14 +48,14 @@ fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "scripts/paths.sh" # Load ENZYME_EXPLORER_PATH variable
+. "scripts/paths.sh" # Load ENZYME_EXPLORER_SEQUENCE_ONLY_PATH variable
 
 eval "$(conda shell.bash hook)"
 conda activate terpene_miner
 
 output_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_enzyme_explorer_sequence_only.csv"
 
-cd "$ENZYME_EXPLORER_PATH"
+cd "$ENZYME_EXPLORER_SEQUENCE_ONLY_PATH"
 python "scripts/easy_predict_sequence_only.py" \
     --input-fasta-path "$fasta_path" \
     --output-csv-path "$output_path" \
