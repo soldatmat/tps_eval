@@ -72,7 +72,7 @@ cd "$SCRIPT_DIR/.."
 . "scripts/paths.sh" # Load ENZYME_EXPLORER_PATH, TPS_EVAL_ROOT variables
 
 eval "$(conda shell.bash hook)"
-conda activate terpene_miner
+conda activate "$ENZYME_EXPLORER_ENV"
 
 
 if [[ -z "$sequences_csv_path" ]]; then

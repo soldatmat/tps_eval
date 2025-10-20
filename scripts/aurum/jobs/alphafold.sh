@@ -33,12 +33,16 @@ mkdir -p "$OUTPUT_DIR"
 ############################################################
 # Prepare config JSON                                      #
 ############################################################
-JULIA_ENV=../../../../../terpene_generation/src # TODO load from a config file
-
 JSON_FILE="$SEQUENCE_ID.json"
 JSON_PATH="${JSON_DIR}/${JSON_FILE}"
-echo "Preparing input JSON for sequence ${SEQUENCE} at ${JSON_PATH}"
-julia --project=$JULIA_ENV ../../../src/alphafold/run_prepare_input.jl "$SEQUENCE_ID" "$SEQUENCE" "$JSON_PATH"
+
+eval "$(conda shell.bash hook)"
+conda activate tps_eval
+
+python ../../../src/alphafold/prepare_input.py \
+    --sequence_id "$SEQUENCE_ID" \
+    --sequence "$SEQUENCE" \
+    --save_path "$JSON_PATH"
 
 
 
@@ -71,8 +75,13 @@ time apptainer exec \
 ############################################################
 # Extract final pdb structure                              #
 ############################################################
+eval "$(conda shell.bash hook)"
+conda activate tps_eval
+
 sequence_id_lowercase=$(echo "$SEQUENCE_ID" | tr '[:upper:]' '[:lower:]')
 STRUCT_PATH="${WRK_DIR}/af_output/${sequence_id_lowercase}/${sequence_id_lowercase}_model.cif"
 STRUCT_SAVE_PATH="$WRK_DIR"/structs/"$SEQUENCE_ID".pdb
 echo "Converting CIF to PDB for sequence ${SEQUENCE_ID} from ${$STRUCT_PATH} to ${STRUCT_SAVE_PATH}"
-julia --project=$JULIA_ENV ../../../src/alphafold/cif_to_pdb.jl "$STRUCT_PATH"  "$STRUCT_SAVE_PATH"
+python ../../../src/alphafold/cif_to_pdb.py \
+    --input_cif "$STRUCT_PATH" \
+    --output_pdb "$STRUCT_SAVE_PATH"

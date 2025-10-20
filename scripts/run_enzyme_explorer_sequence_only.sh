@@ -51,7 +51,7 @@ cd "$SCRIPT_DIR/.."
 . "scripts/paths.sh" # Load ENZYME_EXPLORER_SEQUENCE_ONLY_PATH variable
 
 eval "$(conda shell.bash hook)"
-conda activate terpene_miner
+conda activate "$ENZYME_EXPLORER_SEQUENCE_ONLY_ENV"
 
 output_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_enzyme_explorer_sequence_only.csv"
 

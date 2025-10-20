@@ -50,10 +50,10 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "scripts/paths.sh" # Load SOLUPROT_PATH variable
+. "scripts/paths.sh" # Load SOLUPROT_PATH, SOLUPROT_ENV variables
 
 eval "$(conda shell.bash hook)"
-conda activate soluprot
+conda activate "$SOLUPROT_ENV"
 
 if [[ -z "$SCRATCH" ]] || [[ ! -d "$SCRATCH" ]]; then
     echo "Error: SCRATCH variable is not set to a valid directory."

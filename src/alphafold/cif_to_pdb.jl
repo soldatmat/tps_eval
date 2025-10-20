@@ -4,7 +4,7 @@ using BioStructures
 in_cif_file = ARGS[1]
 out_pdb_file = ARGS[2]
 
-extension = split(in_cif_file, ".")[end]
+#extension = split(in_cif_file, ".")[end]
 #out_pdb_file = in_cif_file[1:end-length(extension)-1] * ".pdb"
 
 mmcif_dict = MMCIFDict(in_cif_file)
