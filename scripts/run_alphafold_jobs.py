@@ -26,12 +26,13 @@ def run_alphafold_jobs(df, working_directory, id_column_name, sequence_column_na
         #     continue
 
         sequence_id = row[id_column_name]
-        sequence = row[sequence_column_name]
 
         output_pdb_path = os.path.join(working_directory, "structs", f"{sequence_id}.pdb")
         if os.path.exists(output_pdb_path):
             n_skipped += 1
             continue
+        
+        sequence = row[sequence_column_name]
 
         print(f"Running AlphaFold for sequence ID: {sequence_id}")
         cmd = [
