@@ -88,6 +88,10 @@ def main(
     else:
         raise ValueError("Unsupported file format for UniProt IDs. Please provide a .txt or .csv file.")
     
+    if all_ids_of_interest == []:
+        logger.info("No UniProt IDs found in the provided file. No structures downloaded.")
+        return
+    
     # Filter out IDs for which the structure file already exists
     if isinstance(all_ids_of_interest[0], tuple):
         filtered_ids = [
