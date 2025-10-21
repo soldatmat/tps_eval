@@ -1,10 +1,10 @@
 import pandas as pd
 import argparse
-import subprocess
 
 import sys
-import os
 import importlib.util
+
+from run_alphafold_jobs import run_alphafold_jobs
 
 def main():
     """
@@ -39,29 +39,7 @@ def main():
     )
 
     # Run a separate AlphaFold job for each sequence in the CSV without UniProt ID
-    n_skipped = 0
-    for _, row in df.iterrows():
-        # if pd.notna(row.get('Uniprot_ID')):
-        #     continue
-
-        sequence_id = row[args.id_column_name]
-        sequence = row[args.sequence_column_name]
-
-        output_pdb_path = os.path.join(working_directory, "structs", f"{sequence_id}.pdb")
-        if os.path.exists(output_pdb_path):
-            n_skipped += 1
-            continue
-
-        print(f"Running AlphaFold for sequence ID: {sequence_id}")
-        cmd = [
-            'bash',
-            f"./{args.cluster}/run_alphafold.sh",
-            '--working_directory', working_directory,
-            '--sequence_id', str(sequence_id),
-            '--sequence', str(sequence)
-        ]
-        subprocess.run(cmd, check=True)
-    print(f"Skipped running AlphaFold for {n_skipped} sequences without Uniprot ID that already have PDB files.")
+    run_alphafold_jobs(df, working_directory, args.id_column_name, args.sequence_column_name, args.cluster)
 
 if __name__ == "__main__":
     main()
