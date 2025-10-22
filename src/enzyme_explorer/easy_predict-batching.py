@@ -333,23 +333,11 @@ def main():
         file_type = pdb_file_path.suffix[1:]
         counter += 1
         predictions = []
-        #Extract sequence from pdb file
-        chain_2_seq = {}
-        for record in SeqIO.parse(pdb_file_path, file_type + "-seqres"): # "pdb-seqres" or "cif-seqres"
-            chain_2_seq[record.id] = str(record.seq)
-        input_seq = list(set(chain_2_seq.values()))
-        if len(input_seq) < 1:
-            logger.warning(f'{pdb_file_path} does not contain any sequence.')
-            continue
-        if len(input_seq) == 1:
-            logger.info(f'{pdb_file_path} contains 1 sequence.')
-        if len(input_seq) > 1:
-            logger.warning(f"Multiple chains in the file {pdb_file_path} are not supported. Taking the first chain..")
-            input_seq = input_seq[:1]
-        if len(input_seq[0]) > args.plm_max_seq_len:
-            input_seq[0] = input_seq[0][: (args.plm_max_seq_len - 2)]      
-        input_seq = input_seq[0]
-        #Get domain features from every classifier
+        # Extract sequence from pdb file
+        input_seq = str(SeqIO.read(pdb_file_path, file_type + "-atom").seq)
+        if len(input_seq) > args.plm_max_seq_len:
+            input_seq = input_seq[: (args.plm_max_seq_len - 2)]
+        # Get domain features from every classifier
         meaningful_comparison = True
         for classifier_i, classifier in enumerate(fold_classifiers):
             logger.info("Comparing domain detections to the selected known examples")
@@ -468,22 +456,10 @@ def main():
         file_type = pdb_file_path.suffix[1:]
         counter += 1
         predictions = []
-        #Extract sequence from pdb file
-        chain_2_seq = {}
-        for record in SeqIO.parse(pdb_file_path, file_type + "-seqres"): # "pdb-seqres" or "cif-seqres"
-            chain_2_seq[record.id] = str(record.seq)
-        input_seq = list(set(chain_2_seq.values()))
-        if len(input_seq) < 1:
-            logger.warning(f'{pdb_file_path} does not conatin any sequence.')
-            continue
-        if len(input_seq) == 1:
-            logger.info(f'{pdb_file_path} contains 1 sequence.')
-        if len(input_seq) > 1:
-            logger.warning(f"Multiple chains in the file {pdb_file_path} are not supported. Taking the first chain..")
-            input_seq = input_seq[:1]
-        if len(input_seq[0]) > args.plm_max_seq_len:
-            input_seq[0] = input_seq[0][: (args.plm_max_seq_len - 2)]      
-        input_seq = input_seq[0]
+        # Extract sequence from pdb file
+        input_seq = str(SeqIO.read(pdb_file_path, file_type + "-atom").seq)
+        if len(input_seq) > args.plm_max_seq_len:
+            input_seq = input_seq[: (args.plm_max_seq_len - 2)]
 
         next_batch.append(input_seq)
         next_batch_ids.append(pdb_id) 
