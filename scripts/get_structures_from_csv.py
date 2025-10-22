@@ -38,7 +38,7 @@ def main():
         save_name_column_name=args.id_column_name,
     )
 
-    # Run a separate AlphaFold job for each sequence in the CSV without UniProt ID
+    # Run a separate AlphaFold job for each sequence in the CSV without a pdb file
     run_alphafold_jobs(df, working_directory, args.id_column_name, args.sequence_column_name, args.cluster)
 
 if __name__ == "__main__":
