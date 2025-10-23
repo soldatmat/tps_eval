@@ -48,7 +48,7 @@ fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "scripts/paths.sh" # Load ENZYME_EXPLORER_SEQUENCE_ONLY_PATH variable
+. "paths.sh" # Load ENZYME_EXPLORER_SEQUENCE_ONLY_PATH variable
 
 eval "$(conda shell.bash hook)"
 conda activate "$ENZYME_EXPLORER_SEQUENCE_ONLY_ENV"

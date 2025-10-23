@@ -50,7 +50,7 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "scripts/paths.sh" # Load SOLUPROT_PATH, SOLUPROT_ENV variables
+. "paths.sh" # Load SOLUPROT_PATH, SOLUPROT_ENV variables
 
 eval "$(conda shell.bash hook)"
 conda activate "$SOLUPROT_ENV"

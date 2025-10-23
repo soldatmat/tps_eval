@@ -71,7 +71,8 @@ fi
 ############################################################
 # Main                                                     #
 ############################################################
-. "../paths.sh" # Load TPS_EVAL_ROOT, TPS_EVAL_ENV variables
+SCRIPT_DIR=$(dirname "$0")
+. "$SCRIPT_DIR/../../paths.sh" # Load TPS_EVAL_ROOT, TPS_EVAL_ENV variables
 
 SCRIPTS_DIR="$TPS_EVAL_ROOT/scripts"
 SRC_DIR="$TPS_EVAL_ROOT/src"

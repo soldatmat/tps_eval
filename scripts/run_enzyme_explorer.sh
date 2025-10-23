@@ -120,7 +120,7 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "scripts/paths.sh" # Load ENZYME_EXPLORER_PATH, TPS_EVAL_ROOT variables
+. "paths.sh" # Load ENZYME_EXPLORER_PATH, TPS_EVAL_ROOT variables
 
 eval "$(conda shell.bash hook)"
 conda activate "$ENZYME_EXPLORER_ENV"

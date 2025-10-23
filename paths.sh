@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TPS_EVAL_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+TPS_EVAL_ROOT="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
 ############################################################
 # Installation-depended paths & conda enviroment names     #
