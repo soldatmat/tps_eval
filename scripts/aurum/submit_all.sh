@@ -114,7 +114,7 @@ if [[ -n "$structs_dir" ]] && [[ "$structs_dir" != "" ]]; then
     structs_working_directory="$(dirname "$structs_dir")"
 
     run_alphafold_jobs_ret=$( \
-    python "$SCRIPTS_DIR/run_alphafold_jobs.py" \
+    python "$SCRIPTS_DIR/alphafold/run_alphafold_jobs.py" \
         --csv_path "$csv_path" \
         --working_directory "$structs_working_directory" \
         --save_directory "$structs_dir" \
