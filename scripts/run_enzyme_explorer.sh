@@ -8,12 +8,29 @@ Help()
     echo "Usage: $0 $USAGE"
     echo
     echo "Arguments:"
-    echo "  --fasta_path            Path to the FASTA file with sequences (required one of: --sequences_csv_path or --fasta_path)"
-    echo "  --sequences_csv_path    Path to the CSV file with columns ID and sequence (required one of: --sequences_csv_path or --fasta_path)"
-    echo "  --structs_dir           Path to the directory containing structures (required)"
-    echo "  -h, --help              Show this help message and exit"
+    echo "  --fasta_path                 Path to the FASTA file with sequences (required one of: --sequences_csv_path or --fasta_path)"
+    echo "  --sequences_csv_path         Path to the CSV file with columns ID and sequence (required one of: --sequences_csv_path or --fasta_path)"
+    echo "  --structs_dir                Path to the directory containing structures (required)"
+    echo "  --csv_id_column              Column name for sequence IDs in the CSV file (optional)"
+    echo "  --n_jobs                     Number of parallel jobs for prediction (optional)"
+    echo "  --is_bfactor_confidence      (optional, flag, always enabled)"
+    echo "  --detection_threshold        (optional)"
+    echo "  --detect_precursor_synthases (optional, flag, always enabled)"
+    echo "  --plm_batch_size             (optional)"
+    echo "  -h, --help                   Show this help message and exit"
     echo
 }
+
+# Collect extra arguments for easy_predict-batching.py
+extra_args=()
+
+# Check for overrides from user input
+[[ -n "$csv_id_column" ]] && extra_args+=(--csv-id-column "$csv_id_column")
+[[ -n "$n_jobs" ]] && extra_args+=(--n-jobs "$n_jobs")
+[[ -n "$is_bfactor_confidence" ]] && extra_args+=(--is-bfactor-confidence)
+[[ -n "$detection_threshold" ]] && extra_args+=(--detection-threshold "$detection_threshold")
+[[ -n "$detect_precursor_synthases" ]] && extra_args+=(--detect-precursor-synthases)
+[[ -n "$plm_batch_size" ]] && extra_args+=(--plm-batch-size "$plm_batch_size")
 
 # Parse long options manually
 while [[ $# -gt 0 ]]; do
@@ -31,6 +48,40 @@ while [[ $# -gt 0 ]]; do
             ;;
         --structs_dir)
             structs_dir="$2"
+            shift
+            shift
+            ;;
+        --csv_id_column)
+            csv_id_column="$2"
+            extra_args+=(--csv-id-column "$csv_id_column")
+            shift
+            shift
+            ;;
+        --n_jobs)
+            n_jobs="$2"
+            extra_args+=(--n-jobs "$n_jobs")
+            shift
+            shift
+            ;;
+        --is_bfactor_confidence)
+            is_bfactor_confidence=1
+            extra_args+=(--is-bfactor-confidence)
+            shift
+            ;;
+        --detection_threshold)
+            detection_threshold="$2"
+            extra_args+=(--detection-threshold "$detection_threshold")
+            shift
+            shift
+            ;;
+        --detect_precursor_synthases)
+            detect_precursor_synthases=1
+            extra_args+=(--detect-precursor-synthases)
+            shift
+            ;;
+        --plm_batch_size)
+            plm_batch_size="$2"
+            extra_args+=(--plm-batch-size "$plm_batch_size")
             shift
             shift
             ;;
@@ -73,6 +124,8 @@ cd "$SCRIPT_DIR/.."
 
 eval "$(conda shell.bash hook)"
 conda activate "$ENZYME_EXPLORER_ENV"
+echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
+echo "Using python: $(which python)"
 
 
 if [[ -z "$sequences_csv_path" ]]; then
@@ -88,13 +141,11 @@ output_path="$(dirname "$sequences_csv_path")/$(basename "$sequences_csv_path" .
 
 # The easy_predict-batching.py scripts has to be run in EnzymeExplorer/scripts/ directory
 cd "$ENZYME_EXPLORER_PATH/scripts"
+
 python "$TPS_EVAL_ROOT/src/enzyme_explorer/easy_predict-batching.py" \
     --input-directory-with-structures "$structs_dir" \
     --needed-proteins-csv-path "$sequences_csv_path" \
-    --csv-id-column ID \
-    --n-jobs 20 \
+    ${extra_args[@]:---csv-id-column ID --n-jobs 20 --detection-threshold 0 --plm-batch-size 20} \
     --is-bfactor-confidence \
-    --output-csv-path $output_path \
-    --detection-threshold 0 \
     --detect-precursor-synthases \
-    --plm-batch-size 20
+    --output-csv-path "$output_path"
