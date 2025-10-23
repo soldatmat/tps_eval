@@ -6,6 +6,8 @@ TPS_EVAL_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 # Installation-depended paths & conda enviroment names     #
 ############################################################
 
+TPS_EVAL_ENV="tps_eval" # tps_eval conda environment name
+
 SOLUPROT_PATH="/home2/soldat/documents/soluprot"
 SOLUPROT_ENV="soluprot" # SoluProt conda environment name
 

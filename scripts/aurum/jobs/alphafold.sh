@@ -6,12 +6,13 @@
 #SBATCH --mem=100G
 #SBATCH --gres=gpu:1
 
-# Usage: sbatch aplhafold.sh <working_directory> <sequence_id> <sequence>
+# Usage: sbatch aplhafold.sh <working_directory> <sequence_id> <sequence> [<save_directory>]
 
 # User input data
-WRK_DIR=$1 # Adjust if needed
+WRK_DIR="$1"
 SEQUENCE_ID="$2"
 SEQUENCE="$3"
+SAVE_DIR="$4"
 
 echo "Running on $hostname" # Print the node
 
@@ -80,8 +81,13 @@ conda activate tps_eval
 
 sequence_id_lowercase=$(echo "$SEQUENCE_ID" | tr '[:upper:]' '[:lower:]')
 STRUCT_PATH="${WRK_DIR}/af_output/${sequence_id_lowercase}/${sequence_id_lowercase}_model.cif"
-STRUCT_SAVE_PATH="$WRK_DIR"/structs/"$SEQUENCE_ID".pdb
-echo "Converting CIF to PDB for sequence ${SEQUENCE_ID} from ${$STRUCT_PATH} to ${STRUCT_SAVE_PATH}"
+if [ -n "$SAVE_DIR" ]; then
+    STRUCT_SAVE_PATH="${SAVE_DIR}/${SEQUENCE_ID}.pdb"
+else
+    STRUCT_SAVE_PATH="${WRK_DIR}/structs/${SEQUENCE_ID}.pdb"
+fi
+mkdir -p "$(dirname "$STRUCT_SAVE_PATH")"
+echo "Converting CIF to PDB for sequence ${SEQUENCE_ID} from ${STRUCT_PATH} to ${STRUCT_SAVE_PATH}"
 python ../../../src/alphafold/cif_to_pdb.py \
     --input_cif "$STRUCT_PATH" \
     --output_pdb "$STRUCT_SAVE_PATH"
