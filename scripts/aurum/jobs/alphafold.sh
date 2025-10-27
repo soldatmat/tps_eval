@@ -6,14 +6,87 @@
 #SBATCH --mem=100G
 #SBATCH --gres=gpu:1
 
-# Usage: sbatch aplhafold.sh <working_directory> <sequence_id> <sequence> [<save_directory>]
+# Usage: sbatch alphafold.sh <working_directory> <proteins> <ligands> [<save_directory>]
 
-# User input data
-WRK_DIR="$1"
-SEQUENCE_ID="$2"
-SEQUENCE="$3"
-SAVE_DIR="$4"
+############################################################
+# Argument parsing                                         #
+############################################################
+USAGE="--working_directory <working_directory> --sequence_id <sequence_id> --proteins <ID1 SEQ1 ID2 SEQ2 ...> --ligands <ID1 SMILES1 ID2 SMILES2 ...> --save_directory <save_directory> --model_seeds <SEED1 SEED2 ...>"
 
+Help()
+{
+    # Display Help
+    echo "Usage: alphafold.sh $USAGE"
+    echo
+    echo "Arguments:"
+    echo "  --working_directory         Name of the working directory"
+    echo "  --sequence_id               Used to name result files"
+    echo "  --proteins                  List of proteins in format: ID1 SEQ1 ID2 SEQ2 ... All following tokens (until next --option) are parsed as proteins."
+    echo "  --ligands                   List of ligands in format: ID1 SMILES1 ID2 SMILES2 ... All following tokens (until next --option) are parsed as ligands."
+    echo "  --save_directory            Directory to save final pdb structures."
+    echo "  --model_seeds               Model seeds to use, separated by space. All following tokens (until next --option) are parsed as model seeds."
+    echo "  -h, --help                  Show this help message and exit"
+    echo
+}
+
+# Parse long options manually
+JOB_ARGS=""
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --working_directory)
+            WRK_DIR="$2"
+            shift 2
+            ;;
+        --sequence_id)
+            SEQUENCE_ID="$2"
+            shift 2
+            ;;
+        --proteins)
+            shift
+            # Collect all following args until the next token that starts with --
+            while [[ $# -gt 0 && "$1" != --* ]]; do
+                PROTEINS="${PROTEINS:+$PROTEINS }$1"
+                shift
+            done
+            ;;
+        --ligands)
+            shift
+            # Collect all following args until the next token that starts with --
+            while [[ $# -gt 0 && "$1" != --* ]]; do
+                LIGANDS="${LIGANDS:+$LIGANDS }$1"
+                shift
+            done
+            ;;
+        --save_directory)
+            SAVE_DIR="$2"
+            shift 2
+            ;;
+        --model_seeds)
+            shift
+            # Collect all following args until the next token that starts with --
+            while [[ $# -gt 0 && "$1" != --* ]]; do
+                MODEL_SEEDS="${MODEL_SEEDS:+$MODEL_SEEDS }$1"
+                shift
+            done
+            ;;
+        -h|--help)
+            Help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            Help
+            exit 1
+            ;;
+    esac
+done
+
+
+
+############################################################
+# Main                                                     #
+############################################################
 echo "Running on $hostname" # Print the node
 
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')
@@ -32,7 +105,7 @@ mkdir -p "$OUTPUT_DIR"
 
 
 ############################################################
-# Prepare config JSON                                      #
+# Create config JSON                                       #
 ############################################################
 JSON_FILE="$SEQUENCE_ID.json"
 JSON_PATH="${JSON_DIR}/${JSON_FILE}"
@@ -40,11 +113,8 @@ JSON_PATH="${JSON_DIR}/${JSON_FILE}"
 eval "$(conda shell.bash hook)"
 conda activate tps_eval
 
-python ../../../src/alphafold/prepare_input.py \
-    --sequence_id "$SEQUENCE_ID" \
-    --sequence "$SEQUENCE" \
-    --save_path "$JSON_PATH"
-
+JOB_ARGS="--proteins $PROTEINS --ligands $LIGANDS --save_path $JSON_PATH --model_seeds $MODEL_SEEDS"
+python ../../../src/alphafold/prepare_input.py $JOB_ARGS
 
 
 ############################################################
@@ -54,7 +124,7 @@ python ../../../src/alphafold/prepare_input.py \
 AF3_DIR="/hpcg/local/soft/alphafold3/"
 AF3_SIF="alphafold3-20250108.sif"
 
-echo "Running AlphaFold3 for sequence ${SEQUENCE_ID} with sequence ${SEQUENCE}"
+echo "Running AlphaFold3 for sequence ${SEQUENCE_ID}"
 time apptainer exec \
      --nv \
      --bind ${WRK_DIR}/af_input:/root/af_input \

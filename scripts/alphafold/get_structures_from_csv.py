@@ -16,13 +16,16 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Run AlphaFold from CSV")
     parser.add_argument('--csv_path', required=True, help='Path to the CSV file')
-    parser.add_argument('--working_directory', required=True, help='Working directory for all runs')
     parser.add_argument('--id_column_name', required=False, default='ID', help='Name of the column containing sequence IDs to be used as names (default: ID)')
     parser.add_argument('--sequence_column_name', required=False, default='sequence', help='Name of the column containing sequences (default: sequence)')
+    parser.add_argument('--csv_delimiter', type=str, default=',', help='Delimiter used in the CSV file (default: ,)')
+
+    parser.add_argument('--working_directory', required=True, help='Working directory for all runs')
+
     parser.add_argument('--cluster', required=False, default='aurum', help='Cluster on which this script is run. (default: aurum)')
     args = parser.parse_args()
 
-    df = pd.read_csv(args.csv_path)
+    df = pd.read_csv(args.csv_path, sep=args.csv_delimiter)
     working_directory = str(args.working_directory)
 
     # Run alphafold_struct_downloader to download structures for sequences with UniProt IDs
@@ -39,7 +42,13 @@ def main():
     )
 
     # Run a separate AlphaFold job for each sequence in the CSV without a pdb file
-    run_alphafold_jobs(df, working_directory, args.id_column_name, args.sequence_column_name, args.cluster)
+    run_alphafold_jobs(
+        df=df,
+        working_directory=working_directory,
+        cluster=args.cluster,
+        protein_column_names=[(args.id_column_name, args.sequence_column_name)],
+        skip_existing=True,
+    )
 
 if __name__ == "__main__":
     main()

@@ -3,18 +3,18 @@
 ############################################################
 # Argument parsing                                         #
 ############################################################
-USAGE="--working_directory <working_directory> --sequence_id <sequence_id> --sequence <sequence> [--job_args <args...>]"
+USAGE="--cluster <cluster> --job_name <job_name> [--job_args <args...>] [--submit_args <args...>]"
 
 Help()
 {
     # Display Help
-    echo "Usage: $0 $USAGE"
+    echo "Usage: submit_job.sh $USAGE"
     echo
     echo "Arguments:"
     echo "  --cluster                   Name of the cluster"
     echo "  --job_name                  Name of the job"
-    echo "  --job_args                  Optional: all following tokens (until next --option) are passed to the job script"
-    echo "  --submit_args               Optional: all following tokens (until next --option) are passed to the cluster's submit command"
+    echo "  --job_args                  (optional), All following tokens (until next --option) are passed to the job script. If you need to pass arguments starting with --, enclose them in double quotes."
+    echo "  --submit_args               (optional), All following tokens (until next --option) are passed to the cluster's submit command. If you need to pass arguments starting with --, enclose them in double quotes."
     echo "  -h, --help                  Show this help message and exit"
     echo
 }
@@ -40,7 +40,6 @@ while [[ $# -gt 0 ]]; do
                 shift
             done
             ;;
-        
         --submit_args)
             shift
             # Collect all following args until the next token that starts with --
@@ -67,7 +66,12 @@ if [[ -z "$JOB_NAME" || -z "$CLUSTER" ]]; then
     exit 1
 fi
 
-# Remove surrounding double quotes from SUBMIT_ARGS if present
+# Remove surrounding double quotes from JOB_ARGS and SUBMIT_ARGS if present
+if [[ -n "${JOB_ARGS}" ]]; then
+    if [[ "${JOB_ARGS:0:1}" == "\"" && "${JOB_ARGS: -1}" == "\"" ]]; then
+        JOB_ARGS="${JOB_ARGS:1:-1}"
+    fi
+fi
 if [[ -n "${SUBMIT_ARGS}" ]]; then
     if [[ "${SUBMIT_ARGS:0:1}" == "\"" && "${SUBMIT_ARGS: -1}" == "\"" ]]; then
         SUBMIT_ARGS="${SUBMIT_ARGS:1:-1}"
