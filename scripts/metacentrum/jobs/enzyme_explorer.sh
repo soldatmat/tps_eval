@@ -3,18 +3,20 @@
 #PBS -l walltime=02:30:00
 #PBS -l select=1:ncpus=20:ngpus=1:mem=20gb:gpu_mem=20gb:scratch_local=10gb
 
-# Usage: sbatch enzyme_explorer.sh [--sequences_csv_path <sequences_csv_path> --fasta_path <fasta_path>] --structs_dir <structs_dir>
+# Usage: qsub -v args="[--sequences_csv_path=<sequences_csv_path> --fasta_path=<fasta_path>] --structs_dir=<structs_dir>" enzyme_explorer.sh
 
 module add mambaforge # run_enzyme_explorer.sh activates the conda environment set in paths.sh
 
-# test if the scratch directory is set
-# if scratch directory is not set, issue error message and exit
+
+# TODO remove absolute path
+. /storage/brno2/home/soldatmat/documents/terpene_synthases/tps_eval/paths.sh # load TPS_EVAL_ROOT, ENZYME_EXPLORER_PATH variables
+
+
 test -n "$SCRATCHDIR" || { echo >&2 "Variable SCRATCHDIR is not set!"; exit 1; }
 export TMPDIR=$SCRATCHDIR
-export TORCH_HOME=/storage/brno2/home/soldatmat/documents/terpene_synthases/EnzymeExplorer/data/torch_cache
+export TORCH_HOME="$ENZYME_EXPLORER_PATH/data/torch_cache"
 
-echo $(pwd)
-cd $(dirname "$BASH_SOURCE")/../..
-echo $(pwd)
 
-sh run_enzyme_explorer.sh $@
+cd "$TPS_EVAL_ROOT/scripts"
+echo "Calling run_enzyme_explorer.sh with args: $args"
+sh run_enzyme_explorer.sh $args
