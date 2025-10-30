@@ -3,6 +3,12 @@
 - Every evaluation tool has its main run script created as `tps_eval/scripts/run_<tool_name>`.
 - The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/<jobs>/<tool_name>.sh`.
 
+# Installation
+```sh
+cd tps_eval
+. setup.sh
+```
+
 # Running AlphaFold
 Currently, Alphafold jobs are configured only for the IOCB Aurum cluster.
 
