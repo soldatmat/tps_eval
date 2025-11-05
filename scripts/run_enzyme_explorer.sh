@@ -21,7 +21,7 @@ Help()
     echo
 }
 
-# Collect extra arguments for easy_predict-batching.py
+# Collect extra arguments for easy_predict.py
 extra_args=()
 
 # Check for overrides from user input
@@ -120,7 +120,7 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd "$SCRIPT_DIR/.."
-. ./paths.sh # Load ENZYME_EXPLORER_PATH, TPS_EVAL_ROOT variables
+. ./paths.sh # Load ENZYME_EXPLORER_ENV, ENZYME_EXPLORER_PATH variables
 
 eval "$(conda shell.bash hook)"
 conda activate "$ENZYME_EXPLORER_ENV"
@@ -133,19 +133,19 @@ if [[ -z "$sequences_csv_path" ]]; then
     python src/enzyme_explorer/prepare_csv.py --fasta_path "$fasta_path" --csv_path "$sequences_csv_path"
 fi
 
-echo "Running enzyme explorer (easy_predict_batching.py) with the following parameters:"
+echo "Running enzyme explorer (easy_predict.py) with the following parameters:"
 echo "  sequences CSV path: $sequences_csv_path"
 echo "  structures directory: $structs_dir"
 
 output_path="$(dirname "$sequences_csv_path")/$(basename "$sequences_csv_path" .csv)_enzyme_explorer.csv"
 
-# The easy_predict-batching.py scripts has to be run in EnzymeExplorer/scripts/ directory
+# The easy_predict.py scripts has to be run in EnzymeExplorer/scripts/ directory
 cd "$ENZYME_EXPLORER_PATH/scripts"
 
-python "$TPS_EVAL_ROOT/src/enzyme_explorer/easy_predict-batching.py" \
+python easy_predict.py \
     --input-directory-with-structures "$structs_dir" \
     --needed-proteins-csv-path "$sequences_csv_path" \
     ${extra_args[@]:---csv-id-column ID --n-jobs 20 --detection-threshold 0 --plm-batch-size 20} \
     --is-bfactor-confidence \
-    --detect-precursor-synthases \
+    --detect-precursor-synthases True \
     --output-csv-path "$output_path"

@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -J EnzymeExplorer_sequence_only
-#SBATCH --time=0-03:59:00
+#SBATCH --time=0-02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=40G
+#SBATCH --mem=20G
 #SBATCH --gres=gpu:1
 #SBATCH --partition=b32_128_gpu
 
