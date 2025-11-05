@@ -9,6 +9,8 @@ cd tps_eval
 . setup.sh
 ```
 
+If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself.
+
 # Running AlphaFold
 Currently, Alphafold jobs are configured only for the IOCB Aurum cluster.
 
