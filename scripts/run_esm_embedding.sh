@@ -48,11 +48,14 @@ fi
 ############################################################
 # Main                                                     #
 ############################################################
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd "$SCRIPT_DIR/.."
+. ./paths.sh # Load TPS_EVAL_ENV
 
 eval "$(conda shell.bash hook)"
-conda activate terpene_generation # TODO change to a new tps_eval environment
+conda activate "$TPS_EVAL_ENV"
+echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
+echo "Using python: $(which python)"
 
 python src/esm/extract_embeddings.py \
     esm1b_t33_650M_UR50S \
