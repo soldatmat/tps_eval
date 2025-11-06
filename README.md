@@ -1,7 +1,7 @@
 # Pipeline for in silico evaluation of proteins on computational clusters
 - Use `tps_eval/scripts/submit_job.sh` to submit jobs on any cluster.
 - Every evaluation tool has its main run script created as `tps_eval/scripts/run_<tool_name>`.
-- The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/<jobs>/<tool_name>.sh`.
+- The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/jobs/<tool_name>.sh`.
 
 # Installation
 ```sh
@@ -49,6 +49,8 @@ python run_alphafold_jobs.py \
 - All code specific to a computational cluster should be contained within `tps_eval/scripts/<cluster>`.
 - Create a file `tps_eval/scripts/<cluster>/config.sh` with cluster-specific settings.
 - Create individual job scripts as `tps_eval/scripts/<cluster>/jobs/<job_name>.sh`.
+  - These job scripts should ideally call a cluster-agnostic script `tps_eval/scripts/run_<tool_name>.sh` (or `tps_eval/scripts/<tool_name>/<script_name>.sh` in case there are multiple scripts for running the tool).
+- `tps_eval/scripts/submit_job.sh` is a helper script useful for writing cluster-agnostic scripts which take the cluster as an argument and automatically use the correct job submission commands.
 
 ### config.sh
 File `tps_eval/scripts/<cluster>/config.sh` needs to include the following:
