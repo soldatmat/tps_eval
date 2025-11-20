@@ -67,4 +67,4 @@ python "scripts/easy_predict_sequence_only.py" \
     --input-fasta-path "$fasta_path" \
     --output-csv-path "$output_path" \
     --detection-threshold 0.0 \
-    --detect-precursor-synthases True
+    --detect-precursor-synthases

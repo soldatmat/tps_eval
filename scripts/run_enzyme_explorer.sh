@@ -147,5 +147,5 @@ python easy_predict.py \
     --needed-proteins-csv-path "$sequences_csv_path" \
     ${extra_args[@]:---csv-id-column ID --n-jobs 20 --detection-threshold 0 --plm-batch-size 20} \
     --is-bfactor-confidence \
-    --detect-precursor-synthases True \
+    --detect-precursor-synthases \
     --output-csv-path "$output_path"
