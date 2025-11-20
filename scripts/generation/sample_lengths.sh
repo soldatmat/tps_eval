@@ -62,6 +62,7 @@ if [[ -z "$return_counts" ]]; then
     return_counts="False"  # Default value
 fi
 
+
 # Convert fasta_path to absolute path if it's relative
 if [[ "$fasta_path" != /* ]]; then
     fasta_path="$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")"
@@ -76,8 +77,13 @@ cd "$SCRIPT_DIR/.."
 eval "$(conda shell.bash hook)"
 conda activate terpene_generation
 
+if [[ "$return_counts" == "True" ]]; then
+    return_counts_arg="--return_counts"
+else
+    return_counts_arg="--no-return_counts"
+fi
 python "$SCRIPT_DIR/../src/sample_length/sample_length.py" \
     --fasta_path "$fasta_path" \
     --num_seqs "$num_seqs" \
     --save_to "$save_to" \
-    --return_counts "$return_counts"
+    "$return_counts_arg"

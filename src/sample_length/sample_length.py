@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--fasta_path", type=str)
     parser.add_argument("--num_seqs", type=int)
     parser.add_argument("--save_to", type=str)
-    parser.add_argument("--return_counts", type=bool, default=False)
+    parser.add_argument("--return_counts", default=False, action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     sampler = get_sampler(args.fasta_path, return_counts=args.return_counts)

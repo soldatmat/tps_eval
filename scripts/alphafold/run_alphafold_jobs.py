@@ -30,7 +30,7 @@ def parse_args():
     # Job submission scripts
     parser.add_argument('--cluster', default='aurum', help='Cluster on which this script is run. (default: aurum)')
     parser.add_argument('--submit_args', type=str, default="", help='Additional arguments to pass to the cluster job submission')
-    parser.add_argument('--skip_existing', type=bool, default=True, help='Skip sequences that already have PDB files generated.')
+    parser.add_argument("--skip_existing", default=True, action=argparse.BooleanOptionalAction, help='Skip sequences that already have PDB files generated.')
     
     args = parser.parse_args()
     return args
