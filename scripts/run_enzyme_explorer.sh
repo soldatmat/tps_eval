@@ -13,9 +13,9 @@ Help()
     echo "  --structs_dir                Path to the directory containing structures (required)"
     echo "  --csv_id_column              Column name for sequence IDs in the CSV file (optional)"
     echo "  --n_jobs                     Number of parallel jobs for prediction (optional)"
-    echo "  --is_bfactor_confidence      (optional, flag, always enabled)"
+    echo "  --is_bfactor_confidence      (optional, flag, true by default, set to false with --no-is_bfactor_confidence)"
     echo "  --detection_threshold        (optional)"
-    echo "  --detect_precursor_synthases (optional, flag, always enabled)"
+    echo "  --detect_precursor_synthases (optional, flag, true by default, set to false with --no-detect_precursor_synthases)"
     echo "  --plm_batch_size             (optional)"
     echo "  -h, --help                   Show this help message and exit"
     echo
@@ -57,7 +57,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --is_bfactor_confidence)
             is_bfactor_confidence=1
-            extra_args+=(--is-bfactor-confidence)
+            shift
+            ;;
+        --no-is_bfactor_confidence)
+            is_bfactor_confidence=0
             shift
             ;;
         --detection_threshold)
@@ -68,7 +71,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --detect_precursor_synthases)
             detect_precursor_synthases=1
-            extra_args+=(--detect-precursor-synthases)
+            shift
+            ;;
+        --no-detect_precursor_synthases)
+            detect_precursor_synthases=0
             shift
             ;;
         --plm_batch_size)
@@ -143,6 +149,20 @@ if [[ -z "$n_jobs" ]]; then
 fi
 if [[ -z "$plm_batch_size" ]]; then
     extra_args+=(--plm-batch-size "20")
+fi
+# Ensure is_bfactor_confidence defaults to true (1) when not provided
+if [[ -z "$is_bfactor_confidence" ]]; then
+    is_bfactor_confidence=1
+fi
+if [[ "$is_bfactor_confidence" == "1" ]]; then
+    extra_args+=(--is-bfactor-confidence)
+fi
+# Ensure detect_precursor_synthases defaults to true (1) when not provided
+if [[ -z "$detect_precursor_synthases" ]]; then
+    detect_precursor_synthases=1
+fi
+if [[ "$detect_precursor_synthases" == "1" ]]; then
+    extra_args+=(--detect-precursor-synthases)
 fi
 
 python easy_predict.py \
