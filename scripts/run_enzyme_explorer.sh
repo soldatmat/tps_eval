@@ -24,14 +24,6 @@ Help()
 # Collect extra arguments for easy_predict.py
 extra_args=()
 
-# Check for overrides from user input
-[[ -n "$csv_id_column" ]] && extra_args+=(--csv-id-column "$csv_id_column")
-[[ -n "$n_jobs" ]] && extra_args+=(--n-jobs "$n_jobs")
-[[ -n "$is_bfactor_confidence" ]] && extra_args+=(--is-bfactor-confidence)
-[[ -n "$detection_threshold" ]] && extra_args+=(--detection-threshold "$detection_threshold")
-[[ -n "$detect_precursor_synthases" ]] && extra_args+=(--detect-precursor-synthases)
-[[ -n "$plm_batch_size" ]] && extra_args+=(--plm-batch-size "$plm_batch_size")
-
 # Parse long options manually
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -142,10 +134,19 @@ output_path="$(dirname "$sequences_csv_path")/$(basename "$sequences_csv_path" .
 # The easy_predict.py scripts has to be run in EnzymeExplorer/scripts/ directory
 cd "$ENZYME_EXPLORER_PATH/scripts"
 
+# Set defaults for these options if not provided by the user
+if [[ -z "$csv_id_column" ]]; then
+    extra_args+=(--csv-id-column "ID")
+fi
+if [[ -z "$n_jobs" ]]; then
+    extra_args+=(--n-jobs "20")
+fi
+if [[ -z "$plm_batch_size" ]]; then
+    extra_args+=(--plm-batch-size "20")
+fi
+
 python easy_predict.py \
     --input-directory-with-structures "$structs_dir" \
     --needed-proteins-csv-path "$sequences_csv_path" \
-    ${extra_args[@]:---csv-id-column ID --n-jobs 20 --detection-threshold 0 --plm-batch-size 20} \
-    --is-bfactor-confidence \
-    --detect-precursor-synthases \
+    ${extra_args[@]} \
     --output-csv-path "$output_path"
