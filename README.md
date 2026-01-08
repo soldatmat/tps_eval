@@ -42,7 +42,8 @@ python run_alphafold_jobs.py \
     --save_directory /path/to/directory/for/results/alphafold_structs/structs \
     --cluster aurum \
     --submit_args ""--job-name=awesome_AF_run"" \
-    --no-skip_existing
+    --no-skip_existing \
+    ----use_protein_id_as_filename
 ```
 
 # Adding clusters

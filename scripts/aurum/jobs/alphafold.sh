@@ -11,7 +11,7 @@
 ############################################################
 # Argument parsing                                         #
 ############################################################
-USAGE="--working_directory <working_directory> --sequence_id <sequence_id> --proteins <ID1 SEQ1 ID2 SEQ2 ...> --ligands <ID1 SMILES1 ID2 SMILES2 ...> --save_directory <save_directory> --model_seeds <SEED1 SEED2 ...>"
+USAGE="--working_directory <working_directory> --sequence_id <sequence_id> --proteins <ID1 SEQ1 ID2 SEQ2 ...> --ligands <ID1 SMILES1 ID2 SMILES2 ...> --ions <ID1 CCDCODE1 ID2 CCDCODE2 ...> --save_directory <save_directory> --model_seeds <SEED1 SEED2 ...>"
 
 Help()
 {
@@ -23,6 +23,7 @@ Help()
     echo "  --sequence_id               Used to name result files"
     echo "  --proteins                  List of proteins in format: ID1 SEQ1 ID2 SEQ2 ... All following tokens (until next --option) are parsed as proteins."
     echo "  --ligands                   List of ligands in format: ID1 SMILES1 ID2 SMILES2 ... All following tokens (until next --option) are parsed as ligands."
+    echo "  --ions                      List of ions in format: ID1 CCDCODE1 ID2 CCDCODE2 ... All following tokens (until next --option) are parsed as ions."
     echo "  --save_directory            Directory to save final pdb structures."
     echo "  --model_seeds               Model seeds to use, separated by space. All following tokens (until next --option) are parsed as model seeds."
     echo "  -h, --help                  Show this help message and exit"
@@ -55,6 +56,14 @@ while [[ $# -gt 0 ]]; do
             # Collect all following args until the next token that starts with --
             while [[ $# -gt 0 && "$1" != --* ]]; do
                 LIGANDS="${LIGANDS:+$LIGANDS }$1"
+                shift
+            done
+            ;;
+        --ions)
+            shift
+            # Collect all following args until the next token that starts with --
+            while [[ $# -gt 0 && "$1" != --* ]]; do
+                IONS="${IONS:+$IONS }$1"
                 shift
             done
             ;;
@@ -113,7 +122,13 @@ JSON_PATH="${JSON_DIR}/${JSON_FILE}"
 eval "$(conda shell.bash hook)"
 conda activate tps_eval
 
-JOB_ARGS="--proteins $PROTEINS --ligands $LIGANDS --save_path $JSON_PATH --model_seeds $MODEL_SEEDS"
+JOB_ARGS="--sequence_id $SEQUENCE_ID --proteins $PROTEINS --save_path $JSON_PATH --model_seeds $MODEL_SEEDS"
+if [ -n "$LIGANDS" ]; then
+    JOB_ARGS+=" --ligands $LIGANDS"
+fi
+if [ -n "$IONS" ]; then
+    JOB_ARGS+=" --ions $IONS"
+fi
 python ../../../src/alphafold/prepare_input.py $JOB_ARGS
 
 

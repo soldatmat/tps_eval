@@ -11,12 +11,13 @@ def parse_args():
     parser.add_argument("--sequence", type=str, default=None)
     parser.add_argument("--proteins", type=str, nargs="+", default=None, help="List of proteins in format: ID1 SEQ1 ID2 SEQ2 ... All following tokens (until next --option) are parsed as proteins.")
     parser.add_argument("--ligands", type=str, nargs="+", default=[], help="List of ligands in format: ID1 SMILES1 ID2 SMILES2 ... All following tokens (until next --option) are parsed as ligands.")
+    parser.add_argument("--ions", type=str, nargs="+", default=[], help="List of ions in format: ID1 CCDCODE1 ID2 CCDCODE2 ... All following tokens (until next --option) are parsed as ions.")
     parser.add_argument("--save_path", required=True, type=str)
     parser.add_argument("--model_seeds", type=int, nargs="+", default=[42])
     args = parser.parse_args()
 
-    if (args.sequence_id is None) ^ (args.sequence is None):
-        parser.error("Both --sequence_id and --sequence must be provided together.")
+    if (args.sequence is not None) and (args.sequence_id is None):
+        parser.error("--sequence_id must be provided if --sequence is provided.")
     if not (args.proteins is not None or (args.sequence_id is not None and args.sequence is not None)):
         parser.error("Either provide --proteins or both --sequence_id and --sequence.")
 
@@ -49,7 +50,7 @@ def format_data(args):
         ]
     elif args.proteins is not None:
         protein_tuples = pair_ids_and_sequences(args.proteins)
-        name = protein_tuples[0][0]
+        name = args.sequence_id if args.sequence_id is not None else protein_tuples[0][0]
         proteins = [
             {
                 "protein": {
@@ -65,11 +66,21 @@ def format_data(args):
     ligands = [
         {
             "ligand": {
-                "id": [SEQUENCE_IDS[index + len(protein_tuples)]],
+                "id": [SEQUENCE_IDS[index + len(proteins)]],
                 "smiles": smiles,
             }
         }
         for index, (id, smiles) in enumerate(pair_ids_and_sequences(args.ligands))
+    ]
+
+    ions = [
+        {
+            "ligand": {
+                "id": [SEQUENCE_IDS[index + len(proteins) + len(ligands)]],
+                "ccdCodes": [ccdCodes],
+            }
+        }
+        for index, (id, ccdCodes) in enumerate(pair_ids_and_sequences(args.ions))
     ]
 
     data = {
@@ -78,6 +89,7 @@ def format_data(args):
         "sequences": [
                 *proteins,
                 *ligands,
+                *ions,
         ],
         "dialect": "alphafold3",
         "version": 2,
