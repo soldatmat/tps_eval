@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --partition=b32_128_gpu
 
-# Usage: sbatch esm_embedding.sh --fasta_path <fasta_path> [--distance --train_embeddings_path <train_embeddings_path>]
+# Usage: sbatch esm_embedding.sh --fasta_path <fasta_path>
 
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')
 
