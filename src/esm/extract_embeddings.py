@@ -69,6 +69,7 @@ def create_parser():
         default=1022,
         help="truncate sequences longer than the given value",
     )
+    parser.add_argument("--drop_description", action="store_true", default=True, help="Drop description from FASTA headers when saving labels")
 
     parser.add_argument("--nogpu", action="store_true", help="Do not use GPU even if available")
     return parser
@@ -125,6 +126,8 @@ def run(args):
 
 
             for i, label in enumerate(labels):
+                if args.drop_description:
+                    label = label.split(" ")[0]
                 #args.output_file = args.output_dir / f"{label}.pt"
                 #args.output_file.parent.mkdir(parents=True, exist_ok=True)
                 result = {"label": label}
