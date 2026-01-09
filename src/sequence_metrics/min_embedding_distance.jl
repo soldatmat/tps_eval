@@ -2,28 +2,69 @@ using Distances
 
 include("../data/embeddings.jl")
 
-get_min_distances(distances) = map(dists -> minimum(dists), eachrow(distances))
-get_second_min_distances(distances) = getindex.(sort.(eachrow(distances), rev = false), 2)
-get_max_distances(distances) = map(dists -> maximum(dists), eachrow(distances))
-get_second_max_distances(distances) = getindex.(sort.(eachrow(distances), rev = true), 2)
+# Vector{Vector{Union{Float64, Missing}}} -> Vector{Vector{Float64}}
+preprocess_embeddings(embeddings_df) = Vector{Vector{typeof(embeddings_df.embedding[1][1])}}(embeddings_df.embedding)
+get_distances(embeddings1, embeddings2) = pairwise(Euclidean(), embeddings1, embeddings2)
+get_min_distances(distances) = map(dists -> findmin(dists), eachrow(distances))
+get_max_distances(distances) = map(dists -> findmax(dists), eachrow(distances))
+
+function save_embeddings(
+	ids::Vector{<:AbstractString},
+	min_dist::Vector{Float64},
+	min_dist_hits::Vector{<:AbstractString},
+	save_path::String,
+)
+	df = DataFrame(ID = ids, min_embedding_distance = min_dist, min_embedding_distance_hit = min_dist_hits)
+	CSV.write(save_path, df)
+end
 
 function _min_embedding_distance(
 	train_df,
 	generated_df;
 	save_path::Union{String, Nothing} = nothing,
-	return_second_min::Bool = false,
 )
-	# Vector{Vector{Union{Float64, Missing}}} -> Vector{Vector{Float64}}
-	generated_embeddings = Vector{Vector{typeof(generated_df.embedding[1][1])}}(generated_df.embedding)
-    train_embeddings = Vector{Vector{typeof(train_df.embedding[1][1])}}(train_df.embedding)
+	generated_embeddings = preprocess_embeddings(generated_df)
+    train_embeddings = preprocess_embeddings(train_df)
 
-	distances = pairwise(Euclidean(), generated_embeddings, train_embeddings)
+	distances = get_distances(generated_embeddings, train_embeddings)
 
-	min_dist = return_second_min ? get_second_min_distances(distances) : get_min_distances(distances)
+	min_dist_results = get_min_distances(distances)
+	min_dist = [res[1] for res in min_dist_results]
+	min_dist_index = [res[2] for res in min_dist_results]
+	min_dist_hits = train_df.ID[min_dist_index]
 
-	# Save calculated novelty into CSV
-	df = DataFrame(ID = generated_df.ID, min_embedding_distance = min_dist)
-	isnothing(save_path) || CSV.write(save_path, df)
+	isnothing(save_path) || save_embeddings(
+		generated_df.ID,
+		min_dist,
+		min_dist_hits,
+		save_path,
+	)
+
+	return min_dist
+end
+
+
+function _min_embedding_distance_self(
+	train_df;
+	save_path::Union{String, Nothing} = nothing,
+)
+    train_embeddings = preprocess_embeddings(train_df)
+
+	distances = get_distances(train_embeddings, train_embeddings)
+	# Set diagonal to Inf to ignore self-distance
+	for i in 1:size(distances, 1)
+		distances[i, i] = Inf
+	end
+
+	min_dist, min_dist_index = get_min_distances(distances)
+	min_dist_hits = train_df.ID[min_dist_index]
+
+	isnothing(save_path) || save_embeddings(
+		train_df.ID,
+		min_dist,
+		min_dist_hits,
+		save_path,
+	)
 
 	return min_dist
 end
@@ -61,7 +102,6 @@ function main_generated_sequences(generated_embeddings_path::String, train_embed
 	save_path = _get_save_path(generated_embeddings_path)
 	_min_embedding_distance(train_df, generated_df;
 		save_path = save ? save_path : nothing,
-		return_second_min = false,
 	)
 end
 
@@ -80,8 +120,7 @@ end
 function main_train_sequences(train_df;
 	save_path::Union{String, Nothing} = nothing,
 )
-	_min_embedding_distance(train_df, train_df;
+	_min_embedding_distance_self(train_df;
 		save_path,
-		return_second_min = true,
 	)
 end
