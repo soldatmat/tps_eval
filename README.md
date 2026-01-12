@@ -4,6 +4,8 @@
 - The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/jobs/<tool_name>.sh`.
 
 # Installation
+You will need to [install Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) first if you don't have it on your system.
+
 ```sh
 cd tps_eval
 . setup.sh
