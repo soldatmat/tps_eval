@@ -4,12 +4,15 @@ from Bio.PDB.MMCIFParser import MMCIFParser
 from Bio.PDB import PDBIO
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_cif", required=True, type=str)
     parser.add_argument("--output_pdb", required=True, type=str)
     args = parser.parse_args()
+    return args
 
+
+def main(args):
     cif_parser = MMCIFParser()
     structure = cif_parser.get_structure("structure", args.input_cif)
 
@@ -19,4 +22,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
