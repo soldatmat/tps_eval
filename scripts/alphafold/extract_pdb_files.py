@@ -4,7 +4,7 @@ from pathlib import Path
 from Bio.PDB.MMCIFParser import MMCIFParser
 from Bio.PDB import PDBIO
 
-from src.alphafold.cif_to_pdb import main as cif_to_pdb_main
+from vendor.cif_to_pdb.cif_to_pdb import main as cif_to_pdb_main
 
 
 def main():

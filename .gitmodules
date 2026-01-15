@@ -1,0 +1,3 @@
+[submodule "vendor/cif_to_pdb"]
+	path = vendor/cif_to_pdb
+	url = https://github.com/soldatmat/cif_to_pdb

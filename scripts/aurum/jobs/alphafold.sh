@@ -173,6 +173,6 @@ else
 fi
 mkdir -p "$(dirname "$STRUCT_SAVE_PATH")"
 echo "Converting CIF to PDB for sequence ${SEQUENCE_ID} from ${STRUCT_PATH} to ${STRUCT_SAVE_PATH}"
-python ../../../src/alphafold/cif_to_pdb.py \
+python ../../../vendor/cif_to_pdb/cif_to_pdb.py \
     --input_cif "$STRUCT_PATH" \
     --output_pdb "$STRUCT_SAVE_PATH"
