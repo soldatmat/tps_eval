@@ -7,6 +7,7 @@
 You will need to [install Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) first if you don't have it on your system.
 
 ```sh
+git clone --recurse-submodules https://github.com/soldatmat/tps_eval
 cd tps_eval
 . setup.sh
 ```
