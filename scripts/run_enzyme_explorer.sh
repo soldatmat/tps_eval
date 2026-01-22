@@ -13,6 +13,7 @@ Help()
     echo "  --structs_dir                Path to the directory containing structures (required)"
     echo "  --csv_id_column              Column name for sequence IDs in the CSV file (optional)"
     echo "  --n_jobs                     Number of parallel jobs for prediction (optional)"
+    echo "  --store_intermediate_results (optional, flag, false by default, set to true with --store_intermediate_results)"
     echo "  --is_bfactor_confidence      (optional, flag, true by default, set to false with --no-is_bfactor_confidence)"
     echo "  --detection_threshold        (optional)"
     echo "  --detect_precursor_synthases (optional, flag, true by default, set to false with --no-detect_precursor_synthases)"
@@ -53,6 +54,11 @@ while [[ $# -gt 0 ]]; do
             n_jobs="$2"
             extra_args+=(--n-jobs "$n_jobs")
             shift
+            shift
+            ;;
+        --store_intermediate_results)
+            store_intermediate_results=1
+            extra_args+=(--store-intermediate-results)
             shift
             ;;
         --is_bfactor_confidence)
