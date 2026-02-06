@@ -1,5 +1,3 @@
-"""This script detects TPS domains in protein structures"""
-
 import os
 import argparse
 from pathlib import Path
@@ -20,9 +18,8 @@ def parse_args() -> argparse.Namespace:
     :return: current argparse.Namespace
     """
     parser = argparse.ArgumentParser(description="A script to compare detected TPS domains to the known ones")
-    parser.add_argument("--known_domain_structures_root", help="A directory containing structures of known domains", type=str, default="data/detected_domains/all")
-    parser.add_argument("--detected_domain_structures_root",help="A path to new detected domain structures",type=str,default="_temp/detected_domains")
-    parser.add_argument("--path_to_known_domains_subset", type=str, default="data/domains_subset.pkl")
+    parser.add_argument("--known_domain_structures_root", help="A directory containing structures of known domains", type=str)
+    parser.add_argument("--detected_domain_structures_root",help="A path to new detected domain structures",type=str)
     parser.add_argument("--output_root", type=str, required=True, help="Path to output CSV file.")
     parser.add_argument("--store_intermediate_results", action="store_true", help="Flag to keep files with intermediate results.", default=False)
     parser.add_argument("--random_run_id", action="store_true", default=False, help="Flag to add random uuid4 to output files to avoid overwriting.")

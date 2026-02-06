@@ -1,6 +1,6 @@
 #!/bin/bash
 
-conda create -n tps_eval -c conda-forge python biopython pandas requests tqdm openbabel -y
+conda create -n tps_eval -c conda-forge -c bioconda python biopython pandas requests tqdm openbabel foldseek -y
 
 conda activate tps_eval
 pip install torch
