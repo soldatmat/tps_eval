@@ -23,28 +23,28 @@ LOAD = Dict([
 ])
 
 MIN_VAL = Dict([
-    ("sequence_identity", 0.0),
-    ("sequence_identity_self", 0.0),
-    ("sequence_similarity", 0.0),
-    ("sequence_similarity_self", 0.0),
-    ("min_embedding_distance", 0.0),
-    ("min_embedding_distance_self", 0.0),
-    ("isTPS", 0.0),
-    ("isTPS_seq", 0.0),
-    ("soluble", 0.0),
+    ("sequence_identity", 0.0 - 0.01),
+    ("sequence_identity_self", 0.0 - 0.01),
+    ("sequence_similarity", 0.0 - 0.01),
+    ("sequence_similarity_self", 0.0 - 0.01),
+    ("min_embedding_distance", 0.0 - 0.05),
+    ("min_embedding_distance_self", 0.0 - 0.05),
+    ("isTPS", 0.0 - 0.01),
+    ("isTPS_seq", 0.0 - 0.01),
+    ("soluble", 0.0 - 0.01),
 ])
 
 
 MAX_VAL = Dict([
-    ("sequence_identity", 1.0),
-    ("sequence_identity_self", 1.0),
-    ("sequence_similarity", 1.0),
-    ("sequence_similarity_self", 1.0),
+    ("sequence_identity", 1.0 + 0.01),
+    ("sequence_identity_self", 1.0 + 0.01),
+    ("sequence_similarity", 1.0 + 0.01),
+    ("sequence_similarity_self", 1.0 + 0.01),
     ("min_embedding_distance", 6.0),
     ("min_embedding_distance_self", 6.0),
-    ("isTPS", 1.0),
-    ("isTPS_seq", 1.0),
-    ("soluble", 1.0),
+    ("isTPS", 1.0 + 0.01),
+    ("isTPS_seq", 1.0 + 0.01),
+    ("soluble", 1.0 + 0.01),
 ])
 
 TICKS = Dict([
