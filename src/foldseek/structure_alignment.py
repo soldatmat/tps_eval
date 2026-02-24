@@ -37,9 +37,17 @@ def main(args: argparse.Namespace):
         output_root.mkdir()
     tsv_path = output_root / f'structure_alignments{f"_{run_id}" if args.random_run_id else ""}.tsv'
     tmp_path = output_root / f'tmp{f"_{run_id}" if args.random_run_id else ""}'
-    foldseek_comparison_output = subprocess.check_output(
-        f'foldseek easy-search {args.structures_root} {args.known_structures_root} {tsv_path} {tmp_path} --max-seqs 5000 -e 1 -s 10 --exhaustive-search --format-output query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,alntmscore,qtmscore,ttmscore,lddt'.split())
-    logger.info(f'Foldseek output: {foldseek_comparison_output.decode("utf-8")}')
+    
+    foldseek_command = f'foldseek easy-search {args.structures_root} {args.known_structures_root} {tsv_path} {tmp_path} --max-seqs 5000 -e 1 -s 10 --exhaustive-search -v 3 --format-output query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,alntmscore,qtmscore,ttmscore,lddt'.split()
+    process = subprocess.Popen(foldseek_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    for line in process.stdout:
+        print(line, end="")
+    process.stdout.close()
+    return_code = process.wait()
+
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, foldseek_command)
+    print("Foldseek finished successfully.")
     
     # Create final output CSV
     df_foldseek = pd.read_csv(tsv_path, sep='\t', header=None,
