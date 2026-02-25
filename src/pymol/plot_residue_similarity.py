@@ -7,11 +7,11 @@ color_by_mutation function from the color_by_mutations.py script.
 """
 
 import argparse
+from pathlib import Path
+import pandas as pd
 from pymol import cmd
 
 from vendor.pymol_scripts.color_by_mutations import color_by_mutation
-import csv
-from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,15 +32,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def main(args: argparse.Namespace):
-    # cmd.extend("color_by_mutation", color_by_mutation)
-
     n_skipped_existing = 0
     n_skipped_missing_structures = 0
     skipped_missing_structures = []
 
     with open(args.structures_selection_csv) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
+        df = pd.read_csv(f)
+        for _, row in df.iterrows():
             # Extract structure names and paths
             print()
             structure_name = row[args.structures_column_name]
@@ -55,10 +53,11 @@ def main(args: argparse.Namespace):
 
             # Prepare output paths and check if output already exists
             output_dir = Path(args.output_root) / run_name
-            session_output_path = str(output_dir / "color_by_mutation.pse")
-            image_output_path = str(output_dir / "color_by_mutation.png")
-            if not args.rerun_existing and Path(image_output_path).exists():
-                print(f"Output for structure '{structure_name}' already exists at '{image_output_path}'. Skipping '{run_name}'...")
+            session_output_path = output_dir / "color_by_mutation.pse"
+            color_by_mutation_output_path = output_dir / "color_by_mutation.png"
+            alignment_output_path = output_dir / "alignment.png"
+            if (not args.rerun_existing) and color_by_mutation_output_path.exists() and alignment_output_path.exists():
+                print(f"Output for structure '{structure_name}' already exists at '{color_by_mutation_output_path.parent}'. Skipping '{run_name}'...")
                 n_skipped_existing += 1
                 continue
 
@@ -74,17 +73,28 @@ def main(args: argparse.Namespace):
                 skipped_missing_structures.append(run_name)
                 continue
 
-            # PyMOL: Load structures, color by mutation, and save outputs
+            # PyMOL: color_by_mutation
             cmd.reinitialize()
             cmd.load(str(structure_path), "structure")
             cmd.load(str(known_structure_path), "known")
             color_by_mutation("structure", "known")
-            # TODO show substrate & ions if present in the structure
+            cmd.hide("everything", "known")
+            cmd.show("sticks", "structure and organic")
+            cmd.color("atomic", "structure and organic")
+            cmd.color("gray", "structure and organic and elem C")
+            cmd.show("spheres", "structure and metals")
+            cmd.orient()
             output_dir.mkdir(parents=True, exist_ok=True)
             if args.store_pymol_sessions:
-                cmd.save(session_output_path)
-            cmd.png(image_output_path, dpi=1900, ray=0)
-            print(f"Saved image for '{run_name}' at '{image_output_path}'")
+                cmd.save(str(session_output_path))
+            cmd.png(str(color_by_mutation_output_path), width=2000, dpi=300, ray=1)
+
+            # PyMOL: alignment
+            cmd.show("cartoon", "known and polymer")
+            cmd.color("sulfur", "structure and polymer")
+            cmd.color("skyblue", "known and polymer")
+            cmd.png(str(alignment_output_path), width=2000, dpi=300, ray=1)
+            print(f"Saved images for '{run_name}' at '{color_by_mutation_output_path.parent}'")
 
     print(f"\nFinished processing. Skipped {n_skipped_existing} runs with existing output and {n_skipped_missing_structures} runs with missing structures.")
     if skipped_missing_structures:
