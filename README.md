@@ -14,6 +14,17 @@ cd tps_eval
 
 If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself.
 
+## macOS specifics
+PyMOL currently does not support Native Mac ARM on conda-forge. You will need to create an X86-64 environment and install PyQt5 in addition to the default installation.
+
+```sh
+conda create --platform osx-64 -n tps_eval <environment definition from setup.sh>
+
+conda activate tps_eval
+# <additional install commands defined in setup.sh>
+pip install PyQt5
+```
+
 # Running AlphaFold
 Currently, Alphafold jobs are configured only for the IOCB Aurum cluster.
 
