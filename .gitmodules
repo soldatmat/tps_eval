@@ -1,3 +1,6 @@
 [submodule "vendor/cif_to_pdb"]
 	path = vendor/cif_to_pdb
 	url = https://github.com/soldatmat/cif_to_pdb
+[submodule "vendor/pymol_scripts"]
+	path = vendor/pymol_scripts
+	url = https://github.com/soldatmat/pymol_scripts.git
