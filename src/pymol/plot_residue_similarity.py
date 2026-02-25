@@ -14,6 +14,9 @@ from tqdm import tqdm
 
 from vendor.pymol_scripts.color_by_mutations import color_by_mutation
 
+from src.pymol.utils import show_organic_and_metals
+from src.pymol.constants import PNG_WIDTH, PNG_DPI, PNG_RAY
+
 
 def parse_args() -> argparse.Namespace:
     """
@@ -82,21 +85,18 @@ def main(args: argparse.Namespace):
             cmd.load(str(known_structure_path), "known")
             color_by_mutation("structure", "known", verbosity=0)
             cmd.hide("everything", "known")
-            cmd.show("sticks", "structure and organic")
-            cmd.color("atomic", "structure and organic")
-            cmd.color("gray", "structure and organic and elem C")
-            cmd.show("spheres", "structure and metals")
+            show_organic_and_metals(cmd)
             cmd.orient()
             output_dir.mkdir(parents=True, exist_ok=True)
             if args.store_pymol_sessions:
                 cmd.save(str(session_output_path))
-            cmd.png(str(color_by_mutation_output_path), width=2000, dpi=300, ray=1)
+            cmd.png(str(color_by_mutation_output_path), width=PNG_WIDTH, dpi=PNG_DPI, ray=PNG_RAY)
 
             # PyMOL: alignment
             cmd.show("cartoon", "known and polymer")
             cmd.color("sulfur", "structure and polymer")
             cmd.color("skyblue", "known and polymer")
-            cmd.png(str(alignment_output_path), width=2000, dpi=300, ray=1)
+            cmd.png(str(alignment_output_path), width=PNG_WIDTH, dpi=PNG_DPI, ray=PNG_RAY)
             tqdm.write(f"Saved images for '{run_name}' at '{color_by_mutation_output_path.parent}'")
 
     print(f"\nFinished processing. Skipped {n_skipped_existing} runs with existing output and {n_skipped_missing_structures} runs with missing structures.")
@@ -104,6 +104,7 @@ def main(args: argparse.Namespace):
         print("Skipped runs with missing structures:")
         for run_name in skipped_missing_structures:
             print(f" • {run_name}")
+
 
 if __name__ == "__main__":
     args = parse_args()
