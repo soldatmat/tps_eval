@@ -10,6 +10,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from pymol import cmd
+from tqdm import tqdm
 
 from vendor.pymol_scripts.color_by_mutations import color_by_mutation
 
@@ -38,18 +39,20 @@ def main(args: argparse.Namespace):
 
     with open(args.structures_selection_csv) as f:
         df = pd.read_csv(f)
-        for _, row in df.iterrows():
+        progress_bar = tqdm(df.iterrows(), total=len(df), bar_format="{l_bar}{bar}| {percentage:3.0f}%")
+        for _, row in progress_bar:
             # Extract structure names and paths
-            print()
+            tqdm.write("")
             structure_name = row[args.structures_column_name]
             if structure_name.endswith("_A"):
-                print(f"Warning: Removing '_A' suffix from structure name '{structure_name}'")
+                tqdm.write(f"Warning: Removing '_A' suffix from structure name '{structure_name}'")
                 structure_name = structure_name[:-2]
             structure_path = Path(args.structures_root) / f"{structure_name}.pdb"
             known_structure_name = row[args.known_structures_column_name]
             known_structure_path = Path(args.known_structures_root) / f"{known_structure_name}.pdb"
             run_name = f"{structure_name}-{known_structure_name}"
-            print(f"Processing '{run_name}'...")
+            progress_bar.set_description(f"Processing {run_name:<{60}} ")
+            tqdm.write(f"Processing {run_name} ...")
 
             # Prepare output paths and check if output already exists
             output_dir = Path(args.output_root) / run_name
@@ -57,18 +60,18 @@ def main(args: argparse.Namespace):
             color_by_mutation_output_path = output_dir / "color_by_mutation.png"
             alignment_output_path = output_dir / "alignment.png"
             if (not args.rerun_existing) and color_by_mutation_output_path.exists() and alignment_output_path.exists():
-                print(f"Output for structure '{structure_name}' already exists at '{color_by_mutation_output_path.parent}'. Skipping '{run_name}'...")
+                tqdm.write(f"Output for structure '{structure_name}' already exists at '{color_by_mutation_output_path.parent}'. Skipping '{run_name}'...")
                 n_skipped_existing += 1
                 continue
 
             # Check if structure files exist
             if not structure_path.exists():
-                print(f"Error: Structure file '{structure_path}' does not exist. Skipping '{run_name}'...")
+                tqdm.write(f"Error: Structure file '{structure_path}' does not exist. Skipping '{run_name}'...")
                 n_skipped_missing_structures += 1
                 skipped_missing_structures.append(run_name)
                 continue
             if not known_structure_path.exists():
-                print(f"Error: Known structure file '{known_structure_path}' does not exist. Skipping '{run_name}'...")
+                tqdm.write(f"Error: Known structure file '{known_structure_path}' does not exist. Skipping '{run_name}'...")
                 n_skipped_missing_structures += 1
                 skipped_missing_structures.append(run_name)
                 continue
@@ -77,7 +80,7 @@ def main(args: argparse.Namespace):
             cmd.reinitialize()
             cmd.load(str(structure_path), "structure")
             cmd.load(str(known_structure_path), "known")
-            color_by_mutation("structure", "known")
+            color_by_mutation("structure", "known", verbosity=0)
             cmd.hide("everything", "known")
             cmd.show("sticks", "structure and organic")
             cmd.color("atomic", "structure and organic")
@@ -94,7 +97,7 @@ def main(args: argparse.Namespace):
             cmd.color("sulfur", "structure and polymer")
             cmd.color("skyblue", "known and polymer")
             cmd.png(str(alignment_output_path), width=2000, dpi=300, ray=1)
-            print(f"Saved images for '{run_name}' at '{color_by_mutation_output_path.parent}'")
+            tqdm.write(f"Saved images for '{run_name}' at '{color_by_mutation_output_path.parent}'")
 
     print(f"\nFinished processing. Skipped {n_skipped_existing} runs with existing output and {n_skipped_missing_structures} runs with missing structures.")
     if skipped_missing_structures:
