@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--structures_selection_csv", type=str, required=True, help="Path to CSV file with structure selection.")
     parser.add_argument("--structures_column_name", type=str, default="query", help="Name of the column in the CSV file that contains structure paths.")
     parser.add_argument("--known_structures_column_name", type=str, default="max_alntmscore_target", help="Name of the column in the CSV file that contains paths to known structures to compare to.")
+    parser.add_argument("--similarity_metric_name", type=str, default="similarity", help="Name of the similarity metric used to chose the known structure. Used for naming output files.")
     parser.add_argument("--structures_root", type=str, required=True, help="Path to new structures")
     parser.add_argument("--known_structures_root", type=str, required=True, help="Directory containing structures of known proteins")
     parser.add_argument("--output_root", type=str, required=True, help="Path to output the images and PyMOL sessions.")
@@ -58,7 +59,7 @@ def main(args: argparse.Namespace):
             tqdm.write(f"Processing {run_name} ...")
 
             # Prepare output paths and check if output already exists
-            output_dir = Path(args.output_root) / run_name
+            output_dir = Path(args.output_root) / structure_name / f"{args.similarity_metric_name}-{known_structure_name}"
             session_output_path = output_dir / "color_by_mutation.pse"
             color_by_mutation_output_path = output_dir / "color_by_mutation.png"
             alignment_output_path = output_dir / "alignment.png"
