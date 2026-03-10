@@ -57,7 +57,7 @@ python run_alphafold_jobs.py \
     --cluster aurum \
     --submit_args ""--job-name=awesome_AF_run"" \
     --no-skip_existing \
-    ----use_protein_id_as_filename
+    --use_protein_id_as_filename
 ```
 
 # Adding clusters
