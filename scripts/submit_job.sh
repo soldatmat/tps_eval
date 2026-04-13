@@ -34,16 +34,28 @@ while [[ $# -gt 0 ]]; do
             ;;
         --job_args)
             shift
-            # Collect all following args until the next token that starts with --
-            while [[ $# -gt 0 && "$1" != --* ]]; do
+            # Collect all following args until the next known top-level option.
+            while [[ $# -gt 0 \
+                && "$1" != "--cluster" \
+                && "$1" != "--job_name" \
+                && "$1" != "--job_args" \
+                && "$1" != "--submit_args" \
+                && "$1" != "-h" \
+                && "$1" != "--help" ]]; do
                 JOB_ARGS="${JOB_ARGS:+$JOB_ARGS }$1"
                 shift
             done
             ;;
         --submit_args)
             shift
-            # Collect all following args until the next token that starts with --
-            while [[ $# -gt 0 && "$1" != --* ]]; do
+            # Collect all following args until the next known top-level option.
+            while [[ $# -gt 0 \
+                && "$1" != "--cluster" \
+                && "$1" != "--job_name" \
+                && "$1" != "--job_args" \
+                && "$1" != "--submit_args" \
+                && "$1" != "-h" \
+                && "$1" != "--help" ]]; do
                 SUBMIT_ARGS="${SUBMIT_ARGS:+$SUBMIT_ARGS }$1"
                 shift
             done
