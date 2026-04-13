@@ -77,9 +77,9 @@ SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/sequence_metrics"
 
 if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != "" ]]; then
-    julia run_min_embedding_distance.jl "$embeddings_path" "$train_embeddings_path"
+    python run_min_embedding_distance.py "$embeddings_path" "$train_embeddings_path"
 else
-    julia run_min_embedding_distance.jl "$embeddings_path"
+    python run_min_embedding_distance.py "$embeddings_path"
 fi
 
 if $train_mode; then

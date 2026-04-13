@@ -64,4 +64,4 @@ fi
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../src/sequence_metrics"
 
-julia run_motif_search.jl "$fasta_path" "${motifs[@]}"
+python run_motif_search.py "$fasta_path" "${motifs[@]}"

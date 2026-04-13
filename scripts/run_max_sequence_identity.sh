@@ -78,9 +78,9 @@ cd "$SCRIPT_DIR/../src/sequence_metrics"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting max_sequence_identity computation..."
 if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
-    julia run_max_sequence_identity.jl "$fasta_path" "$train_path"
+    python run_max_sequence_identity.py "$fasta_path" "$train_path"
 else
-    julia run_max_sequence_identity.jl "$fasta_path"
+    python run_max_sequence_identity.py "$fasta_path"
 fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."
 
