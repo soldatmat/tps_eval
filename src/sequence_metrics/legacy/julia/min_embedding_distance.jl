@@ -1,6 +1,6 @@
 using Distances
 
-include("../data/embeddings.jl")
+include("../../../data/legacy/julia/embeddings.jl")
 
 # Vector{Vector{Union{Float64, Missing}}} -> Vector{Vector{Float64}}
 preprocess_embeddings(embeddings_df) = Vector{Vector{typeof(embeddings_df.embedding[1][1])}}(embeddings_df.embedding)

@@ -93,8 +93,16 @@ done
 ############################################################
 # Main                                                     #
 ############################################################
-SCRIPT_DIR=$(dirname "$0")
-cd "$SCRIPT_DIR/../src/plot"
+SCRIPT_DIR=$(dirname "$BASH_SOURCE")
+cd "$SCRIPT_DIR/.."
+. ./paths.sh # Load TPS_EVAL_ENV
+
+eval "$(conda shell.bash hook)"
+conda activate "$TPS_EVAL_ENV"
+echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
+echo "Using python: $(which python)"
+
+cd src/plot
 
 fasta_paths_str="$(IFS=,; echo "${fasta_paths[*]}")"
 data_names_str="$(IFS=,; echo "${data_names[*]}")"
@@ -109,4 +117,4 @@ if [[ -n "$save_dir" ]]; then
     args+=("--save_dir" "$save_dir")
 fi
 
-julia run_plots.jl "${args[@]}"
+python run_plots.py "${args[@]}"
