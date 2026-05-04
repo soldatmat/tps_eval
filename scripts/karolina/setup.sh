@@ -28,6 +28,9 @@ export PIP_CACHE_DIR=/mnt/proj2/fta-26-15/.cache/pip
 export XDG_CACHE_HOME=/mnt/proj2/fta-26-15/.cache
 mkdir -p "$CONDA_PKGS_DIRS" "$PIP_CACHE_DIR" "$XDG_CACHE_HOME"
 
+echo "[$(date '+%H:%M:%S')] Initializing vendor/ git submodules"
+git -C "$TPS_EVAL_REPO" submodule update --init --recursive
+
 echo "[$(date '+%H:%M:%S')] Loading Anaconda3 module"
 module purge >/dev/null 2>&1 || true
 ml Anaconda3
