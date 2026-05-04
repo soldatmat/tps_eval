@@ -48,7 +48,7 @@ fi
 echo "[$(date '+%H:%M:%S')] Creating env at $PROJECT_ENV (this may take a while)"
 conda create -p "$PROJECT_ENV" \
     -c conda-forge -c bioconda -c schrodinger \
-    python biopython pandas requests tqdm openbabel foldseek pymol-bundle \
+    python biopython pandas requests tqdm openbabel foldseek pymol-bundle "catch2=3.13" \
     -y
 
 echo "[$(date '+%H:%M:%S')] Activating env"

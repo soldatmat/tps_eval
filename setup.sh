@@ -2,7 +2,7 @@
 
 git submodule update --init --recursive
 
-conda create -n tps_eval -c conda-forge -c bioconda -c schrodinger python biopython pandas matplotlib scipy requests tqdm openbabel foldseek pymol-bundle -y
+conda create -n tps_eval -c conda-forge -c bioconda -c schrodinger python biopython pandas matplotlib scipy requests tqdm openbabel foldseek pymol-bundle "catch2=3.13" -y
 
 conda activate tps_eval
 pip install torch
