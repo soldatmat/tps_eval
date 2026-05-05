@@ -84,7 +84,11 @@ def main(args: argparse.Namespace):
             cmd.reinitialize()
             cmd.load(str(structure_path), "structure")
             cmd.load(str(known_structure_path), "known")
-            color_by_mutation("structure", "known", verbosity=0)
+            try:
+                color_by_mutation("structure", "known", verbosity=0)
+            except Exception as e:
+                tqdm.write(f"Warning: color_by_mutation failed for '{run_name}' ({e}). Skipping.")
+                continue
             cmd.hide("everything", "known")
             show_organic_and_metals(cmd)
             cmd.orient()
