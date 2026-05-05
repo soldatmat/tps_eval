@@ -14,6 +14,14 @@ cd tps_eval
 
 If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself.
 
+## Optional: switch to licensed PyMOL Incentive
+By default `setup.sh` installs `pymol-open-source` (no watermark, no license needed, sufficient for the bundled PyMOL scripts). If you have a Schrödinger PyMOL license and want Incentive features (higher-quality ray-tracing, bundled plugins like APBS), run the add-on script after `setup.sh` to swap `pymol-open-source` for `pymol-bundle`:
+```sh
+./setup_pymol_bundle.sh                          # install, drop license later
+./setup_pymol_bundle.sh --license_path my.lic    # install + auto-place license
+```
+Without a license, `pymol-bundle` renders a Schrödinger watermark on every image. PyMOL Incentive auto-discovers the license at `$PYMOL_LICENSE_FILE`, `~/.pymol/license.lic`, `<conda_prefix>/share/pymol/license.lic`, or `/etc/pymol/license.lic`; passing `--license_path` just copies your `.lic` into the env's `share/pymol/` so discovery works without env-var setup. A Karolina-specific variant lives at `scripts/karolina/setup_pymol_bundle.sh`.
+
 ## macOS specifics
 PyMOL currently does not support Native Mac ARM on conda-forge. You will need to create an X86-64 environment and install PyQt5 in addition to the default installation.
 
