@@ -168,7 +168,9 @@ if [[ -z "$detect_precursor_synthases" ]]; then
     detect_precursor_synthases=1
 fi
 if [[ "$detect_precursor_synthases" == "1" ]]; then
-    extra_args+=(--detect-precursor-synthases)
+    extra_args+=(--detect-precursor-synthases True)
+else
+    extra_args+=(--detect-precursor-synthases False)
 fi
 
 python easy_predict.py \
