@@ -128,6 +128,9 @@ cd "$SCRIPT_DIR/.."
 
 eval "$(conda shell.bash hook)"
 conda activate "$ENZYME_EXPLORER_ENV"
+# Fix for Karolina /lib64/libstdc++.so.6 being too old (missing GLIBCXX_3.4.29
+# required by env's pandas). Prepend the env's libstdc++ (6.0.34, has the symbol).
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
