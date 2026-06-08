@@ -3,7 +3,16 @@
 ############################################################
 # Parameters                                               #
 ############################################################
-MOTIFS=("DD..D" "(N|D)D(L|I|V).(S|T)...E")
+# Class-I terpene synthase metal-binding motifs:
+#   DD..D                   : canonical "aspartate-rich" motif (strict).
+#   D[DE]..[DE]             : relaxed acidic variant of the above — tolerates the
+#                             conservative D->E substitution at the 2nd/5th positions
+#                             (DExxD / DDxxE / DExxE), which still supplies a carboxylate
+#                             for Mg2+ coordination. Generative models (e.g. DPLM run_41_V)
+#                             often emit this variant, so the strict DD..D undercounts a
+#                             functionally-present first metal site.
+#   (N|D)D(L|I|V).(S|T)...E : NSE/DTE second metal-binding motif.
+MOTIFS=("DD..D" "D[DE]..[DE]" "(N|D)D(L|I|V).(S|T)...E")
 
 ############################################################
 # Script                                                   #
