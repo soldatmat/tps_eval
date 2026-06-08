@@ -4,7 +4,9 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=16G
-#SBATCH --partition=a36_any
+# Aurum3's custom submit plugin auto-selects the partition; the old `a36_any`
+# partition no longer exists. Request the gen-a (a36) hardware via constraint.
+#SBATCH --constraint=gen-a
 
 # Usage: sbatch soluprot.sh --fasta_path <fasta_path>
 

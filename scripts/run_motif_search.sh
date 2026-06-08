@@ -67,6 +67,9 @@ cd "$SCRIPT_DIR/.."
 
 eval "$(conda shell.bash hook)"
 conda activate "$TPS_EVAL_ENV"
+# Fix for Karolina compute nodes whose /lib64/libstdc++.so.6 lacks GLIBCXX_3.4.29
+# (required by the env's pandas/numpy C extensions). Prepend the env's own libstdc++.
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 

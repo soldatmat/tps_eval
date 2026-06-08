@@ -54,6 +54,9 @@ cd "$SCRIPT_DIR/.."
 
 eval "$(conda shell.bash hook)"
 conda activate "$SOLUPROT_ENV"
+# Fix for Karolina compute nodes whose /lib64/libstdc++.so.6 lacks GLIBCXX_3.4.29
+# (required by the env's pandas/numpy C extensions). Prepend the env's own libstdc++.
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 
 if [[ -z "$SCRATCH" ]] || [[ ! -d "$SCRATCH" ]]; then
     echo "Error: SCRATCH variable is not set to a valid directory."
