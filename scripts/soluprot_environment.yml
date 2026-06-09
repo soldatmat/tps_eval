@@ -1,0 +1,12 @@
+name: soluprot
+# SoluProt's pinned env. scikit-learn 0.20.1 (2018) is only on the anaconda
+# `defaults` channel, so this env intentionally uses `defaults` (unlike the
+# conda-forge-only tps_eval env). Used by scripts/setup_soluprot.sh.
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - scikit-learn=0.20.1
+  - biopython=1.74
+  - pandas
+  - tqdm

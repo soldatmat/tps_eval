@@ -12,7 +12,14 @@ cd tps_eval
 ./setup.sh
 ```
 
-If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself.
+If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself (for SoluProt, see *Optional: SoluProt* below; EnzymeExplorer is installed via its own repo's `scripts/setup_env.sh`).
+
+## Optional: SoluProt
+SoluProt (solubility predictor, used by `run_soluprot.sh`) is not a pip/conda package — it's a standalone download plus an old py3.7 conda env and two external binaries (USEARCH, TMHMM). A helper script automates the parts that can be automated:
+```sh
+./scripts/setup_soluprot.sh [install_dir]        # env + SoluProt code + 64-bit USEARCH
+```
+It creates the `soluprot` env from `scripts/soluprot_environment.yml` (python 3.7, scikit-learn 0.20.1 — pinned, from the anaconda `defaults` channel), downloads the SoluProt standalone, and fetches a **64-bit** USEARCH v11 (public domain, via `rcedgar/usearch_old_binaries`; the legacy 32-bit `usearch11...i86linux32` will not run on modern x86-64 compute nodes). **TMHMM 2.0 remains manual** (academic license: DTU or `git.loschmidt.cz/misc/tmhmm`) — the script prints the exact unpack location and the `#!/usr/bin/env perl` shebang fix; use its 64-bit `bin/decodeanhmm.Linux_x86_64`. After running, set `SOLUPROT_PATH` / `SOLUPROT_ENV` in `paths.sh`. A Karolina-adapted variant (project-storage paths, cache redirects, `envs_dirs`) lives at `scripts/karolina/setup_soluprot.sh`.
 
 ## Optional: switch to licensed PyMOL Incentive
 By default `setup.sh` installs `pymol-open-source` (no watermark, no license needed, sufficient for the bundled PyMOL scripts). If you have a Schrödinger PyMOL license and want Incentive features (higher-quality ray-tracing, bundled plugins like APBS), run the add-on script after `setup.sh` to swap `pymol-open-source` for `pymol-bundle`:
