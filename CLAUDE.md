@@ -15,6 +15,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   for filtration. Save name follows `<input>_<tool>.csv`.
 - `scripts/submit_job.sh --cluster <c> --job_name <tool> [--job_args ...]` submits the
   right job script. `paths.sh` holds conda env names + external-tool install paths.
+- **Full pipeline:** `scripts/run_eval_pipeline.py --cluster <c> --fasta_path <gen>
+  [--train_path <train>]` — the cluster-agnostic *declarative* orchestrator (one Step
+  list; idempotent; deps chained as a single `--dependency=afterok:…`). v1 = sequence
+  branch + plots; it supersedes `scripts/<cluster>/submit_all.sh` for that branch. The
+  AlphaFold/structures/plddt fan-out is NOT yet ported (v2) — `submit_all.sh` still
+  carries it; `--structs_dir` to the orchestrator warns and runs the sequence branch.
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
