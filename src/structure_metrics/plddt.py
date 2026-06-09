@@ -69,16 +69,45 @@ def summarize(plddts: List[float], confident_threshold: float = CONFIDENT_THRESH
     }
 
 
-def _collect_structures(structs_dir: str) -> "OrderedDict[str, str]":
-    """Map ID (filename stem) -> structure path. If both .pdb and .cif exist for
-    the same ID, the .pdb wins (same B-factors, simpler/faster parser)."""
+def _collect_structures(structs_dir: str):
+    """Map ID -> structure file, auto-detecting the input layout. Returns
+    (OrderedDict[id -> path], mode).
+
+    Two layouts are supported:
+
+    * "af3"  — an AlphaFold3 ``af_output`` directory: one subfolder per job,
+      each containing the top-ranked ``<job>/<job>_model.cif`` (whose B-factor
+      column IS pLDDT). This is the AUTHORITATIVE source — prefer it for AF3
+      runs, because the pipeline's extracted ``structs/*.pdb`` have their
+      B-factor stripped by the cif->pdb conversion (vendor/cif_to_pdb).
+      ID = job subfolder name (== the structs/ stem in the canonical pipeline).
+
+    * "flat" — a directory of structure files (``.pdb``/``.cif``) whose B-factor
+      already holds pLDDT (e.g. AF2/ColabFold output, or any structures known to
+      carry per-residue confidence). If both .pdb and .cif exist for an ID the
+      .pdb wins (same values, simpler parser). ID = filename stem.
+    """
+    # AF3 af_output layout takes precedence when detected.
+    af3: Dict[str, str] = {}
+    try:
+        entries = sorted(os.listdir(structs_dir))
+    except FileNotFoundError:
+        entries = []
+    for entry in entries:
+        sub = os.path.join(structs_dir, entry)
+        model = os.path.join(sub, entry + "_model.cif")
+        if os.path.isdir(sub) and os.path.isfile(model):
+            af3[entry] = model
+    if af3:
+        return OrderedDict(sorted(af3.items())), "af3"
+
+    # Flat directory of structure files. Order matters: later wins, so .pdb last.
     chosen: Dict[str, str] = {}
-    # Order matters: later assignments win, so put .pdb last.
     for ext in (".mmcif", ".cif", ".pdb"):
         for path in sorted(glob.glob(os.path.join(structs_dir, f"*{ext}"))):
             stem = os.path.splitext(os.path.basename(path))[0]
             chosen[stem] = path
-    return OrderedDict(sorted(chosen.items()))
+    return OrderedDict(sorted(chosen.items())), "flat"
 
 
 def _default_save_path(structs_dir: str) -> str:
@@ -95,9 +124,14 @@ def extract_plddt_dir(
     """Extract per-structure pLDDT summaries for every structure in `structs_dir`
     and write a CSV (keyed by ID) usable as a filtration criterion alongside the
     other tps_eval metrics."""
-    structures = _collect_structures(structs_dir)
+    structures, mode = _collect_structures(structs_dir)
     if not structures:
-        raise ValueError(f"No .pdb/.cif/.mmcif structures found in {structs_dir}")
+        raise ValueError(
+            f"No structures found in {structs_dir} "
+            "(expected an AlphaFold3 af_output dir with <job>/<job>_model.cif "
+            "subfolders, or a flat dir of .pdb/.cif files)."
+        )
+    print(f"Detected {mode} layout: {len(structures)} structure(s) in {structs_dir}")
 
     rows: List[Dict[str, float]] = []
     n = len(structures)

@@ -16,7 +16,12 @@ def main() -> None:
     )
     parser.add_argument(
         "structs_dir",
-        help="Directory of AlphaFold structures; each file's stem is used as the ID.",
+        help="Either an AlphaFold3 af_output directory (per-job subfolders with "
+        "<job>/<job>_model.cif — pLDDT read from the authoritative top-ranked "
+        "model; ID = job name) OR a flat directory of .pdb/.cif structures whose "
+        "B-factor already holds pLDDT (e.g. AF2/ColabFold; ID = filename stem). "
+        "For AF3 prefer af_output: the pipeline's extracted structs/*.pdb have "
+        "B-factor stripped by the cif->pdb conversion.",
     )
     parser.add_argument(
         "--save_path",
