@@ -99,6 +99,24 @@ def _load_enzyme_explorer(
     scores = pd.read_csv(csv_path)
     scores = _strip_column_names(scores)
 
+    # --- Schema normalization (old EnzymeExplorer vs the `revision` branch) ---
+    # Old EE: "ID" + an "isTPS" probability column.
+    # Revision EE (predict_sequences_only / predict_with_structures): lowercase
+    # "id" + per-class "<class>_score" / "<class>_p_calibrated"; the TPS-vs-not
+    # probability is "TPS_p_calibrated" (calibrated, preferred) or "TPS_score".
+    if "ID" not in scores.columns and "id" in scores.columns:
+        scores = scores.rename(columns={"id": "ID"})
+    if "isTPS" not in scores.columns:
+        if "TPS_p_calibrated" in scores.columns:
+            scores = scores.rename(columns={"TPS_p_calibrated": "isTPS"})
+        elif "TPS_score" in scores.columns:
+            scores = scores.rename(columns={"TPS_score": "isTPS"})
+        else:
+            raise KeyError(
+                f"{csv_path}: no TPS-probability column found "
+                "(expected 'isTPS', 'TPS_p_calibrated', or 'TPS_score')"
+            )
+
     columns = ["ID", "isTPS"]
     target_substrate: Optional[str] = None
     if tps_type is not None:
