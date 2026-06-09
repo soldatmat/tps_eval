@@ -50,7 +50,7 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/.."
-. "paths.sh" # Load SOLUPROT_PATH, SOLUPROT_ENV variables
+. "./paths.sh" # Load SOLUPROT_PATH, SOLUPROT_ENV variables
 
 eval "$(conda shell.bash hook)"
 conda activate "$SOLUPROT_ENV"
@@ -58,12 +58,25 @@ conda activate "$SOLUPROT_ENV"
 # (required by the env's pandas/numpy C extensions). Prepend the env's own libstdc++.
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 
-if [[ -z "$SCRATCH" ]] || [[ ! -d "$SCRATCH" ]]; then
-    echo "Error: SCRATCH variable is not set to a valid directory."
-    exit 1
+# SoluProt needs a tmp dir for its intermediate (usearch/tmhmm) files. Use $SCRATCH
+# if it's a valid dir (some clusters provide per-job scratch there); otherwise fall
+# back to a private temp dir so this works anywhere (e.g. Aurum sets per-job scratch
+# at /scratch/slurm_jobs/... not $SCRATCH).
+if [[ -n "$SCRATCH" ]] && [[ -d "$SCRATCH" ]]; then
+    tmp_dir="$SCRATCH"
+    cleanup_tmp=0
+else
+    tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/soluprot.XXXXXX")"
+    cleanup_tmp=1
 fi
 
 python "$SOLUPROT_PATH/soluprot.py" \
     --i_fa "$fasta_path" \
     --o_csv "$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_soluprot.csv" \
-    --tmp_dir "$SCRATCH"
+    --tmp_dir "$tmp_dir"
+soluprot_rc=$?
+
+if [[ "$cleanup_tmp" == "1" ]]; then
+    rm -rf "$tmp_dir"
+fi
+exit $soluprot_rc
