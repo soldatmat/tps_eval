@@ -44,6 +44,12 @@ def residue_plddts(structure_path: str) -> List[float]:
     plddts: List[float] = []
     for chain in model:
         for residue in chain:
+            # Standard polymer (protein/nucleic) residues only. Skip HETATM
+            # ligands/ions/water (hetflag != " "): otherwise a kept ion whose atom
+            # is named "CA" (e.g. a calcium ion) would be miscounted as a residue's
+            # pLDDT. (No-op for protein-only structures.)
+            if residue.id[0] != " ":
+                continue
             if "CA" in residue:
                 plddts.append(float(residue["CA"].get_bfactor()))
     return plddts
