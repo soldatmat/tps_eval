@@ -135,49 +135,29 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 echo "Using python: $(which python)"
 
 
-if [[ -z "$sequences_csv_path" ]]; then
-    sequences_csv_path="${fasta_path%.fasta}.csv"
-    python src/enzyme_explorer/prepare_csv.py --fasta_path "$fasta_path" --csv_path "$sequences_csv_path"
-fi
+# EnzymeExplorer (revision branch) installs `predict_with_structures` as a
+# console script (pip install -e .). It takes a FASTA (or CSV) directly — no
+# prepare_csv step — plus a structures dir, and writes an OUTPUT DIRECTORY with
+# TWO CSVs: predictions_plm_domains.csv (structure-based) and
+# predictions_plm_only_fallback.csv (PLM-only fallback for proteins without
+# usable domain features). NOTE: this schema differs from the old single
+# <base>_enzyme_explorer.csv (which had an isTPS column); downstream consumers
+# that expect the old format must be updated.
+input_path="${sequences_csv_path:-$fasta_path}"
+output_dir="$(dirname "$input_path")/$(basename "$input_path" | sed 's/\.[^.]*$//')_enzyme_explorer"
 
-echo "Running enzyme explorer (easy_predict.py) with the following parameters:"
-echo "  sequences CSV path: $sequences_csv_path"
-echo "  structures directory: $structs_dir"
+echo "Running EnzymeExplorer with structures (predict_with_structures) with the following parameters:"
+echo "  sequences:      $input_path"
+echo "  structures dir: $structs_dir"
+echo "  output dir:     $output_dir"
 
-output_path="$(dirname "$sequences_csv_path")/$(basename "$sequences_csv_path" .csv)_enzyme_explorer.csv"
+# Run from the repo dir so the default reference-domains / model bundles under
+# data/ resolve.
+cd "$ENZYME_EXPLORER_PATH"
 
-# The easy_predict.py scripts has to be run in EnzymeExplorer/scripts/ directory
-cd "$ENZYME_EXPLORER_PATH/scripts"
+ee_args=(--sequences "$input_path" --structures-dir "$structs_dir" --output-dir "$output_dir")
+[[ -n "$csv_id_column" ]] && ee_args+=(--id-column "$csv_id_column")
+[[ -n "$n_jobs" ]] && ee_args+=(--n-jobs "$n_jobs")
+[[ -n "$plm_batch_size" ]] && ee_args+=(--plm-batch-size "$plm_batch_size")
 
-# Set defaults for these options if not provided by the user
-if [[ -z "$csv_id_column" ]]; then
-    extra_args+=(--csv-id-column "ID")
-fi
-if [[ -z "$n_jobs" ]]; then
-    extra_args+=(--n-jobs "20")
-fi
-if [[ -z "$plm_batch_size" ]]; then
-    extra_args+=(--plm-batch-size "20")
-fi
-# Ensure is_bfactor_confidence defaults to true (1) when not provided
-if [[ -z "$is_bfactor_confidence" ]]; then
-    is_bfactor_confidence=1
-fi
-if [[ "$is_bfactor_confidence" == "1" ]]; then
-    extra_args+=(--is-bfactor-confidence)
-fi
-# Ensure detect_precursor_synthases defaults to true (1) when not provided
-if [[ -z "$detect_precursor_synthases" ]]; then
-    detect_precursor_synthases=1
-fi
-if [[ "$detect_precursor_synthases" == "1" ]]; then
-    extra_args+=(--detect-precursor-synthases True)
-else
-    extra_args+=(--detect-precursor-synthases False)
-fi
-
-python easy_predict.py \
-    --input-directory-with-structures "$structs_dir" \
-    --needed-proteins-csv-path "$sequences_csv_path" \
-    ${extra_args[@]} \
-    --output-csv-path "$output_path"
+predict_with_structures "${ee_args[@]}"

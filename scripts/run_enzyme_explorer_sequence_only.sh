@@ -61,13 +61,13 @@ echo "Using python: $(which python)"
 
 output_path="$(dirname "$fasta_path")/$(basename "$fasta_path" .fasta)_enzyme_explorer_sequence_only.csv"
 
-echo "Running enzyme explorer sequence only (easy_predict_sequence_only.py) with the following parameters:"
+echo "Running EnzymeExplorer sequence-only (predict_sequences_only) with the following parameters:"
 echo "  sequences FASTA path: $fasta_path"
 echo "  output CSV path: $output_path"
 
+# EnzymeExplorer (revision branch) installs `predict_sequences_only` as a console
+# script (pip install -e .). Run from the repo dir so its default model bundles
+# under data/ (enzyme_explorer_plm_checkpoints.pkl, calibration_fit_summary.csv)
+# resolve. Output schema: id, sequence, <class>_score, <class>_p_calibrated.
 cd "$ENZYME_EXPLORER_SEQUENCE_ONLY_PATH"
-python "scripts/easy_predict_sequence_only.py" \
-    --input-fasta-path "$fasta_path" \
-    --output-csv-path "$output_path" \
-    --detection-threshold 0.0 \
-    --detect-precursor-synthases
+predict_sequences_only --sequences "$fasta_path" --output-csv "$output_path"
