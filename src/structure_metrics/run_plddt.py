@@ -19,9 +19,9 @@ def main() -> None:
         help="Either an AlphaFold3 af_output directory (per-job subfolders with "
         "<job>/<job>_model.cif — pLDDT read from the authoritative top-ranked "
         "model; ID = job name) OR a flat directory of .pdb/.cif structures whose "
-        "B-factor already holds pLDDT (e.g. AF2/ColabFold; ID = filename stem). "
-        "For AF3 prefer af_output: the pipeline's extracted structs/*.pdb have "
-        "B-factor stripped by the cif->pdb conversion.",
+        "B-factor already holds pLDDT (e.g. AF2/ColabFold, or structs/ extracted "
+        "by the patched cif_to_pdb; ID = filename stem). structs/*.pdb extracted "
+        "by the OLD obabel converter are zeroed — re-extract or use af_output.",
     )
     parser.add_argument(
         "--save_path",

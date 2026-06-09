@@ -77,10 +77,12 @@ def _collect_structures(structs_dir: str):
 
     * "af3"  — an AlphaFold3 ``af_output`` directory: one subfolder per job,
       each containing the top-ranked ``<job>/<job>_model.cif`` (whose B-factor
-      column IS pLDDT). This is the AUTHORITATIVE source — prefer it for AF3
-      runs, because the pipeline's extracted ``structs/*.pdb`` have their
-      B-factor stripped by the cif->pdb conversion (vendor/cif_to_pdb).
-      ID = job subfolder name (== the structs/ stem in the canonical pipeline).
+      column IS pLDDT). This is the AUTHORITATIVE source. ID = job subfolder
+      name (== the structs/ stem in the canonical pipeline). Note: structs/*.pdb
+      extracted by the OLD Open Babel cif->pdb converter have their B-factor
+      zeroed; vendor/cif_to_pdb was patched (Biopython) to preserve pLDDT, so
+      freshly-extracted structs/ now carry it — but re-extract older runs or use
+      af_output if you see all-zero pLDDT.
 
     * "flat" — a directory of structure files (``.pdb``/``.cif``) whose B-factor
       already holds pLDDT (e.g. AF2/ColabFold output, or any structures known to
@@ -149,6 +151,18 @@ def extract_plddt_dir(
             print(f"  processed {i}/{n}")
 
     df = pd.DataFrame(rows)[COLUMNS].sort_values("ID").reset_index(drop=True)
+
+    # All-zero pLDDT on residues that DID parse means the B-factor was never
+    # populated — typically structs/*.pdb extracted by the old Open Babel
+    # cif->pdb converter. Flag it loudly so the result isn't trusted as real pLDDT.
+    n_zero = int(((df["n_residues"] > 0) & (df["mean_plddt"] == 0.0)).sum())
+    if n_zero:
+        print(
+            f"  [warn] {n_zero}/{len(df)} structures have all-zero pLDDT — their B-factor "
+            "looks unpopulated (e.g. structs/ extracted by the old obabel cif->pdb "
+            "converter). Re-extract with the patched vendor/cif_to_pdb, or run on the "
+            "AF3 af_output directory instead."
+        )
 
     if save_path is None:
         save_path = _default_save_path(structs_dir)
