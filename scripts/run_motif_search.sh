@@ -11,8 +11,12 @@
 #                             for Mg2+ coordination. Generative models (e.g. DPLM run_41_V)
 #                             often emit this variant, so the strict DD..D undercounts a
 #                             functionally-present first metal site.
+#   [DE][DE]..[DE]          : fully-relaxed acidic variant — also allows D->E at the
+#                             1st position (EDxxD, EExxE, etc.). Superset of the two
+#                             above; the three are nested (strict < semi < fully relaxed)
+#                             and kept as separate columns to give graded hits.
 #   (N|D)D(L|I|V).(S|T)...E : NSE/DTE second metal-binding motif.
-MOTIFS=("DD..D" "D[DE]..[DE]" "(N|D)D(L|I|V).(S|T)...E")
+MOTIFS=("DD..D" "D[DE]..[DE]" "[DE][DE]..[DE]" "(N|D)D(L|I|V).(S|T)...E")
 
 ############################################################
 # Script                                                   #
