@@ -46,6 +46,15 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **Aggrescan3D aggregation propensity** (`src/structure_metrics/aggregation.py`;
+  `vendor/aggrescan3d` submodule) — structure-based aggregation/expressibility signal,
+  orthogonal to sequence-based SoluProt. Static mode only (CABS-flex never invoked),
+  ~7 s/structure CPU. Output keyed by ID: `a3d_avg_score`, `a3d_total_score`,
+  `a3d_max_score`, `a3d_min_score`, `a3d_total_pos_score` (sum of positive = aggregation
+  propensity), `n_residues`; `--save_residue_scores` dumps per-residue arrays. Wired into
+  the orchestrator structs branch. **Env: Python 2.7** (A3D `master` is Py2-only) +
+  bundled freesasa, no FoldX/PyMOL needed — env name `$AGGRESCAN3D_ENV`. Note: AlphaFold
+  `OXT` terminal atoms crash A3D's freesasa; the tool strips them via Biopython first.
 - **TPS structural-domain composition** (`src/enzyme_explorer/domain_composition.py`) —
   count + types of TPS domains per design via EnzymeExplorer's CPU-only `detect_domains`
   (PyMOL + foldseek, no GPU). Output keyed by ID: `n_domains`, per-type counts for the

@@ -94,6 +94,7 @@ def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.
 def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
 def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
 def out_domain_composition(d): return d.rstrip(os.sep) + "_domain_composition.csv"
+def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -221,6 +222,9 @@ def build_steps(args) -> List[Step]:
         # TPS structural-domain composition via EnzymeExplorer's CPU domain detector.
         steps.append(Step("domain_composition_gen", "domain_composition.sh",
                           ["--structs_dir", structs], out_domain_composition(structs)))
+        # Aggrescan3D structure-based aggregation propensity (expressibility signal).
+        steps.append(Step("aggregation_gen", "aggregation.sh",
+                          ["--structs_dir", structs], out_aggregation(structs)))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
                               ["--structs_dir", structs, "--known_structs_dir", known_structs],
