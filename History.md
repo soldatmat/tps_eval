@@ -46,6 +46,15 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **ESMFold structure prediction** (`src/esmfold/`, `scripts/run_esmfold.sh` + per-cluster
+  job wrappers; `ESMFOLD_ENV` in `paths.sh`). HuggingFace `transformers`
+  `EsmForProteinFolding` (`facebook/esmfold_v1`); writes `<ID>.pdb` mirroring the AF
+  structs layout, so `plddt`/`structural_identity`/`motif_structural_distance` consume it
+  unchanged — ESMFold confidence needs no new tool. Available on both clusters (unlike
+  AF3, Aurum-only). Validated on Aurum (mean pLDDT 77.9, 84% confident on a 380-aa TPS).
+  NOTE: HF writes pLDDT on a **0–1 scale**, not 0–100 — `esmfold.py` rescales the
+  B-factor ×100 so the 0–100-based `plddt` tool reads it correctly. Env recipe:
+  `torch 2.5.1+cu121` + `transformers==4.46.3` (5.x breaks on torch 2.5); no OpenFold.
 - **Structure-similarity metrics wired into the orchestrator.**
   - New `structural_identity` tool (`src/structure_metrics/run_structural_identity.py`
     + `scripts/run_structural_identity.sh` + per-cluster job wrappers): foldseek
