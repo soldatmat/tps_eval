@@ -11,16 +11,18 @@ single `--dependency=afterok:id1:id2:...` (the old bash emitted multiple
 Cluster differences live in CLUSTERS (submit command, dependency/log formatting,
 capabilities) — to add a cluster, add an entry, not a forked script.
 
-Scope: this v1 covers the SEQUENCE branch + plots (motif, esm, min/max
-distance/identity, soluprot, enzyme_explorer_sequence_only). The AlphaFold /
-structures / plddt branch is a per-sequence FAN-OUT (run_alphafold_jobs.py
-submits one alphafold.sh job per sequence) with structs-dependent EE/plddt steps
-hanging off it; that is a planned v2 extension and is NOT ported here yet —
-passing --structs_dir warns and runs the sequence branch only.
+Scope: covers the SEQUENCE branch + plots (motif, esm, min/max distance/identity,
+soluprot, enzyme_explorer_sequence_only) AND the structure-level metrics that
+consume already-folded structures: pLDDT (folding confidence) and foldseek
+structural identity to the nearest known TPS (--structs_dir / --known_structs_dir).
+What is NOT yet ported (v2): the AlphaFold per-sequence FAN-OUT that *produces*
+those structures, and EnzymeExplorer-with-structures — submit_all.sh still carries
+the fold step; pass --structs_dir here once structures exist.
 
 Usage:
     python scripts/run_eval_pipeline.py --cluster aurum \
         --fasta_path gen.fasta [--train_path train.fasta] \
+        [--structs_dir structs/] [--known_structs_dir known_tps_structs/] \
         [--train_embeddings_path <csv>] [--data_colors dodgerblue goldenrod] [--dry-run]
 
 Pure stdlib — runs on a login node, no conda env needed (it only shells out to
@@ -84,6 +86,10 @@ def out_maxid(f): return _base(f) + "_max_sequence_identity.csv"
 def out_maxid_self(f): return _base(f) + "_max_sequence_identity_self.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
+# Structure-branch outputs are keyed by the structures DIRECTORY, not the fasta:
+# the tools save "<structs_dir>_<tool>.csv" as a sibling of the directory.
+def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
+def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -162,11 +168,11 @@ def build_steps(args) -> List[Step]:
     train = args.train_path
     steps: List[Step] = []
 
-    if args.structs_dir or args.train_structs_dir:
-        print("[warn] --structs_dir/--train_structs_dir given, but the AlphaFold/structures/"
-              "plddt branch is not yet ported to run_eval_pipeline.py (it is a per-sequence "
-              "fan-out). Running the sequence branch only; use the per-tool job scripts for "
-              "AF/structs/plddt for now.")
+    structs = args.structs_dir
+    known_structs = args.known_structs_dir
+    if args.train_structs_dir:
+        print("[warn] --train_structs_dir is not used by the orchestrator yet "
+              "(EnzymeExplorer-with-structures and the AlphaFold fan-out are not ported).")
 
     datasets = [("gen", gen)] + ([("train", train)] if train else [])
 
@@ -192,6 +198,21 @@ def build_steps(args) -> List[Step]:
                           ["--embeddings_path", out_esm(gen), "--train_embeddings_path", train_emb],
                           out_mindist(gen), deps=["esm_gen", "esm_train"]))
 
+    # Structure branch: pLDDT (folding confidence) + foldseek structural identity to the
+    # nearest known TPS. Both are keyed by the structures dir, run only if --structs_dir
+    # is given. They have no SLURM deps (structures are produced out-of-band — by the
+    # AlphaFold fan-out, not yet ported here) but plots picks them up via the snapshot.
+    if structs:
+        steps.append(Step("plddt_gen", "plddt.sh", ["--structs_dir", structs],
+                          out_plddt(structs)))
+        if known_structs:
+            steps.append(Step("structural_identity_gen", "structural_identity.sh",
+                              ["--structs_dir", structs, "--known_structs_dir", known_structs],
+                              out_structural_identity(structs)))
+        else:
+            print("[note] --structs_dir without --known_structs_dir: skipping "
+                  "structural_identity (needs a known-TPS reference structure dir).")
+
     # plots: depend SOFTLY on every metric (wait on whatever was submitted; still run
     # if some metrics were skipped/absent — the plots tool skips missing-input targets).
     metric_steps = [s.name for s in steps]
@@ -215,7 +236,12 @@ def main() -> None:
     p.add_argument("--cluster", required=True, choices=sorted(CLUSTERS))
     p.add_argument("--fasta_path", required=True, help="Generated sequences FASTA.")
     p.add_argument("--train_path", default=None, help="Reference/train FASTA (enables comparisons).")
-    p.add_argument("--structs_dir", default=None, help="(v2) AlphaFold structures dir.")
+    p.add_argument("--structs_dir", default=None,
+                   help="Generated structures dir (AF3 af_output or flat .pdb/.cif) -> "
+                        "enables pLDDT and (with --known_structs_dir) structural-identity steps.")
+    p.add_argument("--known_structs_dir", default=None,
+                   help="Known-TPS reference structures dir for the foldseek structural-identity "
+                        "metric (e.g. MARTS-DB train AFDB structures, or EE reference domains).")
     p.add_argument("--train_structs_dir", default=None, help="(v2) train structures dir.")
     p.add_argument("--train_embeddings_path", default=None, help="Precomputed train embeddings CSV.")
     p.add_argument("--data_colors", nargs=2, default=["dodgerblue", "goldenrod"],
@@ -224,7 +250,8 @@ def main() -> None:
     args = p.parse_args()
 
     args.fasta_path = os.path.abspath(args.fasta_path)
-    for opt in ("train_path", "structs_dir", "train_structs_dir", "train_embeddings_path"):
+    for opt in ("train_path", "structs_dir", "known_structs_dir", "train_structs_dir",
+                "train_embeddings_path"):
         if getattr(args, opt):
             setattr(args, opt, os.path.abspath(getattr(args, opt)))
 

@@ -17,10 +17,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   right job script. `paths.sh` holds conda env names + external-tool install paths.
 - **Full pipeline:** `scripts/run_eval_pipeline.py --cluster <c> --fasta_path <gen>
   [--train_path <train>]` — the cluster-agnostic *declarative* orchestrator (one Step
-  list; idempotent; deps chained as a single `--dependency=afterok:…`). v1 = sequence
-  branch + plots; it supersedes `scripts/<cluster>/submit_all.sh` for that branch. The
-  AlphaFold/structures/plddt fan-out is NOT yet ported (v2) — `submit_all.sh` still
-  carries it; `--structs_dir` to the orchestrator warns and runs the sequence branch.
+  list; idempotent; deps chained as a single `--dependency=afterok:…`). Covers the
+  sequence branch + plots + the structure-consuming metrics (pLDDT via `--structs_dir`,
+  foldseek structural-identity via `--structs_dir --known_structs_dir`); it supersedes
+  `scripts/<cluster>/submit_all.sh`. NOT yet ported (v2): the AlphaFold fan-out that
+  *produces* structures and EnzymeExplorer-with-structures — `submit_all.sh` still
+  carries the fold step; pass `--structs_dir` to the orchestrator once structures exist.
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
