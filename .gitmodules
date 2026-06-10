@@ -4,3 +4,6 @@
 [submodule "vendor/pymol_scripts"]
 	path = vendor/pymol_scripts
 	url = https://github.com/soldatmat/pymol_scripts.git
+[submodule "vendor/aggrescan3d"]
+	path = vendor/aggrescan3d
+	url = https://bitbucket.org/lcbio/aggrescan3d.git
