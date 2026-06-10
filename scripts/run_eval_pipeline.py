@@ -86,10 +86,12 @@ def out_maxid(f): return _base(f) + "_max_sequence_identity.csv"
 def out_maxid_self(f): return _base(f) + "_max_sequence_identity_self.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
+def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
 # Structure-branch outputs are keyed by the structures DIRECTORY, not the fasta:
 # the tools save "<structs_dir>_<tool>.csv" as a sibling of the directory.
 def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
 def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.csv"
+def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -179,6 +181,8 @@ def build_steps(args) -> List[Step]:
     for tag, fa in datasets:
         is_train = tag == "train"
         steps.append(Step(f"motif_{tag}", "motif_search.sh", ["--fasta_path", fa], out_motif(fa)))
+        steps.append(Step(f"motif_pair_{tag}", "motif_pair_distance.sh",
+                          ["--fasta_path", fa], out_motif_pair(fa)))
         steps.append(Step(f"esm_{tag}", "esm_embedding.sh", ["--fasta_path", fa], out_esm(fa)))
         steps.append(Step(f"maxid_self_{tag}", "max_sequence_identity.sh",
                           ["--fasta_path", fa] + (["--train"] if is_train else []),
@@ -205,6 +209,8 @@ def build_steps(args) -> List[Step]:
     if structs:
         steps.append(Step("plddt_gen", "plddt.sh", ["--structs_dir", structs],
                           out_plddt(structs)))
+        steps.append(Step("motif_struct_gen", "motif_structural_distance.sh",
+                          ["--structs_dir", structs], out_motif_struct(structs)))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
                               ["--structs_dir", structs, "--known_structs_dir", known_structs],
