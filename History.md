@@ -46,6 +46,13 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **End-to-end pipeline validation on Aurum.** Ran the orchestrator for real (28 steps)
+  on tiny dummy inputs (3-seq gen + 2-seq train + 3 structs + 2 known refs); 26/28 steps
+  produced valid ID-keyed CSVs across the full sequence + structure branches. Fixed the
+  one failure: `scripts/aurum/jobs/esm_pseudo_perplexity.sh` pinned `--constraint=gen-a`,
+  which Aurum3 routes to the single-node `a36_96_gpu` partition (node `a233`, frequently
+  down) → job stuck PENDING and blocked `plots` via the afterok chain. Re-pointed to
+  `gen-b` RTX 3090, matching the other ESM/MPNN GPU jobs.
 - **Self-consistency + naturalness cluster.** Three metrics validated on Aurum:
   - `esm_pseudo_perplexity` (sequence branch) — ESM masked-marginal pseudo-perplexity /
     mean pseudo-log-likelihood (naturalness; lower = more in-distribution), reusing the
