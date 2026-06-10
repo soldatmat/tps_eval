@@ -7,3 +7,6 @@
 [submodule "vendor/aggrescan3d"]
 	path = vendor/aggrescan3d
 	url = https://bitbucket.org/lcbio/aggrescan3d.git
+[submodule "vendor/ProteinMPNN"]
+	path = vendor/ProteinMPNN
+	url = https://github.com/dauparas/ProteinMPNN.git
