@@ -46,6 +46,17 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **Self-consistency + naturalness cluster.** Three metrics validated on Aurum:
+  - `esm_pseudo_perplexity` (sequence branch) — ESM masked-marginal pseudo-perplexity /
+    mean pseudo-log-likelihood (naturalness; lower = more in-distribution), reusing the
+    existing ESM-1b in `tps_eval`. "One Fell Swoop" single-pass by default.
+  - `proteinmpnn_score` (structs branch) — ProteinMPNN NLL of the design's own sequence
+    given its fold (fold-compatibility), via the vendored `vendor/ProteinMPNN`.
+  - `self_consistency` (structs branch, **opt-in `--self_consistency`** — heavy, ~1–2.5
+    min/structure × num_seqs GPU) — scRMSD: ProteinMPNN samples N seqs → ESMFold refold →
+    min Cα-RMSD to the original (designable < 2 Å). Single-chain by default (`--chain`);
+    validated 0.86–0.91 Å on reference TPS. ProteinMPNN + refold run in the `esmfold` env
+    (`PROTEINMPNN_ENV` defaults to `$ESMFOLD_ENV`). All wired into the orchestrator.
 - **Broad homology search (Swiss-Prot + AlphaFold-Swiss-Prot)** (`src/homology_search/`)
   — "what else is this design like, across all proteins, and is it a TPS?" Two tools
   sharing a TPS-classification core (a committed 2557-accession set from UniProt
@@ -138,13 +149,9 @@ Prioritised from a literature/practice survey of de-novo design filters, active-
 metrics, and activity-by-similarity (sources captured in the survey notes). Rank, don't
 hard-threshold — absolute cutoffs (e.g. pLDDT) don't transfer across topologies.
 
-**High priority**
-- **Self-consistency scRMSD** — ProteinMPNN inverse-fold → refold (ESMFold/AF3) →
-  Cα-RMSD back to the design; the standard "designability" metric (accept < 2 Å).
-- **ESM pseudo-perplexity (naturalness)** — "One Fell Swoop" single-pass pseudo-PPL on
-  the existing ESM stack; plotted against novelty to find the novel-but-protein-like frontier.
-- *(done — see Done/2026-06-10)* ~~Active-site carboxylate-cage geometry~~ and
-  ~~catalytic-residue constellation RMSD~~.
+**Done (see Done/2026-06-10):** ~~self-consistency scRMSD~~, ~~ESM pseudo-perplexity~~,
+~~ProteinMPNN NLL~~, ~~active-site carboxylate-cage geometry~~, ~~catalytic-residue
+constellation RMSD~~.
 
 **Medium priority**
 - **Inter-domain PAE** — relative-orientation confidence between TPS domains (uses the
@@ -153,7 +160,6 @@ hard-threshold — absolute cutoffs (e.g. pLDDT) don't transfer across topologie
   the catalytic cavity vs the natural-TPS distribution (pocket volume tracks product
   class). fpocket installs cleanly in the env; the carboxylate-cage centroid is the
   anchor for selecting the catalytic pocket. *(deferred from the active-site build.)*
-- **ProteinMPNN mean NLL** — sequence-given-fold quality (free byproduct of scRMSD).
 - **Aromatic / cation-π pocket lining** — count/geometry of Trp/Tyr/Phe stabilizing carbocations.
 - **Radius of gyration / compactness** — flag for non-compact predictions (near-free).
 

@@ -88,6 +88,7 @@ def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
 def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
 def out_swissprot_search(f): return _base(f) + "_swissprot_search.csv"
+def out_esm_ppl(f): return _base(f) + "_esm_pseudo_perplexity.csv"
 # Structure-branch outputs are keyed by the structures DIRECTORY, not the fasta:
 # the tools save "<structs_dir>_<tool>.csv" as a sibling of the directory.
 def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
@@ -97,6 +98,8 @@ def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.cs
 def out_domain_composition(d): return d.rstrip(os.sep) + "_domain_composition.csv"
 def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
 def out_foldseek_swissprot(d): return d.rstrip(os.sep) + "_foldseek_swissprot_search.csv"
+def out_proteinmpnn(d): return d.rstrip(os.sep) + "_proteinmpnn_score.csv"
+def out_self_consistency(d): return d.rstrip(os.sep) + "_self_consistency.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -189,6 +192,8 @@ def build_steps(args) -> List[Step]:
         steps.append(Step(f"motif_pair_{tag}", "motif_pair_distance.sh",
                           ["--fasta_path", fa], out_motif_pair(fa)))
         steps.append(Step(f"esm_{tag}", "esm_embedding.sh", ["--fasta_path", fa], out_esm(fa)))
+        steps.append(Step(f"esm_ppl_{tag}", "esm_pseudo_perplexity.sh",
+                          ["--fasta_path", fa], out_esm_ppl(fa)))
         steps.append(Step(f"maxid_self_{tag}", "max_sequence_identity.sh",
                           ["--fasta_path", fa] + (["--train"] if is_train else []),
                           out_maxid_self(fa)))
@@ -236,6 +241,15 @@ def build_steps(args) -> List[Step]:
         # Broad structural search vs AlphaFold-Swiss-Prot (annotated -> hit TPS/non-TPS).
         steps.append(Step("foldseek_swissprot_gen", "foldseek_swissprot_search.sh",
                           ["--structs_dir", structs], out_foldseek_swissprot(structs)))
+        # ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold.
+        steps.append(Step("proteinmpnn_gen", "proteinmpnn_score.sh",
+                          ["--structs_dir", structs], out_proteinmpnn(structs)))
+        # Self-consistency scRMSD (ProteinMPNN -> ESMFold refold -> RMSD). HEAVY
+        # (~1-2.5 min/structure x num_seqs GPU), so opt-in via --self_consistency.
+        if args.self_consistency:
+            steps.append(Step("self_consistency_gen", "self_consistency.sh",
+                              ["--structs_dir", structs, "--num_seqs", str(args.sc_num_seqs)],
+                              out_self_consistency(structs)))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
                               ["--structs_dir", structs, "--known_structs_dir", known_structs],
@@ -277,6 +291,11 @@ def main() -> None:
     p.add_argument("--train_embeddings_path", default=None, help="Precomputed train embeddings CSV.")
     p.add_argument("--data_colors", nargs=2, default=["dodgerblue", "goldenrod"],
                    metavar=("TRAIN", "GEN"), help="Matplotlib colors for train/generated.")
+    p.add_argument("--self_consistency", action="store_true",
+                   help="Add the heavy scRMSD self-consistency step (ProteinMPNN -> ESMFold "
+                        "refold -> RMSD; ~1-2.5 min/structure x num_seqs on GPU). Off by default.")
+    p.add_argument("--sc_num_seqs", type=int, default=8,
+                   help="ProteinMPNN sequences per structure for --self_consistency (default 8).")
     p.add_argument("--dry-run", action="store_true", help="Print the submission plan; don't submit.")
     args = p.parse_args()
 
