@@ -46,6 +46,14 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **TPS structural-domain composition** (`src/enzyme_explorer/domain_composition.py`) —
+  count + types of TPS domains per design via EnzymeExplorer's CPU-only `detect_domains`
+  (PyMOL + foldseek, no GPU). Output keyed by ID: `n_domains`, per-type counts for the
+  **seven** templates (`alpha, beta, gamma, ids, delta, epsilon, zeta` — `ids` is the
+  isoprenyl-diphosphate-synthase-like domain the "six" omits), and `domain_architecture`
+  (ordered, e.g. `alpha-beta`). Enumerates the full input ID universe and left-joins, so
+  **zero-domain designs still get a row** (`n_domains=0`) — verified on Aurum. Wired into
+  the orchestrator structs branch. Uses `$ENZYME_EXPLORER_ENV` (= `enzyme_explorer_prod`).
 - **ESMFold structure prediction** (`src/esmfold/`, `scripts/run_esmfold.sh` + per-cluster
   job wrappers; `ESMFOLD_ENV` in `paths.sh`). HuggingFace `transformers`
   `EsmForProteinFolding` (`facebook/esmfold_v1`); writes `<ID>.pdb` mirroring the AF
