@@ -46,6 +46,17 @@ merge for filtration.
 ## Done
 
 ### 2026-06-10
+- **Broad homology search (Swiss-Prot + AlphaFold-Swiss-Prot)** (`src/homology_search/`)
+  — "what else is this design like, across all proteins, and is it a TPS?" Two tools
+  sharing a TPS-classification core (a committed 2557-accession set from UniProt
+  `(reviewed:true) AND ((ec:4.2.3.*) OR (ec:5.5.1.*))` at
+  `data/reference/tps_uniprot_accessions.txt`; prenyltransferases EC 2.5.1.* deliberately
+  excluded — they're the related-but-different enzymes we want to flag):
+  sequence (DIAMOND vs Swiss-Prot) and structure (foldseek vs afdb-swissprot). Per design:
+  top hit + score, `*_top_is_tps`, `*_best_nontps_*`, `*_n_tps_in_topN`. Surfaced the
+  intended function-drift signal on Aurum (a design whose closest structural neighbour is
+  a non-TPS). DBs built on-cluster outside the repo (`SWISSPROT_DIAMOND_DB`,
+  `AFDB_SWISSPROT_DB` per-install paths). Wired into the orchestrator (seq + structs branches).
 - **Aggrescan3D aggregation propensity** (`src/structure_metrics/aggregation.py`;
   `vendor/aggrescan3d` submodule) — structure-based aggregation/expressibility signal,
   orthogonal to sequence-based SoluProt. Static mode only (CABS-flex never invoked),
@@ -136,12 +147,6 @@ hard-threshold — absolute cutoffs (e.g. pLDDT) don't transfer across topologie
   ~~catalytic-residue constellation RMSD~~.
 
 **Medium priority**
-- **Broad "what-else-is-it-like" search** *(in progress)* — DIAMOND/BLAST vs Swiss-Prot
-  (sequence) + foldseek vs afdb-swissprot (structure), both annotated so each hit is
-  labeled TPS vs non-TPS. Per design: top hit + score, whether it's a TPS, best non-TPS
-  hit score, #TPS in top-N. Flags function-drift / confirms specificity. Caveat: TPS
-  share folds with prenyltransferases/IDS-like enzymes, so a related-enzyme hit is
-  expected — report + annotate, don't auto-penalize.
 - **Inter-domain PAE** — relative-orientation confidence between TPS domains (uses the
   EE domain definitions); catches bad two-domain placement pLDDT misses.
 - **Active-site pocket descriptors** — fpocket/P2Rank volume/hydrophobicity/enclosure of

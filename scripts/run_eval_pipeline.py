@@ -87,6 +87,7 @@ def out_maxid_self(f): return _base(f) + "_max_sequence_identity_self.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
 def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
+def out_swissprot_search(f): return _base(f) + "_swissprot_search.csv"
 # Structure-branch outputs are keyed by the structures DIRECTORY, not the fasta:
 # the tools save "<structs_dir>_<tool>.csv" as a sibling of the directory.
 def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
@@ -95,6 +96,7 @@ def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.c
 def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
 def out_domain_composition(d): return d.rstrip(os.sep) + "_domain_composition.csv"
 def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
+def out_foldseek_swissprot(d): return d.rstrip(os.sep) + "_foldseek_swissprot_search.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -197,6 +199,12 @@ def build_steps(args) -> List[Step]:
         steps.append(Step(f"ee_seq_{tag}", "enzyme_explorer_sequence_only.sh",
                           ["--fasta_path", fa], out_ee_seq(fa)))
 
+    # Broad "what-else-is-it-like" sequence search vs Swiss-Prot (annotated -> each hit
+    # labeled TPS/non-TPS). Gen-only: it evaluates the generated designs (real train TPS
+    # are trivially TPS hits).
+    steps.append(Step("swissprot_search_gen", "swissprot_search.sh",
+                      ["--fasta_path", gen], out_swissprot_search(gen)))
+
     if train:
         train_emb = args.train_embeddings_path or out_esm(train)
         steps.append(Step("maxid_gen_vs_train", "max_sequence_identity.sh",
@@ -225,6 +233,9 @@ def build_steps(args) -> List[Step]:
         # Aggrescan3D structure-based aggregation propensity (expressibility signal).
         steps.append(Step("aggregation_gen", "aggregation.sh",
                           ["--structs_dir", structs], out_aggregation(structs)))
+        # Broad structural search vs AlphaFold-Swiss-Prot (annotated -> hit TPS/non-TPS).
+        steps.append(Step("foldseek_swissprot_gen", "foldseek_swissprot_search.sh",
+                          ["--structs_dir", structs], out_foldseek_swissprot(structs)))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
                               ["--structs_dir", structs, "--known_structs_dir", known_structs],

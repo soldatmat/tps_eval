@@ -25,3 +25,24 @@ ENZYME_EXPLORER_PATH="/home2/soldat/documents/terpene_synthases/EnzymeExplorer"
 ENZYME_EXPLORER_ENV="enzyme_explorer" # Enzyme Explorer conda environment name
 ENZYME_EXPLORER_SEQUENCE_ONLY_PATH=$ENZYME_EXPLORER_PATH
 ENZYME_EXPLORER_SEQUENCE_ONLY_ENV=$ENZYME_EXPLORER_ENV # Enzyme Explorer (sequence only) conda environment name
+
+############################################################
+# Broad homology search (Swiss-Prot + AlphaFold-Swiss-Prot)#
+############################################################
+# Both searches reuse the tps_eval env (DIAMOND + foldseek live there). They
+# classify each hit TPS vs non-TPS by membership in the committed accession set.
+
+# TPS accession set — COMMITTABLE default (lives in the repo). Override only if you
+# regenerate it elsewhere. Generated via the UniProt REST query:
+#   (reviewed:true) AND ((ec:4.2.3.*) OR (ec:5.5.1.*))
+TPS_ACCESSIONS="$TPS_EVAL_ROOT/data/reference/tps_uniprot_accessions.txt"
+
+# DIAMOND DB built from uniprot_sprot.fasta (diamond makedb). PER-INSTALL absolute
+# path — built ON the cluster OUTSIDE the repo, never committed. The value below is
+# a placeholder to set per-install (like SOLUPROT_PATH).
+SWISSPROT_DIAMOND_DB="/home/soldat/documents/databases/swissprot_diamond/swissprot"
+
+# foldseek AlphaFold/Swiss-Prot DB (foldseek databases "Alphafold/Swiss-Prot" ...).
+# PER-INSTALL absolute path — downloaded ON the cluster OUTSIDE the repo, never
+# committed. Placeholder to set per-install.
+AFDB_SWISSPROT_DB="/home/soldat/documents/databases/afdb_swissprot/afdb_swissprot"
