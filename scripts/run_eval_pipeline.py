@@ -92,6 +92,7 @@ def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
 def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
 def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.csv"
 def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
+def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -211,6 +212,11 @@ def build_steps(args) -> List[Step]:
                           out_plddt(structs)))
         steps.append(Step("motif_struct_gen", "motif_structural_distance.sh",
                           ["--structs_dir", structs], out_motif_struct(structs)))
+        # Active-site geometry: carboxylate-cage convergence (apo-robust). The
+        # constellation-RMSD columns need reference templates present in the structs
+        # dir (pass --templates <ids>); omitted here until a curated reference set is wired.
+        steps.append(Step("active_site_geom_gen", "active_site_geometry.sh",
+                          ["--structs_dir", structs], out_active_site_geom(structs)))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
                               ["--structs_dir", structs, "--known_structs_dir", known_structs],

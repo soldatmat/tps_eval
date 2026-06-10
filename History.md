@@ -64,6 +64,14 @@ merge for filtration.
   - Wired `plddt` (`--structs_dir`) and `structural_identity`
     (`--structs_dir --known_structs_dir`) into `run_eval_pipeline.py`; `plots`
     soft-depends on both. *(commit `c78b225`)*
+- **Active-site geometry metrics** (`src/structure_metrics/active_site_geometry.py`) —
+  catalytic-site-specific, fold-agnostic, apo-robust: `carboxylate_convergence_radius`
+  (RMS spread of the DDXXD+NSE/DTE side-chain carboxylate/hydroxyl oxygens about their
+  centroid — the putative metal locus), `n_coordinating_oxygens`, `metal_point_void`
+  (clearance for the metals), and `catalytic_constellation_rmsd` to reference TPS
+  templates (via Biopython Cα+Cβ superposition — PyMOL isn't in the env). Wired into the
+  orchestrator structs branch. Discriminates well on Aurum (real 1ps1 synthase 6.75 Å
+  vs splayed designs 20–26 Å). fpocket pocket descriptors deferred (installs cleanly).
 - **Motif-pair distance metrics (sequence + structure).** Shared motif-localization
   core (`src/sequence_metrics/motif_localization.py`); `motif_pair_distance`
   (sequence) and `motif_structural_distance` (3D, fold-agnostic) tools + orchestrator
@@ -107,18 +115,16 @@ hard-threshold — absolute cutoffs (e.g. pLDDT) don't transfer across topologie
   Cα-RMSD back to the design; the standard "designability" metric (accept < 2 Å).
 - **ESM pseudo-perplexity (naturalness)** — "One Fell Swoop" single-pass pseudo-PPL on
   the existing ESM stack; plotted against novelty to find the novel-but-protein-like frontier.
-- **Active-site carboxylate-cage geometry** — side-chain Oδ/Oε convergence of the
-  DDXXD + NSE/DTE carboxylates onto a common (metal) locus; side-chain-level successor
-  to `motif_structural_distance`. CPU, sub-second, apo-robust.
-- **Catalytic-residue constellation RMSD** — RMSD of the catalytic constellation to
-  characterized TPS active-site templates (PyMOL super on a catalytic-residue selection).
+- *(done — see Done/2026-06-10)* ~~Active-site carboxylate-cage geometry~~ and
+  ~~catalytic-residue constellation RMSD~~.
 
 **Medium priority**
 - **Inter-domain PAE** — relative-orientation confidence between TPS domains (uses the
   EE domain definitions); catches bad two-domain placement pLDDT misses.
-- **Aggrescan3D** — structure-aware aggregation propensity (orthogonal to SoluProt).
 - **Active-site pocket descriptors** — fpocket/P2Rank volume/hydrophobicity/enclosure of
-  the catalytic cavity vs the natural-TPS distribution (pocket volume tracks product class).
+  the catalytic cavity vs the natural-TPS distribution (pocket volume tracks product
+  class). fpocket installs cleanly in the env; the carboxylate-cage centroid is the
+  anchor for selecting the catalytic pocket. *(deferred from the active-site build.)*
 - **ProteinMPNN mean NLL** — sequence-given-fold quality (free byproduct of scRMSD).
 - **Aromatic / cation-π pocket lining** — count/geometry of Trp/Tyr/Phe stabilizing carbocations.
 - **Radius of gyration / compactness** — flag for non-compact predictions (near-free).
