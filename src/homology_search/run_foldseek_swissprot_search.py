@@ -15,7 +15,7 @@ def main() -> None:
                         "(af_output dir or flat dir of .pdb/.cif).")
     parser.add_argument("afdb_db", help="foldseek AlphaFold/Swiss-Prot DB path.")
     parser.add_argument("tps_accessions_path", help="Committed TPS accession list "
-                        "(data/reference/tps_uniprot_accessions.txt).")
+                        "(src/homology_search/tps_uniprot_accessions.txt).")
     parser.add_argument("--save_path", default=None,
                         help="Output CSV path (default: <structs_dir>_foldseek_swissprot_search.csv).")
     parser.add_argument("--top_n", type=int, default=25, help="Top-N hits per query (default 25).")

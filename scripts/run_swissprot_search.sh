@@ -67,7 +67,7 @@ if [[ -z "$SWISSPROT_DIAMOND_DB" ]]; then
     exit 1
 fi
 # TPS_ACCESSIONS defaults to the committed reference file if unset.
-TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/data/reference/tps_uniprot_accessions.txt}"
+TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/homology_search/tps_uniprot_accessions.txt}"
 
 # Default DIAMOND threads to the SLURM allocation when available.
 threads="${threads:-${SLURM_CPUS_PER_TASK:-4}}"

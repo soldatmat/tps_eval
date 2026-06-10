@@ -62,7 +62,7 @@ if [[ -z "$AFDB_SWISSPROT_DB" ]]; then
     echo "Error: AFDB_SWISSPROT_DB is not set in paths.sh."
     exit 1
 fi
-TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/data/reference/tps_uniprot_accessions.txt}"
+TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/homology_search/tps_uniprot_accessions.txt}"
 
 cd src/homology_search
 

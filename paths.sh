@@ -35,7 +35,7 @@ ENZYME_EXPLORER_SEQUENCE_ONLY_ENV=$ENZYME_EXPLORER_ENV # Enzyme Explorer (sequen
 # TPS accession set — COMMITTABLE default (lives in the repo). Override only if you
 # regenerate it elsewhere. Generated via the UniProt REST query:
 #   (reviewed:true) AND ((ec:4.2.3.*) OR (ec:5.5.1.*))
-TPS_ACCESSIONS="$TPS_EVAL_ROOT/data/reference/tps_uniprot_accessions.txt"
+TPS_ACCESSIONS="$TPS_EVAL_ROOT/src/homology_search/tps_uniprot_accessions.txt"
 
 # DIAMOND DB built from uniprot_sprot.fasta (diamond makedb). PER-INSTALL absolute
 # path — built ON the cluster OUTSIDE the repo, never committed. The value below is

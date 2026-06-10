@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("fasta_path", help="Design FASTA file.")
     parser.add_argument("diamond_db", help="DIAMOND DB built from uniprot_sprot.fasta.")
     parser.add_argument("tps_accessions_path", help="Committed TPS accession list "
-                        "(data/reference/tps_uniprot_accessions.txt).")
+                        "(src/homology_search/tps_uniprot_accessions.txt).")
     parser.add_argument("--save_path", default=None,
                         help="Output CSV path (default: <fasta>_swissprot_search.csv).")
     parser.add_argument("--top_n", type=int, default=25, help="Top-N hits per query (default 25).")
