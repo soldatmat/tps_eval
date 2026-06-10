@@ -1,0 +1,155 @@
+# tps_eval — change & metric history
+
+A running log of changes to the pipeline and the evaluation metrics it computes.
+Most-recent first. Human-readable companion to `CLAUDE.md` (agent orientation) and
+`README.md` (setup/usage). Each metric is a per-design value keyed by `ID`, so they
+merge for filtration.
+
+> Convention: append a dated entry whenever a utility/metric is added or changed.
+> Keep committed work under "Done"; keep the research-backed backlog under "Planned".
+
+---
+
+## Metric inventory (current)
+
+**Sequence branch**
+- `motif_search` — presence of the DDXXD aspartate-rich motif + relaxed acidic
+  variants `D[DE]..[DE]`, `[DE][DE]..[DE]`, and the NSE/DTE motif `(N|D)D[LIV].(S|T)...E`.
+- `max_sequence_identity` — best % identity to a train/reference set and to self.
+- `esm_embedding` + `min_embedding_distance` — ESM-1b embedding, nearest-neighbour
+  distance to train/reference and to self.
+- `motif_pair_distance` *(new — 2026-06-10)* — residue separation between the
+  DDXXD-family and NSE/DTE motifs.
+
+**Structure branch** (consumes a dir of AlphaFold/ESMFold `.pdb`/`.cif`)
+- `plddt` — per-structure folding-confidence summary (mean/median/min pLDDT,
+  fraction confident, n_residues) read from the B-factor field.
+- `structural_identity` *(new — 2026-06-10)* — foldseek best TM-score / LDDT to the
+  nearest known-TPS structure (the structural analog of `max_sequence_identity`).
+- `motif_structural_distance` *(new — 2026-06-10)* — 3D centroid and min CA-CA
+  distance between the two metal-binding motifs' coordinating residues (fold-agnostic).
+
+**Function / expression**
+- `enzyme_explorer` (+ `_sequence_only`) — TPS classifier (isTPS + per-product-class scores).
+- `soluprot` — solubility prediction.
+
+**Folding (structure producers)**
+- AlphaFold3 (Aurum-only, apptainer).
+- ESMFold *(in progress — 2026-06-10)*, available on both clusters incl. Karolina.
+
+**Orchestration**
+- `scripts/run_eval_pipeline.py` — cluster-agnostic declarative orchestrator
+  (supersedes `submit_all.sh` for the sequence + structure-consuming branches).
+
+---
+
+## Done
+
+### 2026-06-10
+- **Structure-similarity metrics wired into the orchestrator.**
+  - New `structural_identity` tool (`src/structure_metrics/run_structural_identity.py`
+    + `scripts/run_structural_identity.sh` + per-cluster job wrappers): foldseek
+    best TM-score/LDDT of each generated structure to the nearest known-TPS reference.
+    Reference-set-agnostic — point `--known_structs_dir` at MARTS-DB full structures
+    or EE reference domains. Smoke-tested on Aurum. *(commit `c78b225`)*
+  - Wired `plddt` (`--structs_dir`) and `structural_identity`
+    (`--structs_dir --known_structs_dir`) into `run_eval_pipeline.py`; `plots`
+    soft-depends on both. *(commit `c78b225`)*
+- **Motif-pair distance metrics (sequence + structure).** Shared motif-localization
+  core (`src/sequence_metrics/motif_localization.py`); `motif_pair_distance`
+  (sequence) and `motif_structural_distance` (3D, fold-agnostic) tools + orchestrator
+  wiring. Smoke-tested on Aurum (205 structures, ~30 Å active-site spans). *(commit `491187a`)*
+
+### Earlier this work cycle (pre-History)
+- AlphaFold pLDDT extraction tool (`src/structure_metrics/plddt.py`) + B-factor
+  preservation fix in `vendor/cif_to_pdb` (Biopython converter).
+- Relaxed DDXXD motif variants + NSE/DTE added to motif search.
+- EnzymeExplorer reinstalled from the `revision` branch (`enzyme_explorer_prod`);
+  tps_eval EE wrappers re-wired to the new console-script schema; `load_results`
+  handles both the old (`isTPS`) and new (`<class>_p_calibrated`) schemas.
+- SoluProt setup scripts + `run_soluprot.sh` robustness fixes; plots colour/skip fixes.
+- Declarative orchestrator `run_eval_pipeline.py` introduced (single
+  `--dependency=afterok:` chain; idempotent).
+- Aurum migrated Miniconda → Miniforge; envs relocated.
+
+---
+
+## In progress
+
+- **ESMFold structure prediction** — tool code written (`src/esmfold/`, HF
+  `transformers` `EsmForProteinFolding`); writes `<ID>.pdb` with pLDDT in B-factors,
+  so the existing `plddt` tool extracts ESMFold confidence unchanged. `esmfold` conda
+  env being built + validated on Aurum before commit.
+- **TPS structural-domain composition** — extract how many / which TPS domains
+  (alpha/beta/gamma/delta/epsilon/zeta) each design has, from EnzymeExplorer's domain
+  detection, into a CSV keyed by ID. Edge case handled: designs with **no** detected
+  domains still get a row (`n_domains=0`).
+
+---
+
+## Planned metric backlog (research-backed)
+
+Prioritised from a literature/practice survey of de-novo design filters, active-site
+metrics, and activity-by-similarity (sources captured in the survey notes). Rank, don't
+hard-threshold — absolute cutoffs (e.g. pLDDT) don't transfer across topologies.
+
+**High priority**
+- **Self-consistency scRMSD** — ProteinMPNN inverse-fold → refold (ESMFold/AF3) →
+  Cα-RMSD back to the design; the standard "designability" metric (accept < 2 Å).
+- **ESM pseudo-perplexity (naturalness)** — "One Fell Swoop" single-pass pseudo-PPL on
+  the existing ESM stack; plotted against novelty to find the novel-but-protein-like frontier.
+- **Active-site carboxylate-cage geometry** — side-chain Oδ/Oε convergence of the
+  DDXXD + NSE/DTE carboxylates onto a common (metal) locus; side-chain-level successor
+  to `motif_structural_distance`. CPU, sub-second, apo-robust.
+- **Catalytic-residue constellation RMSD** — RMSD of the catalytic constellation to
+  characterized TPS active-site templates (PyMOL super on a catalytic-residue selection).
+
+**Medium priority**
+- **Inter-domain PAE** — relative-orientation confidence between TPS domains (uses the
+  EE domain definitions); catches bad two-domain placement pLDDT misses.
+- **Aggrescan3D** — structure-aware aggregation propensity (orthogonal to SoluProt).
+- **Active-site pocket descriptors** — fpocket/P2Rank volume/hydrophobicity/enclosure of
+  the catalytic cavity vs the natural-TPS distribution (pocket volume tracks product class).
+- **ProteinMPNN mean NLL** — sequence-given-fold quality (free byproduct of scRMSD).
+- **Aromatic / cation-π pocket lining** — count/geometry of Trp/Tyr/Phe stabilizing carbocations.
+- **Radius of gyration / compactness** — flag for non-compact predictions (near-free).
+
+**Activity / specificity inference (by similarity to natural TPSs)** — all reuse the
+distances tps_eval already computes; emit *coarse* labels with calibrated confidence,
+never a high-confidence exact-scaffold prediction.
+- **k-NN coarse-class transfer** *(high)* — predict terpene size class (C10/C15/C20/…)
+  and cyclic-vs-linear by distance-weighted vote of nearest MARTS-DB neighbours in
+  sequence / ESM-embedding / foldseek-structure space, ensembled. Use the annotation-transfer
+  cliff as the prior (~40% identity for size class, ≥60% before any scaffold-level claim;
+  TM 0.5 fold floor).
+- **Specificity-determining-residue (SDR) match + divergence flag** *(high as a negative
+  filter)* — match the design's residues at known product-specificity positions to a
+  candidate neighbour's signature; raise a flag when a design is globally close to a
+  known-product TPS but diverges at SDRs (the TEAS/HPS single-switch regime). The only
+  metric that confronts the failure mode head-on.
+- **Substrate-class compatibility** *(med-high)* — GPP/FPP/GGPP fit, largely from the
+  EnzymeExplorer substrate head + a pocket-volume cross-check.
+- **Continuous product-property regression** *(med)* — regress product carbon count
+  (strong) and ring count (weak) from embeddings, with prediction intervals.
+- **Subfamily / phylogenetic placement** *(med)* — TPS-a/b/c/… clade → coarse class prior;
+  also routes which SDR panel the divergence flag uses.
+
+**Low / deferred**
+- Substrate docking / AF3 substrate co-folding (wants the Mg/diphosphate context; deep-dive only).
+- MolProbity, ddG/ThermoMPNN, instability index — weak discriminators on predicted
+  structures or optimization (not triage) tools.
+
+**Caveat carried throughout:** TPS product specificity is *not* robustly predicted by
+global similarity — TEAS and HPS are ~80% identical yet make different major products,
+switchable by ~4–9 active-site residues. Similarity-transfer metrics are screening aids
+for *coarse* properties (is-TPS, size class, substrate, subfamily), not activity guarantees;
+fine specificity needs the local SDR/active-site metrics, and even those are weak priors.
+
+---
+
+## Open items
+- EE-domains structural-identity run needs domain detection on the generated structures
+  first (the domain-composition work above sets this up); the full-structure run against
+  MARTS-DB AFDB structures is already supported by `structural_identity`.
+- Deploy all changes to Karolina (git pull + submodule update; `paths.sh`
+  `ENZYME_EXPLORER_ENV=enzyme_explorer_prod`; install ESMFold env; test orchestrator).
