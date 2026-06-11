@@ -54,7 +54,9 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
 5. **Document it for end users:** add a `docs/TOOLS.md` section (anchored by tool name —
    purpose/inputs/output columns/method/citation/env+source) and a row in the README "## Tools"
    table linking to that anchor. Keep the README one-liner consistent with the
-   `pipeline_tools.json` description.
+   `pipeline_tools.json` description. **When the build is split across parallel subagents,
+   the agents must NOT edit `README.md`/`docs/TOOLS.md` — the orchestrating session adds all
+   the rows/sections in one pass at integration** (concurrent agents clobber these shared files).
 6. **Log the change** as an H2 entry in the Obsidian vault `History.md` (see Gotchas —
    NOT a repo file), and commit the code per-tool.
 

@@ -97,6 +97,14 @@ EnzymeExplorer uses `enzyme_explorer`.
 - **External dependency** — [DIAMOND](https://github.com/bbuchfink/diamond) (Buchfink et al. 2021, *Nat. Methods*); [Swiss-Prot/UniProtKB](https://www.uniprot.org/). TPS set ([`src/homology_search/tps_uniprot_accessions.txt`](../src/homology_search/tps_uniprot_accessions.txt)) from the UniProt query `(reviewed:true) AND ((ec:4.2.3.*) OR (ec:5.5.1.*))`.
 - **Env + source** — `tps_eval`; [`src/homology_search/swissprot_search.py`](../src/homology_search/swissprot_search.py).
 
+### local_sequence_search
+- **Purpose** — Fast **local** (BLAST-style) best-hit sequence identity/similarity to a reference set, plus top-k nearest neighbours. Complements the global full-length `max_sequence_identity` (novelty) and supplies the fast sequence-space neighbours for the k-NN/SDR tools (the Biopython all-vs-all was too slow — MMseqs2 does the 1195-seq all-vs-all in ~5 s).
+- **Inputs** — query FASTA; optional reference (`--train_path`; self mode otherwise, excluding the query from its own best hit). `--backend {mmseqs2,diamond}` (default `mmseqs2`), `--top_k N`.
+- **Output** — `<input>_local_sequence_search.csv`: `ID`, `local_sequence_identity` (best-hit %, both backends), `local_sequence_similarity` (DIAMOND `ppos`; NaN for mmseqs2 — `easy-search` exposes no positives field), `local_coverage`. With `--top_k`: `<input>_local_sequence_search_topk.csv` (`query_id,rank,neighbour_id,score`; score = identity %).
+- **Method** — Build a DB from the reference; MMseqs2 `easy-search` (or DIAMOND `blastp`); best hit by bitscore.
+- **External dependency** — [MMseqs2](https://github.com/soedinglab/MMseqs2) (bioconda) and/or [DIAMOND](https://github.com/bbuchfink/diamond); installed via `conda -c conda-forge -c bioconda --override-channels` per Aurum admin policy.
+- **Env + source** — `tps_eval`; [`src/sequence_metrics/local_sequence_search.py`](../src/sequence_metrics/local_sequence_search.py).
+
 ---
 
 ## Structure tools
@@ -191,6 +199,38 @@ All structure tools accept either an AlphaFold3 `af_output` tree (reads the top-
 - **External dependency** — [ProteinMPNN](https://github.com/dauparas/ProteinMPNN) + [ESMFold](https://github.com/facebookresearch/esm).
 - **Env + source** — `esmfold` (has torch + transformers + Biopython; ProteinMPNN shelled out with the same python); [`src/structure_metrics/self_consistency.py`](../src/structure_metrics/self_consistency.py).
 
+### aromatic_lining
+- **Purpose** — Aromatic (Trp/Tyr/Phe) residues lining the catalytic pocket that stabilize carbocation intermediates — a cyclization-capability proxy. Counts are apo-robust; ring orientation is softer on open apo sites.
+- **Inputs** — structures dir; `--cutoff` (default ~10 Å around the metal point).
+- **Output** — `<structs_dir>_aromatic_lining.csv`: `ID`, `n_pocket_aromatics`, `n_trp`/`n_tyr`/`n_phe`, `aromatic_fraction`, `n_inward_facing_aromatics`, `metal_point_found`. NaN/0 when the metal point can't be located.
+- **Method** — Locates the active-site metal point (the relaxed `active_site_geometry.metal_point`), takes pocket residues within the cutoff, counts aromatics and the rings whose face points into the cavity within cation-π range.
+- **External dependency** — Biopython.
+- **Env + source** — `tps_eval`; [`src/structure_metrics/aromatic_lining.py`](../src/structure_metrics/aromatic_lining.py).
+
+### diphosphate_sensor
+- **Purpose** — Whether the design supplies the basic residues (Arg/Lys) and the conserved RY pair that anchor/ionize the substrate diphosphate at the metal site. Presence is apo-robust; exact rotamers are softer.
+- **Inputs** — structures dir; `--cutoff` (~12 Å), `--ry_dist` (~6 Å).
+- **Output** — `<structs_dir>_diphosphate_sensor.csv`: `ID`, `metal_point_found`, `n_diphosphate_basic_residues`, `n_arg`, `n_lys`, `has_RY_pair`, `n_RY_pairs`, `n_residues`.
+- **Method** — Relaxed metal point; counts Arg/Lys whose terminal N atoms point toward the metal/diphosphate region within the cutoff; detects an Arg+Tyr (RY) pair near the site.
+- **External dependency** — Biopython.
+- **Env + source** — `tps_eval`; [`src/structure_metrics/diphosphate_sensor.py`](../src/structure_metrics/diphosphate_sensor.py).
+
+### global_confidence
+- **Purpose** — Whole-fold confidence (pTM / iPTM), complementing per-residue pLDDT.
+- **Inputs** — `--pae_dir` (per-structure `<ID>_pae.npz` carrying `ptm`/`iptm`, saved at fold time by ESMFold or the AF3 extract_pae step); optional `--structs_dir` for output naming.
+- **Output** — `<structs_dir>_global_confidence.csv`: `ID`, `ptm`, `iptm` (when present). NaN when the npz/ptm is missing.
+- **Method** — Reads the `ptm`/`iptm` scalars from the saved PAE npz.
+- **External dependency** — numpy.
+- **Env + source** — `tps_eval`; [`src/structure_metrics/global_confidence.py`](../src/structure_metrics/global_confidence.py). PAE/pTM retention lives in [`src/esmfold/esmfold.py`](../src/esmfold/esmfold.py) + [`scripts/alphafold/extract_pae.py`](../scripts/alphafold/extract_pae.py).
+
+### interdomain_pae
+- **Purpose** — Confidence in the **relative orientation** of the design's domains — a multi-domain failure mode pLDDT can't see.
+- **Inputs** — structures dir + `--pae_dir` (`<ID>_pae.npz`).
+- **Output** — `<structs_dir>_interdomain_pae.csv`: `ID`, `mean_interdomain_pae`, `max_interdomain_pae`, `n_domains` (+ optional per-domain-pair columns). N/A for single-domain designs or missing PAE.
+- **Method** — EnzymeExplorer `detect_domains` gives per-domain residue ranges; reduces the off-diagonal inter-domain PAE blocks (averaged both directions, since PAE is asymmetric).
+- **External dependency** — EnzymeExplorer (domain detector) + numpy.
+- **Env + source** — `enzyme_explorer_prod`; [`src/structure_metrics/interdomain_pae.py`](../src/structure_metrics/interdomain_pae.py).
+
 ---
 
 ## Folding (structure producers)
@@ -252,6 +292,26 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 - **Method** — Aligns each query to its matched known structure, scores per-residue BLOSUM90 similarity, and colors/ray-traces the structure plus an alignment view in PyMOL.
 - **External dependency** — PyMOL; BLOSUM90.
 - **Env + source** — `tps_eval`; `src/pymol/plot_residue_similarity.py` (wrapper [`scripts/run_plot_residue_similarity.sh`](../scripts/run_plot_residue_similarity.sh)).
+
+---
+
+## Label transfer
+
+### knn_label_transfer
+- **Purpose** — Predict a **coarse class** for each generated design by a distance-weighted vote of its nearest MARTS-DB known-TPS neighbours, **ensembled across the three similarity spaces** (`max_sequence_identity`, `min_embedding_distance`, `structural_identity`), with an honest **leave-one-out calibration** on MARTS-DB. **Label-agnostic:** the class assignments are an INPUT (`--label_file`, a `reference_id,label` CSV) — swap the file to change the labeling (first-cyclization class, size class, substrate, …); nothing in the logic hardcodes a particular labeling.
+- **Inputs** — The per-design **top-k CSVs** emitted by the three tools' `--top_k` flag (`<input>_local_sequence_search_topk.csv`, `<input>_min_embedding_distance_topk.csv`, `<structs_dir>_structural_identity_topk.csv`; each `query_id,rank,neighbour_id,score`; the pipeline feeds the sequence space from the fast `local_sequence_search`), a `--label_file`, and a `--calibration` JSON. Any space may be omitted (the design abstains there). Two subcommands: `calibrate` (consumes the MARTS-DB **self** top-k CSVs → calibration JSON) and `predict` (consumes the **design** top-k CSVs + calibration JSON → predictions).
+- **Output** — `predict`: CSV keyed by `ID` with `predicted_label`, `confidence` (calibrated), and per space `predicted_label_<space>`, `conf_<space>`, `nn_similarity_<space>`. Designs below τ in **all** spaces **abstain** (`predicted_label = "unknown"`, `confidence = 0`) — novel designs should land here. `calibrate`: a committable JSON artifact (`src/reference_stats/knn_calibration_<labeling>.json`) with per-space + ensemble accuracy, the chosen τ, and the binned nn_similarity→P(correct) calibration curve.
+- **Method** — Per space: convert each neighbour's score to a similarity in [0,1] (`identity%/100`; TM-score as-is; embedding distance → `1/(1+d)`), strip the foldseek `_<chain>` suffix from structural `neighbour_id` (only when the stripped stem is a known label id) before joining to the label file, **ignore neighbours below a space-specific τ** (abstain if none qualify), distance-weight the vote, and normalize to a per-class posterior (argmax = predicted). Confidence = `winning_fraction × top-k_agreement × nearest-neighbour_similarity`, reported **calibrated** via the LOO curve. Ensemble = average of the per-space posteriors (each space's argmax contributes only when it does not abstain). Calibration: leave-one-out over the labeled MARTS-DB set (self top-k **excluding self**), measuring accuracy vs nearest-neighbour similarity per space and ensembled; τ is the lowest nn_similarity at which empirical P(correct) ≥ `--target_accuracy` (default 0.5), floored at the literature prior (≈40 % identity for class transfer, TM≈0.5 fold floor; embedding has no prior so it is purely empirical).
+- **External dependency** — none for the transfer itself (pandas/numpy); the top-k CSVs come from the three existing tools. The first-cyclization label file is derived from the companion `tps-first-cyclization-knn` table via [`make_first_cyclization_labels.py`](../src/knn/make_first_cyclization_labels.py).
+- **Env + source** — `tps_eval`; [`src/knn/knn_label_transfer.py`](../src/knn/knn_label_transfer.py) (logic) + [`run_knn_label_transfer.py`](../src/knn/run_knn_label_transfer.py) (argv) + [`scripts/run_knn_label_transfer.sh`](../scripts/run_knn_label_transfer.sh).
+
+### sdr_divergence
+- **Purpose** — Flags designs that are **globally close to a known-product TPS but diverge at the specificity-determining active-site residues** — the TEAS/HPS single-residue-switch regime that global-similarity transfer misses. The companion negative-filter to the k-NN.
+- **Inputs** — structures dir + `--known_structs_dir` + the sequence/structural `--*_topk` neighbour CSVs (the nearest known-TPS neighbour); optional `--sdr_panel <file>` of explicit specificity positions (else a structure-derived active-site panel around the metal point).
+- **Output** — `<structs_dir>_sdr_divergence.csv`: `ID`, `nearest_neighbour_id`, `nearest_neighbour_similarity`, `n_sdr_positions`, `sdr_identity`, `n_sdr_mismatches`, `specificity_divergence` (bool), `divergent_positions`.
+- **Method** — Take the rank-1 neighbour from the top-k, superpose the design onto it (Biopython), compare residues at the SDR/active-site positions, and flag high global similarity + low SDR-residue identity.
+- **External dependency** — Biopython.
+- **Env + source** — `tps_eval`; [`src/specificity/sdr_divergence.py`](../src/specificity/sdr_divergence.py).
 
 ---
 

@@ -24,6 +24,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [soluprot](docs/TOOLS.md#soluprot) | seq | SoluProt predicted solubility. | `<fasta>_soluprot.csv` |
 | [enzyme_explorer_sequence_only](docs/TOOLS.md#enzyme_explorer_sequence_only) | seq | EnzymeExplorer sequence-only TPS classification. | `<fasta>_enzyme_explorer_sequence_only.csv` |
 | [swissprot_search](docs/TOOLS.md#swissprot_search) | seq | DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits). | `<fasta>_swissprot_search.csv` |
+| [local_sequence_search](docs/TOOLS.md#local_sequence_search) | seq | Fast LOCAL sequence identity/similarity + top-k neighbours (MMseqs2 default / DIAMOND); feeds the k-NN/SDR sequence space. Complements the global `max_sequence_identity`. | `<fasta>_local_sequence_search.csv` |
 
 ### Structure
 | Tool | Branch | Description | Output |
@@ -39,6 +40,16 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [structural_identity](docs/TOOLS.md#structural_identity) | struct | Foldseek structural identity to nearest known TPS (needs `--known_structs_dir`). | `<structs_dir>_structural_identity.csv` |
 | [proteinmpnn_score](docs/TOOLS.md#proteinmpnn_score) | struct | ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold. | `<structs_dir>_proteinmpnn_score.csv` |
 | [self_consistency](docs/TOOLS.md#self_consistency) | struct | HEAVY scRMSD self-consistency (ProteinMPNN → ESMFold refold → RMSD). Opt-in. | `<structs_dir>_self_consistency.csv` |
+| [aromatic_lining](docs/TOOLS.md#aromatic_lining) | struct | Aromatic / cation-π pocket lining (Trp/Tyr/Phe count + ring orientation; carbocation-stabilization proxy). | `<structs_dir>_aromatic_lining.csv` |
+| [diphosphate_sensor](docs/TOOLS.md#diphosphate_sensor) | struct | Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site. | `<structs_dir>_diphosphate_sensor.csv` |
+| [global_confidence](docs/TOOLS.md#global_confidence) | struct | Global fold confidence (pTM/iPTM) from the saved PAE npz (needs `--pae_dir`). | `<structs_dir>_global_confidence.csv` |
+| [interdomain_pae](docs/TOOLS.md#interdomain_pae) | struct | Mean/max inter-domain PAE between TPS domains (needs `--pae_dir`; EE domain ranges). | `<structs_dir>_interdomain_pae.csv` |
+
+### Activity / specificity
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [knn_label_transfer](docs/TOOLS.md#knn_label_transfer) | label | Label-agnostic k-NN coarse-label transfer: distance-weighted vote of nearest MARTS-DB neighbours, ensembled across the three similarity spaces, with leave-one-out calibration. Consumes the three `--top_k` CSVs + a `reference_id,label` file. | `<input>_knn_label_transfer.csv` |
+| [sdr_divergence](docs/TOOLS.md#sdr_divergence) | struct | Specificity-divergence flag: globally close to a known TPS but divergent at the specificity-determining active-site residues (the TEAS/HPS single-switch regime). | `<structs_dir>_sdr_divergence.csv` |
 
 ### Folding (structure producers)
 | Tool | Branch | Description | Output |
