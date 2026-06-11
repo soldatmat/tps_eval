@@ -13,6 +13,7 @@
   "swissprot_search":     { "default": true,  "branch": "sequence",  "description": "DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits)." },
   "maxid_gen_vs_train":   { "default": true,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set." },
   "mindist_gen_vs_train": { "default": true,  "branch": "sequence",  "description": "Min ESM-embedding distance of gen vs train (needs esm)." },
+  "esmfold":              { "default": false, "branch": "producer",  "description": "ESMFold structure PRODUCER (both clusters): folds the gen FASTA into a structs dir + PAE. Opt-in via --fold esmfold (auto-enabled then); not a default-on metric." },
   "plddt":                { "default": true,  "branch": "structure", "description": "AlphaFold/ESMFold pLDDT folding confidence." },
   "motif_struct":         { "default": true,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs." },
   "active_site_geom":     { "default": true,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)." },

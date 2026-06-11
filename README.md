@@ -57,7 +57,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | Tool | Branch | Description | Output |
 |------|--------|-------------|--------|
 | [alphafold3](docs/TOOLS.md#alphafold3) | producer | AlphaFold3 folding (Aurum-only); not orchestrator-wired (v2). | `af_output/` + `structs/<ID>.pdb` |
-| [esmfold](docs/TOOLS.md#esmfold) | producer | ESMFold folding (both clusters); not orchestrator-wired (v2). | `structs/<ID>.pdb` |
+| [esmfold](docs/TOOLS.md#esmfold) | producer | ESMFold folding (both clusters); orchestrator-wired via `--fold esmfold` (folds the gen FASTA, then runs the structure branch on the result). | `structs/<ID>.pdb` + `structs_pae/<ID>_pae.npz` |
 
 ### Function (structure-dependent)
 | Tool | Branch | Description | Output |

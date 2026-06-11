@@ -26,11 +26,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   the **full structure-consuming branch** (pLDDT, structural-identity, motif-structural-
   distance, active-site geometry, domain composition, aggregation, broad foldseek search,
   ProteinMPNN-NLL, radius-of-gyration; scRMSD is opt-in via `--self_consistency`, it's
-  heavy). NOT yet ported (v2): the AlphaFold/ESMFold fan-out that *produces* structures
-  and EnzymeExplorer-with-structures — pass `--structs_dir` once structures exist.
-  Verified end-to-end on Aurum. Wiring audit: every `run_<tool>.sh` except the producers
-  (`esmfold`, EE-with-structures) and the standalone `plot_domains`/`plot_residue_similarity`
-  viz is a Step here.
+  heavy). The **ESMFold producer is wired** via `--fold esmfold` (folds the gen FASTA into
+  a derived `<gen>_esmfold_structs/` + `_pae/` that the structure branch then consumes,
+  with every structure Step depending on the `esmfold_gen` producer). NOT yet ported (v2):
+  the **AlphaFold3 per-sequence fan-out** (separate producer: per-seq jobs, ligands/ions,
+  custom `b32_128_gpu --constraint=alphafold3` partition) and EnzymeExplorer-with-structures
+  — pass `--structs_dir` for AF3-produced structures. Verified end-to-end on Aurum.
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).

@@ -15,14 +15,16 @@ Scope: covers the SEQUENCE branch + plots (motif, esm, min/max distance/identity
 soluprot, enzyme_explorer_sequence_only) AND the structure-level metrics that
 consume already-folded structures: pLDDT (folding confidence) and foldseek
 structural identity to the nearest known TPS (--structs_dir / --known_structs_dir).
-What is NOT yet ported (v2): the AlphaFold per-sequence FAN-OUT that *produces*
-those structures, and EnzymeExplorer-with-structures — submit_all.sh still carries
-the fold step; pass --structs_dir here once structures exist.
+The ESMFold structure PRODUCER is wired via --fold esmfold: it folds the generated
+FASTA into a structs dir (+ PAE) that the whole structure branch then consumes, so
+no pre-supplied --structs_dir is needed. What is NOT yet ported (v2): the AlphaFold3
+per-sequence FAN-OUT (a separate per-sequence producer with ligands/ions + a custom
+partition), and EnzymeExplorer-with-structures.
 
 Usage:
     python scripts/run_eval_pipeline.py --cluster aurum \
         --fasta_path gen.fasta [--train_path train.fasta] \
-        [--structs_dir structs/] [--known_structs_dir known_tps_structs/] \
+        [--fold esmfold | --structs_dir structs/] [--known_structs_dir known_tps_structs/] \
         [--train_embeddings_path <csv>] [--data_colors dodgerblue goldenrod] [--dry-run]
 
 Config-driven tool selection
@@ -198,6 +200,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "swissprot_search":     {"default": True,  "branch": "sequence",  "description": "DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits)."},
     "maxid_gen_vs_train":   {"default": True,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set."},
     "mindist_gen_vs_train": {"default": True,  "branch": "sequence",  "description": "Min ESM-embedding distance of gen vs train (needs esm)."},
+    "esmfold":              {"default": False, "branch": "producer",  "description": "ESMFold structure PRODUCER (both clusters): folds the gen FASTA into a structs dir + PAE. Opt-in via --fold esmfold (auto-enabled then); not a default-on metric."},
     "plddt":                {"default": True,  "branch": "structure", "description": "AlphaFold/ESMFold pLDDT folding confidence."},
     "motif_struct":         {"default": True,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs."},
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
@@ -316,6 +319,10 @@ def resolve_enabled_tools(catalog: Dict[str, dict], args) -> set:
     else:
         enabled = {k for k, v in catalog.items() if v.get("default", False)}
     enabled |= set(include)
+    # --fold esmfold turns on the (opt-in) producer so its Step survives the tool filter.
+    # Ignored when --structs_dir is given (structures already exist; no folding).
+    if getattr(args, "fold", None) == "esmfold" and not args.structs_dir:
+        enabled.add("esmfold")
     enabled -= set(exclude)
     return enabled
 
@@ -406,6 +413,16 @@ def build_steps(args, enabled: set) -> List[Step]:
     structs = args.structs_dir
     known_structs = args.known_structs_dir
     pae_dir = args.pae_dir
+
+    # Fold producer: when --fold esmfold is given without a pre-supplied --structs_dir,
+    # ESMFold produces the structures (+ PAE) the structure branch then consumes. The
+    # derived dirs mirror run_esmfold.sh's own defaults (<save_dir> + <save_dir>_pae).
+    do_fold = (getattr(args, "fold", None) == "esmfold") and not args.structs_dir
+    if do_fold:
+        structs = _base(gen) + "_esmfold_structs"
+        if pae_dir is None and not args.no_fold_pae:
+            pae_dir = structs + "_pae"
+
     if args.train_structs_dir:
         print("[warn] --train_structs_dir is not used by the orchestrator yet "
               "(EnzymeExplorer-with-structures and the AlphaFold fan-out are not ported).")
@@ -475,10 +492,20 @@ def build_steps(args, enabled: set) -> List[Step]:
                           out_mindist(gen), tool="mindist_gen_vs_train", deps=["esm_gen", "esm_train"]))
 
     # Structure branch: pLDDT (folding confidence) + foldseek structural identity to the
-    # nearest known TPS. Both are keyed by the structures dir, run only if --structs_dir
-    # is given. They have no SLURM deps (structures are produced out-of-band — by the
-    # AlphaFold fan-out, not yet ported here) but plots picks them up via the snapshot.
+    # nearest known TPS. Both are keyed by the structures dir, run if --structs_dir is
+    # given OR --fold produced one. With --fold the structures don't exist out-of-band, so
+    # every structure step waits on the producer (attached by the fixup at the end of the
+    # block); without --fold they have no SLURM dep and plots picks them up via the snapshot.
     if structs:
+        struct_block_start = len(steps)
+        if do_fold:
+            # ESMFold producer: folds the gen FASTA into `structs` (+ PAE into pae_dir).
+            # output=structs (a dir) -> the Engine skips folding if it already exists
+            # and is non-empty (idempotent re-runs).
+            esmfold_args = ["--fasta_path", gen, "--save_dir", structs]
+            esmfold_args += (["--pae_dir", pae_dir] if pae_dir else ["--no-save_pae"])
+            steps.append(Step("esmfold_gen", "esmfold.sh", esmfold_args, structs,
+                              tool="esmfold"))
         steps.append(Step("plddt_gen", "plddt.sh", ["--structs_dir", structs],
                           out_plddt(structs), tool="plddt"))
         steps.append(Step("motif_struct_gen", "motif_structural_distance.sh",
@@ -556,6 +583,16 @@ def build_steps(args, enabled: set) -> List[Step]:
         else:
             print("[note] --structs_dir without --pae_dir: skipping global_confidence + "
                   "interdomain_pae (need <ID>_pae.npz from a PAE-saving fold).")
+
+        # With --fold, the structures are produced by esmfold_gen, so every structure
+        # step in this block must wait on it (the producer itself excepted). The
+        # downstream knn/sdr/substrate consumers don't need it added explicitly —
+        # they already hard-dep on structural_identity_gen, which gets it here, and
+        # SLURM afterok is transitive in effect.
+        if do_fold:
+            for s in steps[struct_block_start:]:
+                if s.name != "esmfold_gen" and "esmfold_gen" not in s.deps:
+                    s.deps = ["esmfold_gen"] + list(s.deps)
 
     # --- Dependency-heavy consumers: k-NN label transfer + SDR divergence --------- #
     # Both read the three feeders' *_topk.csv. They are gated on the feeders actually
@@ -709,6 +746,17 @@ def main() -> None:
     p.add_argument("--structs_dir", default=None,
                    help="Generated structures dir (AF3 af_output or flat .pdb/.cif) -> "
                         "enables pLDDT and (with --known_structs_dir) structural-identity steps.")
+    p.add_argument("--fold", default=None, choices=["esmfold"],
+                   help="Fold the generated sequences FIRST, then run the structure branch "
+                        "on the produced structures (no need to pre-supply --structs_dir). "
+                        "'esmfold' runs ESMFold (both clusters) into a derived "
+                        "<gen>_esmfold_structs/ dir + a sibling _pae/ of <ID>_pae.npz (so "
+                        "global_confidence + interdomain_pae also run). Ignored if "
+                        "--structs_dir is given. (AF3 fan-out is a separate per-sequence "
+                        "producer, not wired here.)")
+    p.add_argument("--no_fold_pae", action="store_true",
+                   help="With --fold esmfold: do NOT save the PAE matrices (skips "
+                        "global_confidence + interdomain_pae). Default: save them.")
     p.add_argument("--known_structs_dir", default=None,
                    help="Known-TPS reference structures dir for the foldseek structural-identity "
                         "metric (e.g. MARTS-DB train AFDB structures, or EE reference domains).")

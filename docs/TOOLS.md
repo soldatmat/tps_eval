@@ -254,10 +254,10 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 - **Env + source** — `tps_eval` (for the driver); [`scripts/alphafold/run_alphafold_jobs.py`](../scripts/alphafold/run_alphafold_jobs.py). See README "Running AlphaFold".
 
 ### esmfold
-- **Purpose** — Fold single-chain sequences with ESMFold — a fast single-sequence alternative to AF3 that runs on **both clusters**.
-- **Inputs** — FASTA; `--save_dir` (structs out dir), `--chunk_size`/`--device` tuning, `--no-skip_existing`.
-- **Output** — One `<ID>.pdb` per FASTA record in the structs dir (ID = record id = filename stem), mirroring the AlphaFold `structs/` layout. Per-residue pLDDT is written to the B-factor field, rescaled 0–1 → 0–100 so `plddt` reads it.
-- **Method** — Runs `facebook/esmfold_v1` (HuggingFace transformers); sequences > ~600 aa trigger chunked attention to bound GPU memory.
+- **Purpose** — Fold single-chain sequences with ESMFold — a fast single-sequence alternative to AF3 that runs on **both clusters**. **Orchestrator-wired**: pass `--fold esmfold` to `run_eval_pipeline.py` and it folds the generated FASTA first, then runs the whole structure branch on the result (no pre-supplied `--structs_dir` needed).
+- **Inputs** — FASTA; `--save_dir` (structs out dir), `--pae_dir` (PAE out dir; default `<save_dir>_pae/`), `--chunk_size`/`--device` tuning, `--no-skip_existing`, `--no-save_pae`.
+- **Output** — One `<ID>.pdb` per FASTA record in the structs dir (ID = record id = filename stem), mirroring the AlphaFold `structs/` layout, plus one `<ID>_pae.npz` per record in the PAE dir (consumed by `global_confidence` + `interdomain_pae`). Per-residue pLDDT is written to the B-factor field, rescaled 0–1 → 0–100 so `plddt` reads it.
+- **Method** — Runs `facebook/esmfold_v1` (HuggingFace transformers); sequences > ~600 aa trigger chunked attention to bound GPU memory. When driven by the orchestrator, the pipeline derives `<gen>_esmfold_structs/` + `<gen>_esmfold_structs_pae/` and makes every structure Step depend on the `esmfold_gen` producer.
 - **External dependency** — [ESMFold](https://github.com/facebookresearch/esm) / `facebook/esmfold_v1` (Lin et al. 2023, *Science*).
 - **Env + source** — `esmfold`; [`src/esmfold/esmfold.py`](../src/esmfold/esmfold.py) (wrapper `scripts/run_esmfold.sh`).
 
@@ -334,9 +334,9 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 
 ### run_eval_pipeline
 - **Purpose** — Cluster-agnostic declarative orchestrator. Submits every enabled tool's SLURM job in dependency order, skips steps whose output already exists (idempotent/resumable), and chains deps as a single `--dependency=afterok:…`. Supersedes the per-cluster `submit_all.sh`.
-- **Inputs/usage** — `python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta [--train_path train.fasta] [--structs_dir structs/] [--known_structs_dir known/] [--self_consistency] [--dry-run]`.
+- **Inputs/usage** — `python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta [--train_path train.fasta] [--fold esmfold | --structs_dir structs/] [--known_structs_dir known/] [--self_consistency] [--dry-run]`. `--fold esmfold` produces the structures first (ESMFold; both clusters) so you don't need `--structs_dir`.
 - **Tool selection** — Driven by [`pipeline_tools.json`](#pipeline_tools) (each key has a `default` on/off + `branch` + one-line `description`). CLI overrides, in precedence order: `--only A,B` (run only these, + plots), `--include A,B` (force-enable), `--exclude A,B` (force-disable), `--list-tools` (print the catalog and exit). `--self_consistency` is a back-compat alias for `--include self_consistency`.
-- **Scope** — Full sequence branch + plots + the structure-consuming branch (everything that *reads* structures). **Not yet ported (v2):** the AF3/ESMFold fan-out that *produces* structures, and `enzyme_explorer`-with-structures — pass `--structs_dir` once structures exist.
+- **Scope** — Full sequence branch + plots + the structure-consuming branch (everything that *reads* structures) + the **ESMFold producer** (`--fold esmfold`). **Not yet ported (v2):** the AlphaFold3 per-sequence fan-out (separate producer: per-seq jobs + ligands/ions + custom partition) and `enzyme_explorer`-with-structures — pass `--structs_dir` for AF3-produced structures.
 - **Env + source** — pure stdlib (runs on a login node, no conda env); [`scripts/run_eval_pipeline.py`](../scripts/run_eval_pipeline.py).
 
 ### pipeline_tools
