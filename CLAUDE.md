@@ -50,7 +50,8 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
    in `build_steps` (sequence-branch in the per-dataset loop; structure-branch in the
    `if structs:` block). Dry-run to confirm it appears, then add its column(s) to the plots
    (`src/plot/constants.py`) and the reference-stats pipeline if it's an intrinsic property.
-5. **Update `History.md`** (running changelog) — it's maintained per-tool.
+5. **Log the change** as an H2 entry in the Obsidian vault `History.md` (see Gotchas —
+   NOT a repo file), and commit the code per-tool.
 
 ## Gotchas (not visible from the code)
 - **`paths.sh` is per-install and is NEVER committed with cluster-specific paths.** Each
@@ -85,5 +86,8 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
 - **Aurum GPU routing:** use `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1`. `gen-a`+`gpu:1`
   routes to the single-node `a36_96_gpu` partition (`a233`), which is frequently down →
   jobs stuck PENDING (this bit `esm_pseudo_perplexity`). See the `aurum-connect` skill.
-- **Keep `History.md` current** — it's the running change/metric log (Done + research-backed
-  backlog). Update it whenever a tool/metric is added or changed.
+- **Project history/decisions are NOT in this repo.** They live in the user's Obsidian
+  vault at `/Users/soldatmat/Documents/notes/terpene_generation/History.md` (and `Runs.md`,
+  `Ideas.md`), maintained via the `obsidian-history-notes` / `obsidian-notes` workflow.
+  Do NOT create a `History.md`/`Runs.md` changelog inside this code repo — record
+  project-level changes/decisions as an H2 entry in the vault instead.
