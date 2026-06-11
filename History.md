@@ -45,7 +45,21 @@ merge for filtration.
 
 ## Done
 
-### 2026-06-10
+### 2026-06-11
+- **Radius-of-gyration / compactness metric** (`src/structure_metrics/radius_of_gyration.py`)
+  — fold-agnostic global-shape descriptors over Cα: `radius_of_gyration` (Å), `asphericity`
+  and `acylindricity` (from the gyration tensor), `principal_radius_1/2/3`, `n_residues`.
+  RAW numbers only — the "compact?" judgement comes from comparing to the MARTS-DB band
+  (reference-stats pipeline), not baked in. Reuses `plddt.py`'s structure loader; wired into
+  the orchestrator structs branch. Validated in-pipeline on Aurum (e.g. `seq136` Rg 25.2 Å
+  for 555 res, ≈ the 2.2·N^0.38 expectation; `3p5r` flagged elongated via high asphericity).
+- **Plot coverage extended to every metric** (`src/plot/`, `src/data/load_results.py`) —
+  the plots aggregator now auto-discovers and renders all sequence + structure metric
+  columns: numeric → boxplot + vertical-density (gen-vs-train when both exist, single
+  distribution for structure-only metrics), categorical/boolean (motif presence,
+  `domain_architecture`, `*_top_is_tps`) → grouped count plots. Auto-ranges axes when a
+  target has no fixed scale; keeps the skip-missing-input + colour-normalization behavior.
+  Validated on Aurum against the real `pipeline_smoke` CSVs — 76 figures, no regressions.
 - **End-to-end pipeline validation on Aurum.** Ran the orchestrator for real (28 steps)
   on tiny dummy inputs (3-seq gen + 2-seq train + 3 structs + 2 known refs); 26/28 steps
   produced valid ID-keyed CSVs across the full sequence + structure branches. Fixed the

@@ -23,9 +23,11 @@ from plot.constants import (  # noqa: E402
     MAX_VAL,
     MIN_VAL,
     OFFSET,
+    OFFSET_DEFAULT,
     THRESHOLD,
     TICKS,
 )
+from plot.target_config import auto_ticks, resolve_range  # noqa: E402
 
 
 def _kde_curve(values: List[float], grid: np.ndarray) -> np.ndarray:
@@ -49,27 +51,32 @@ def density_comparison(
     target: str,
     *,
     direction: str = "vertical",
+    dfs: Optional[Sequence] = None,
     save_dir: Optional[str] = None,
 ) -> None:
     """Ridge-style density plot of `target` across datasets.
 
     `direction='vertical'` lays each dataset's KDE along the y-axis, offset on
-    x. `direction='horizontal'` does the inverse.
+    x. `direction='horizontal'` does the inverse. Pass `dfs` (a per-dataset list
+    of already-loaded DataFrames) to bypass fasta-based loading — used for
+    structure targets.
     """
     if direction not in ("vertical", "horizontal"):
         raise ValueError(f"direction must be 'vertical' or 'horizontal', got {direction!r}")
 
-    load_list = LOAD[target]
-    min_val = MIN_VAL[target]
-    max_val = MAX_VAL[target]
-    ticks = TICKS[target]
-    threshold = THRESHOLD[target]
-    offset = OFFSET[target]
+    threshold = THRESHOLD.get(target)
+    offset = OFFSET.get(target, OFFSET_DEFAULT)
 
-    all_dfs = [load_results(fp, load=load_list) for fp in fasta_paths]
+    if dfs is None:
+        dfs = [load_results(fp, load=LOAD[target]) for fp in fasta_paths]
     all_data: List[List[float]] = [
-        [float(v) for v in df[target].dropna().tolist()] for df in all_dfs
+        [float(v) for v in df[target].dropna().tolist()] for df in dfs
     ]
+
+    min_val, max_val = resolve_range(target, MIN_VAL, MAX_VAL, all_data)
+    ticks = TICKS.get(target)
+    if ticks is None:
+        ticks = auto_ticks(min_val, max_val)
 
     grid = np.linspace(min_val, max_val, 512)
 

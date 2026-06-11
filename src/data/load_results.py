@@ -27,6 +27,9 @@ DEFAULT_LOAD: Tuple[str, ...] = (
     "enzyme_explorer",
     "motifs",
     "soluprot",
+    "motif_pair_distance",
+    "esm_pseudo_perplexity",
+    "swissprot_search",
 )
 
 
@@ -84,6 +87,16 @@ def construct_result_paths(fasta_path: str) -> Tuple[str, ...]:
         partial + "_motifs.csv",
         partial + "_soluprot.csv",
     )
+
+
+def _fasta_partial(fasta_path: str) -> str:
+    """The `<input>` stem (path without the .fasta/.fa extension) that metric
+    tools prepend to their CSV save names (e.g. `<input>_motif_pair_distance.csv`)."""
+    if fasta_path.endswith(".fasta"):
+        return fasta_path[:-6]
+    if fasta_path.endswith(".fa"):
+        return fasta_path[:-3]
+    raise ValueError("The fasta file path must end with '.fasta' or '.fa'.")
 
 
 def _strip_column_names(df: pd.DataFrame) -> pd.DataFrame:
@@ -262,6 +275,49 @@ def load_results(
         df = df.rename(columns={"fa_id": "ID"})
         frames.append(df)
 
+    # --- Newer sequence-branch metric CSVs (keyed by ID, sibling of the fasta) ---
+    # These follow the standard `<input>_<tool>.csv` naming, so derive the path
+    # straight from the fasta stem rather than threading more positional args.
+    if "motif_pair_distance" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_motif_pair_distance.csv")
+        df = _strip_column_names(df)
+        # Drop the raw motif-string columns; keep only the scalar metrics + ID.
+        keep = [c for c in df.columns if c not in ("ddxxd_motif", "nse_dte_motif")]
+        frames.append(df.loc[:, keep])
+
+    if "esm_pseudo_perplexity" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_esm_pseudo_perplexity.csv")
+        df = _strip_column_names(df)
+        if "n_residues" in df.columns:
+            df = df.drop(columns=["n_residues"])
+        frames.append(df)
+
+    if "swissprot_search" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_swissprot_search.csv")
+        df = _strip_column_names(df)
+        # `swissprot_top_hit` is the accession string — not a plottable metric.
+        if "swissprot_top_hit" in df.columns:
+            df = df.drop(columns=["swissprot_top_hit"])
+        frames.append(df)
+
     frames = [_strip_id_column(f) for f in frames]
 
     return _outer_join_on_id(frames)
+
+
+def load_structure_results(csv_path: str) -> pd.DataFrame:
+    """Load a single structure-metric CSV (keyed by ID).
+
+    Structure metrics are saved as `<structs_dir>_<tool>.csv` next to the
+    structures directory — i.e. they are NOT derivable from a fasta stem the
+    way the sequence metrics are. The plot layer discovers these files by name
+    in the input directory and loads them through this helper. The bookkeeping
+    `n_residues` column (present in several of them) is dropped so it isn't
+    mistaken for a metric. Raises FileNotFoundError when the CSV is absent, so
+    the caller's skip-missing-input behavior fires as for any other target.
+    """
+    df = pd.read_csv(csv_path)
+    df = _strip_column_names(df)
+    if "n_residues" in df.columns:
+        df = df.drop(columns=["n_residues"])
+    return _strip_id_column(df)

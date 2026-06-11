@@ -3,6 +3,12 @@ from __future__ import annotations
 import numpy as np
 
 
+# ---------------------------------------------------------------------------
+# Sequence-branch NUMERIC targets (present for every dataset → comparison plots)
+# ---------------------------------------------------------------------------
+# The original hardcoded set, plus the newer sequence metrics. Targets listed
+# here that lack an explicit MIN_VAL/MAX_VAL/TICKS entry are auto-ranged from
+# the data at plot time (see boxplot_comparison / density_comparison).
 TARGETS = [
     "sequence_identity",
     "sequence_identity_self",
@@ -13,6 +19,16 @@ TARGETS = [
     "isTPS",
     "isTPS_seq",
     "soluble",
+    # --- motif pair distance ---
+    "motif_start_distance",
+    "motif_gap",
+    # --- ESM pseudo-perplexity (naturalness) ---
+    "esm_pseudo_perplexity",
+    "esm_mean_pll",
+    # --- DIAMOND Swiss-Prot homology search ---
+    "swissprot_top_pident",
+    "swissprot_best_nontps_pident",
+    "swissprot_n_tps_in_topN",
 ]
 
 
@@ -26,9 +42,18 @@ LOAD = {
     "isTPS": ["enzyme_explorer"],
     "isTPS_seq": ["enzyme_explorer_sequence_only"],
     "soluble": ["soluprot"],
+    "motif_start_distance": ["motif_pair_distance"],
+    "motif_gap": ["motif_pair_distance"],
+    "esm_pseudo_perplexity": ["esm_pseudo_perplexity"],
+    "esm_mean_pll": ["esm_pseudo_perplexity"],
+    "swissprot_top_pident": ["swissprot_search"],
+    "swissprot_best_nontps_pident": ["swissprot_search"],
+    "swissprot_n_tps_in_topN": ["swissprot_search"],
 }
 
 
+# Axis bounds / ticks are defined only for the targets with a meaningful fixed
+# scale (probabilities, identities). Anything absent here is auto-ranged.
 MIN_VAL = {
     "sequence_identity": 0.0 - 0.01,
     "sequence_identity_self": 0.0 - 0.01,
@@ -72,6 +97,7 @@ TICKS = {
 }
 
 
+# `None` (or absent) → no threshold line drawn.
 THRESHOLD = {
     "sequence_identity": 0.5,
     "sequence_identity_self": None,
@@ -85,6 +111,8 @@ THRESHOLD = {
 }
 
 
+# Ridge-plot dataset spacing. Absent → default OFFSET_DEFAULT.
+OFFSET_DEFAULT = 3.0
 OFFSET = {
     "sequence_identity": 3.0,
     "sequence_identity_self": 3.0,
@@ -96,3 +124,99 @@ OFFSET = {
     "isTPS_seq": 3.0,
     "soluble": 3.0,
 }
+
+
+# ---------------------------------------------------------------------------
+# Sequence-branch CATEGORICAL / BOOLEAN targets → grouped count plots
+# ---------------------------------------------------------------------------
+# `swissprot_top_is_tps` is boolean. Motif-presence columns (from the *_motifs.csv,
+# whose column names ARE the regex patterns) are discovered dynamically at plot
+# time, so they aren't enumerated here.
+CATEGORICAL_TARGETS = {
+    "swissprot_top_is_tps": ["swissprot_search"],
+}
+
+
+# ---------------------------------------------------------------------------
+# STRUCTURE-branch targets (structures exist for the generated set only →
+# single-distribution plots, no train series). Each maps the target column to
+# the `<structs_dir>_<suffix>.csv` file it is read from. Files are discovered by
+# suffix in the input directory at plot time; a missing file is skipped cleanly.
+# ---------------------------------------------------------------------------
+# suffix -> list of NUMERIC metric columns in that CSV
+STRUCTURE_NUMERIC = {
+    "_plddt.csv": [
+        "mean_plddt",
+        "median_plddt",
+        "min_plddt",
+        "frac_plddt_confident",
+    ],
+    "_structural_identity.csv": [
+        "structural_tmscore_to_known",
+        "structural_lddt_to_known",
+    ],
+    "_motif_structural_distance.csv": [
+        "motif_centroid_distance",
+        "motif_min_ca_distance",
+    ],
+    "_active_site_geometry.csv": [
+        "carboxylate_convergence_radius",
+        "n_coordinating_oxygens",
+        "metal_point_void",
+        "catalytic_constellation_rmsd",
+    ],
+    "_radius_of_gyration.csv": [
+        "radius_of_gyration",
+        "asphericity",
+        "acylindricity",
+    ],
+    "_domain_composition.csv": [
+        "n_domains",
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon",
+        "ids",
+        "terpene_synth_C",
+    ],
+    "_aggregation.csv": [
+        "a3d_avg_score",
+        "a3d_total_pos_score",
+        "a3d_max_score",
+    ],
+    "_foldseek_swissprot_search.csv": [
+        "foldseek_sprot_top_tmscore",
+        "foldseek_sprot_best_nontps_tmscore",
+        "foldseek_sprot_n_tps_in_topN",
+    ],
+    "_proteinmpnn_score.csv": [
+        "proteinmpnn_nll",
+    ],
+    # Opt-in; the CSV is frequently absent (skipped cleanly).
+    "_self_consistency.csv": [
+        "sc_rmsd_min",
+        "sc_rmsd_mean",
+    ],
+}
+
+# suffix -> list of CATEGORICAL / BOOLEAN metric columns in that CSV
+STRUCTURE_CATEGORICAL = {
+    "_domain_composition.csv": ["domain_architecture"],
+    "_foldseek_swissprot_search.csv": ["foldseek_sprot_top_is_tps"],
+}
+
+
+# Fixed-scale axis bounds for the few structure metrics that have a natural
+# [0, 1] domain (everything else is auto-ranged).
+_PROB_LIKE_STRUCTURE = (
+    "frac_plddt_confident",
+    "structural_tmscore_to_known",
+    "structural_lddt_to_known",
+    "foldseek_sprot_top_tmscore",
+    "foldseek_sprot_best_nontps_tmscore",
+)
+for _t in _PROB_LIKE_STRUCTURE:
+    MIN_VAL[_t] = 0.0 - 0.01
+    MAX_VAL[_t] = 1.0 + 0.01
+    TICKS[_t] = _ticks(0.0, 1.0, 0.05)

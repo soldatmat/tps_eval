@@ -17,6 +17,7 @@ if str(SRC_DIR) not in sys.path:
 
 from data.load_results import load_results  # noqa: E402
 from plot.constants import LOAD, MAX_VAL, MIN_VAL, THRESHOLD, TICKS  # noqa: E402
+from plot.target_config import auto_ticks, resolve_range  # noqa: E402
 
 
 def boxplot_comparison(
@@ -25,23 +26,29 @@ def boxplot_comparison(
     data_colors: Sequence[str],
     target: str,
     *,
+    dfs: Optional[Sequence] = None,
     save_dir: Optional[str] = None,
 ) -> None:
     """Boxplot of `target` across datasets.
 
     Expects each fasta file's auxiliary CSVs to live next to it. See
-    `load_results` for details.
+    `load_results` for details. Pass `dfs` (a per-dataset list of already-loaded
+    DataFrames) to bypass fasta-based loading — used for structure targets,
+    which are loaded from `<structs_dir>_<tool>.csv` files instead.
     """
-    load_list = LOAD[target]
-    min_val = MIN_VAL[target]
-    max_val = MAX_VAL[target]
-    ticks = TICKS[target]
-    threshold = THRESHOLD[target]
+    threshold = THRESHOLD.get(target)
 
-    all_dfs = [load_results(fp, load=load_list) for fp in fasta_paths]
+    if dfs is None:
+        dfs = [load_results(fp, load=LOAD[target]) for fp in fasta_paths]
     all_data: List[List[float]] = [
-        [float(v) for v in df[target].dropna().tolist()] for df in all_dfs
+        [float(v) for v in df[target].dropna().tolist()] for df in dfs
     ]
+
+    # Fixed scale when defined in constants; otherwise auto-range from the data.
+    min_val, max_val = resolve_range(target, MIN_VAL, MAX_VAL, all_data)
+    ticks = TICKS.get(target)
+    if ticks is None:
+        ticks = auto_ticks(min_val, max_val)
 
     fig, ax = plt.subplots()
 
