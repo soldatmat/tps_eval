@@ -66,7 +66,7 @@ from typing import Dict, List, Optional
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # scripts/.. == repo root
 TOOLS_CONFIG = os.path.join(REPO, "scripts", "pipeline_tools.json")
 
-# Single pipeline-wide top-k for the three feeder tools (max_sequence_identity,
+# Single pipeline-wide top-k for the three feeder tools (local_sequence_search,
 # min_embedding_distance, structural_identity). Their *_topk.csv outputs feed the
 # k-NN label-transfer and SDR-divergence consumers. Built-in fallback; overridden by
 # the JSON config "_settings.top_k" and then by the --top_k CLI flag.
@@ -129,6 +129,16 @@ def out_maxid_self(f): return _base(f) + "_max_sequence_identity_self.csv"
 #   structural_identity    -> <structs_dir>_structural_identity_topk.csv
 def out_maxid_topk(f): return _base(f) + "_max_sequence_identity_topk.csv"
 def out_mindist_topk(emb_csv): return os.path.splitext(emb_csv)[0] + "_min_embedding_distance_topk.csv"
+# local_sequence_search (MMseqs2/DIAMOND): the FAST local counterpart of
+# max_sequence_identity. Keyed off the fasta. Its _topk.csv is the SEQUENCE-space
+# feeder for knn + sdr_divergence (replacing the slow Biopython max_sequence_identity
+# for that role; max_sequence_identity stays as the plain GLOBAL novelty metric).
+def out_local_search(f): return _base(f) + "_local_sequence_search.csv"
+def out_local_search_topk(f): return _base(f) + "_local_sequence_search_topk.csv"
+# Self mode (within-set novelty) writes to a distinct _self path (passed explicitly via
+# --save_path) so it does not collide with the gen-vs-train output, which shares the
+# default <input>_local_sequence_search.csv name. Mirrors maxid_self vs maxid.
+def out_local_search_self(f): return _base(f) + "_local_sequence_search_self.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
 def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
@@ -171,6 +181,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "esm":                  {"default": True,  "branch": "sequence",  "description": "ESM-1b embeddings (feeds mindist_*)."},
     "esm_ppl":              {"default": True,  "branch": "sequence",  "description": "ESM pseudo-perplexity (sequence likelihood)."},
     "maxid_self":           {"default": True,  "branch": "sequence",  "description": "Max pairwise sequence identity within the dataset."},
+    "local_sequence_search": {"default": True, "branch": "sequence",  "description": "Fast LOCAL (MMseqs2) sequence identity/similarity/coverage search; self (within-set novelty) + gen-vs-train. Its _topk.csv is the k-NN/SDR sequence-space feeder."},
     "mindist_self":         {"default": True,  "branch": "sequence",  "description": "Min ESM-embedding distance within the dataset (needs esm)."},
     "soluprot":             {"default": True,  "branch": "sequence",  "description": "SoluProt predicted solubility."},
     "ee_seq":               {"default": True,  "branch": "sequence",  "description": "EnzymeExplorer sequence-only TPS classification."},
@@ -390,9 +401,12 @@ def build_steps(args, enabled: set) -> List[Step]:
     datasets = [("gen", gen)] + ([("train", train)] if train else [])
 
     # The k-NN + SDR consumers read the gen-vs-train / gen-vs-known *_topk.csv CSVs
-    # emitted by the three feeders. Only ask the feeders for top-k when a consumer is
-    # actually enabled (no wasted top-k otherwise). topk_args is appended to the three
-    # gen-vs-{train,known} feeder Steps below.
+    # emitted by the three feeders: local_sequence_search (sequence, MMseqs2 — fast),
+    # min_embedding_distance (embedding), structural_identity (structural). Only ask the
+    # feeders for top-k when a consumer is actually enabled (no wasted top-k otherwise).
+    # topk_args is appended to the three gen-vs-{train,known} feeder Steps below.
+    # max_sequence_identity is NO LONGER a feeder — it stays as the plain GLOBAL novelty
+    # metric (no --top_k); the fast local search supplies the sequence-space top-k.
     topk_consumers = {"knn", "sdr_divergence"}
     want_topk = bool(topk_consumers & enabled)
     topk_args = ["--top_k", str(args.top_k)] if want_topk else []
@@ -410,6 +424,13 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step(f"maxid_self_{tag}", "max_sequence_identity.sh",
                           ["--fasta_path", fa] + (["--train"] if is_train else []),
                           out_maxid_self(fa), tool="maxid_self"))
+        # Fast LOCAL (MMseqs2) sequence search within the dataset (self mode -> no
+        # --train_path; the tool excludes each query's self-hit). Within-set novelty
+        # counterpart of maxid_self. Explicit --save_path -> _self.csv so it does not
+        # collide with the gen-vs-train step's default <fa>_local_sequence_search.csv.
+        steps.append(Step(f"local_search_{tag}", "local_sequence_search.sh",
+                          ["--fasta_path", fa, "--save_path", out_local_search_self(fa)],
+                          out_local_search_self(fa), tool="local_sequence_search"))
         steps.append(Step(f"mindist_self_{tag}", "min_embedding_distance.sh",
                           ["--embeddings_path", out_esm(fa)] + (["--train"] if is_train else []),
                           out_mindist_self(fa), tool="mindist_self", deps=[f"esm_{tag}"]))
@@ -426,9 +447,16 @@ def build_steps(args, enabled: set) -> List[Step]:
 
     if train:
         train_emb = args.train_embeddings_path or out_esm(train)
+        # max_sequence_identity stays as the plain GLOBAL novelty metric (no --top_k):
+        # the fast local_sequence_search now feeds the sequence-space top-k instead.
         steps.append(Step("maxid_gen_vs_train", "max_sequence_identity.sh",
-                          ["--fasta_path", gen, "--train_path", train] + topk_args, out_maxid(gen),
+                          ["--fasta_path", gen, "--train_path", train], out_maxid(gen),
                           tool="maxid_gen_vs_train"))
+        # Fast LOCAL (MMseqs2) gen-vs-train search. Its _topk.csv (query_id,rank,
+        # neighbour_id,score=identity%) is the SEQUENCE-space feeder for knn + sdr.
+        steps.append(Step("local_search_gen_vs_train", "local_sequence_search.sh",
+                          ["--fasta_path", gen, "--train_path", train] + topk_args,
+                          out_local_search(gen), tool="local_sequence_search"))
         steps.append(Step("mindist_gen_vs_train", "min_embedding_distance.sh",
                           ["--embeddings_path", out_esm(gen), "--train_embeddings_path", train_emb]
                           + topk_args,
@@ -518,9 +546,9 @@ def build_steps(args, enabled: set) -> List[Step]:
     #
     # k-NN: ensembled coarse-label transfer over the three similarity spaces. predict
     # mode needs ALL THREE feeders present, plus the label_file + calibration artifacts.
-    # The calibration currently covers only the embedding+structural spaces (sequence
-    # space pending); predict abstains in uncalibrated spaces, so we still pass all three
-    # topk paths and let it use whatever the calibration covers.
+    # The committed calibration covers all three spaces (sequence via the fast MMseqs2
+    # local_sequence_search). knn_calibrated_spaces() forwards only the calibrated spaces,
+    # so a 2-space calibration would still work (sequence space abstained).
     if "knn" in enabled:
         knn_ok = bool(train and structs and known_structs)
         if not knn_ok:
@@ -537,8 +565,8 @@ def build_steps(args, enabled: set) -> List[Step]:
             # structural are calibrated) would KeyError. space -> (flag, topk, feeder).
             cal_spaces = knn_calibrated_spaces(args.knn_calibration)
             space_specs = {
-                "sequence":   ("--sequence_topk",   out_maxid_topk(gen),
-                               "maxid_gen_vs_train"),
+                "sequence":   ("--sequence_topk",   out_local_search_topk(gen),
+                               "local_search_gen_vs_train"),
                 "embedding":  ("--embedding_topk",  out_mindist_topk(out_esm(gen)),
                                "mindist_gen_vs_train"),
                 "structural": ("--structural_topk", out_structural_identity_topk(structs),
@@ -576,8 +604,8 @@ def build_steps(args, enabled: set) -> List[Step]:
                         "--structural_topk", out_structural_identity_topk(structs)]
             sdr_deps = ["structural_identity_gen"]
             if train:
-                sdr_args += ["--sequence_topk", out_maxid_topk(gen)]
-                sdr_deps.append("maxid_gen_vs_train")
+                sdr_args += ["--sequence_topk", out_local_search_topk(gen)]
+                sdr_deps.append("local_search_gen_vs_train")
             sdr_args += ["--save_path", out_sdr_divergence(structs)]
             steps.append(Step("sdr_divergence_gen", "sdr_divergence.sh", sdr_args,
                               out_sdr_divergence(structs), tool="sdr_divergence", deps=sdr_deps))
@@ -644,7 +672,7 @@ def main() -> None:
     p.add_argument("--knn_calibration", default=DEFAULT_KNN_CALIBRATION,
                    help="k-NN calibration JSON from `calibrate` "
                         f"(default {os.path.relpath(DEFAULT_KNN_CALIBRATION, REPO)}; "
-                        "currently embedding+structural spaces, sequence space pending).")
+                        "sequence+embedding+structural spaces).")
     # Config-driven tool selection (precedence: config defaults -> only -> include -> exclude).
     p.add_argument("--only", default=None, metavar="A,B,...",
                    help="Run ONLY these tool keys (comma-separated); plots is kept on unless "

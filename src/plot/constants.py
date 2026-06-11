@@ -16,6 +16,15 @@ TARGETS = [
     "sequence_similarity_self",
     "min_embedding_distance",
     "min_embedding_distance_self",
+    # --- local (MMseqs2) sequence search: gen-vs-train + within-set (_self) ---
+    # identity/similarity in [0, 100]; coverage in [0, 100]. Comparative (gen vs train)
+    # -> still EXCLUDED from reference bands. similarity is NaN for the MMseqs2 backend.
+    "local_sequence_identity",
+    "local_sequence_identity_self",
+    "local_sequence_similarity",
+    "local_sequence_similarity_self",
+    "local_coverage",
+    "local_coverage_self",
     "isTPS",
     "isTPS_seq",
     "soluble",
@@ -43,6 +52,12 @@ LOAD = {
     "sequence_similarity_self": ["max_sequence_identity_self"],
     "min_embedding_distance": ["min_embedding_distance"],
     "min_embedding_distance_self": ["min_embedding_distance_self"],
+    "local_sequence_identity": ["local_sequence_search"],
+    "local_sequence_similarity": ["local_sequence_search"],
+    "local_coverage": ["local_sequence_search"],
+    "local_sequence_identity_self": ["local_sequence_search_self"],
+    "local_sequence_similarity_self": ["local_sequence_search_self"],
+    "local_coverage_self": ["local_sequence_search_self"],
     "isTPS": ["enzyme_explorer"],
     "isTPS_seq": ["enzyme_explorer_sequence_only"],
     "soluble": ["soluprot"],
@@ -87,6 +102,18 @@ MAX_VAL = {
 }
 
 
+# local_sequence_search identity/similarity/coverage are PERCENTAGES in [0, 100]
+# (unlike the global max_sequence_identity which is a [0, 1] fraction). similarity is
+# NaN for the MMseqs2 backend (no positives field) -> auto-handled by the plot layer.
+for _t in (
+    "local_sequence_identity", "local_sequence_identity_self",
+    "local_sequence_similarity", "local_sequence_similarity_self",
+    "local_coverage", "local_coverage_self",
+):
+    MIN_VAL[_t] = 0.0 - 1.0
+    MAX_VAL[_t] = 100.0 + 1.0
+
+
 def _ticks(start: float, stop: float, step: float) -> np.ndarray:
     return np.round(np.arange(start, stop + step / 2, step), 10)
 
@@ -103,6 +130,14 @@ TICKS = {
     "soluble": _ticks(0.0, 1.0, 0.05),
     "confidence": _ticks(0.0, 1.0, 0.05),
 }
+
+# Percentage-scale ticks for the local_sequence_search targets ([0, 100]).
+for _t in (
+    "local_sequence_identity", "local_sequence_identity_self",
+    "local_sequence_similarity", "local_sequence_similarity_self",
+    "local_coverage", "local_coverage_self",
+):
+    TICKS[_t] = _ticks(0.0, 100.0, 10.0)
 
 
 # `None` (or absent) → no threshold line drawn.

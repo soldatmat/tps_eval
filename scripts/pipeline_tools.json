@@ -6,6 +6,7 @@
   "esm":                  { "default": true,  "branch": "sequence",  "description": "ESM-1b embeddings (feeds mindist_*)." },
   "esm_ppl":              { "default": true,  "branch": "sequence",  "description": "ESM pseudo-perplexity (sequence likelihood)." },
   "maxid_self":           { "default": true,  "branch": "sequence",  "description": "Max pairwise sequence identity within the dataset." },
+  "local_sequence_search": { "default": true, "branch": "sequence",  "description": "Fast LOCAL (MMseqs2) sequence identity/similarity/coverage search; self (within-set novelty) + gen-vs-train. Its _topk.csv is the k-NN/SDR sequence-space feeder." },
   "mindist_self":         { "default": true,  "branch": "sequence",  "description": "Min ESM-embedding distance within the dataset (needs esm)." },
   "soluprot":             { "default": true,  "branch": "sequence",  "description": "SoluProt predicted solubility." },
   "ee_seq":               { "default": true,  "branch": "sequence",  "description": "EnzymeExplorer sequence-only TPS classification." },

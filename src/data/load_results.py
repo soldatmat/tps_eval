@@ -20,6 +20,8 @@ DEFAULT_LOAD: Tuple[str, ...] = (
     "sequence",
     "max_sequence_identity",
     "max_sequence_identity_self",
+    "local_sequence_search",
+    "local_sequence_search_self",
     "embedding",
     "min_embedding_distance",
     "min_embedding_distance_self",
@@ -298,6 +300,26 @@ def load_results(
         # `swissprot_top_hit` is the accession string — not a plottable metric.
         if "swissprot_top_hit" in df.columns:
             df = df.drop(columns=["swissprot_top_hit"])
+        frames.append(df)
+
+    # Fast LOCAL (MMseqs2) sequence search. gen-vs-train -> default file; within-set
+    # (self) -> the _self file written by the pipeline's local_search_{tag} step, with
+    # columns renamed to *_self so the two frames don't collide on the outer join.
+    if "local_sequence_search" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_local_sequence_search.csv")
+        df = _strip_column_names(df)
+        frames.append(df)
+
+    if "local_sequence_search_self" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_local_sequence_search_self.csv")
+        df = _strip_column_names(df)
+        df = df.rename(
+            columns={
+                "local_sequence_identity": "local_sequence_identity_self",
+                "local_sequence_similarity": "local_sequence_similarity_self",
+                "local_coverage": "local_coverage_self",
+            }
+        )
         frames.append(df)
 
     frames = [_strip_id_column(f) for f in frames]
