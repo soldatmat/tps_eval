@@ -1,21 +1,38 @@
 from __future__ import annotations
 
-import sys
+import argparse
 
 from max_sequence_identity import max_sequence_identity
 
 
 def main() -> None:
-    num_args = len(sys.argv) - 1
-    if num_args == 1:
-        fasta_path = sys.argv[1]
-        max_sequence_identity(fasta_path)
-    elif num_args == 2:
-        fasta_path = sys.argv[1]
-        train_path = sys.argv[2]
-        max_sequence_identity(fasta_path, train_path=train_path)
-    else:
-        raise ValueError(f"Invalid number of arguments. Expected 1 or 2, got {num_args}.")
+    parser = argparse.ArgumentParser(
+        description="Per-query maximum sequence identity to a reference set. "
+        "With --top_k N, additionally writes <input>_max_sequence_identity_topk.csv "
+        "(columns query_id,rank,neighbour_id,score) where score is identity PERCENT "
+        "in [0, 100] (LARGER = closer). Default single-best output is unchanged."
+    )
+    parser.add_argument("fasta_path", help="Path to the FASTA file to evaluate.")
+    parser.add_argument(
+        "train_path",
+        nargs="?",
+        default=None,
+        help="Optional reference FASTA. If omitted, self mode "
+        "(each query's neighbours exclude itself).",
+    )
+    parser.add_argument(
+        "--top_k",
+        type=int,
+        default=None,
+        help="If >= 1, also emit the top-k nearest reference hits per query.",
+    )
+    args = parser.parse_args()
+
+    max_sequence_identity(
+        args.fasta_path,
+        train_path=args.train_path,
+        top_k=args.top_k,
+    )
 
 
 if __name__ == "__main__":

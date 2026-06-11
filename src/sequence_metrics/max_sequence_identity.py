@@ -51,6 +51,8 @@ def evaluate_max_sequence_identity(
     *,
     save_path: Optional[str] = None,
     return_second_max: bool = False,
+    top_k: Optional[int] = None,
+    topk_save_path: Optional[str] = None,
 ):
     """Compute top identity/similarity hits for each generated sequence.
 
@@ -61,6 +63,12 @@ def evaluate_max_sequence_identity(
         train_identifiers: IDs for train sequences.
         save_path: Optional path to write CSV output.
         return_second_max: Skip self-comparison for same-index pairs.
+        top_k: When >= 1, also write a tidy top-k CSV (columns
+            query_id,rank,neighbour_id,score) of the k highest-identity reference
+            hits per query. ``score`` is identity PERCENT in [0, 100] (LARGER =
+            closer), i.e. 100 * the fraction stored in the default CSV's
+            ``sequence_identity`` column.
+        topk_save_path: Path for the top-k CSV (required when ``top_k`` is set).
     """
     (
         max_sequence_identity,
@@ -88,11 +96,84 @@ def evaluate_max_sequence_identity(
         )
         df.to_csv(save_path, index=False)
 
+    if top_k is not None and top_k >= 1 and topk_save_path is not None:
+        topk = get_topk_sequence_identity(
+            train,
+            generated,
+            top_k,
+            self_comparison=return_second_max,
+        )
+        _write_topk(
+            topk,
+            generated_identifiers,
+            train_identifiers,
+            topk_save_path,
+        )
+
     return (
         max_sequence_identity,
         max_sequence_similarity,
         max_sequence_identity_hit,
         max_sequence_similarity_hit,
+    )
+
+
+def get_topk_sequence_identity(
+    train: Sequence[str],
+    generated: Sequence[str],
+    top_k: int,
+    *,
+    self_comparison: bool = False,
+):
+    """Per generated sequence, the top-k reference hits by identity (descending).
+
+    Returns a list (per query) of lists of (train_index, identity) tuples,
+    highest identity first, at most ``top_k`` long. In self mode the query's own
+    index is excluded from its neighbour list.
+    """
+    train = [str(seq) for seq in train]
+    generated = [str(seq) for seq in generated]
+
+    results = [[] for _ in generated]
+
+    def process_generated(i: int, generated_seq: str):
+        scored = []
+        for j, train_seq in enumerate(train):
+            if self_comparison and i == j:
+                continue
+            sequence_identity, _ = _pair_metrics(generated_seq, train_seq)
+            scored.append((sequence_identity, j))
+        # Sort by identity desc; tie-break on train index asc for determinism.
+        scored.sort(key=lambda t: (-t[0], t[1]))
+        # Emit identity as PERCENT (native metric for this tool's top-k contract).
+        return i, [(j, identity * 100.0) for identity, j in scored[:top_k]]
+
+    max_workers = max(1, min(len(generated), os.cpu_count() or 1))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for i, ranked in executor.map(
+            lambda item: process_generated(*item), enumerate(generated)
+        ):
+            results[i] = ranked
+
+    return results
+
+
+def _write_topk(topk, generated_identifiers, train_identifiers, save_path: str) -> None:
+    rows = []
+    for query_idx, ranked in enumerate(topk):
+        query_id = str(generated_identifiers[query_idx]).split()[0] if generated_identifiers[query_idx] else generated_identifiers[query_idx]
+        for rank, (train_idx, score) in enumerate(ranked, start=1):
+            neighbour_id = str(train_identifiers[train_idx]).split()[0]
+            rows.append(
+                {
+                    "query_id": query_id,
+                    "rank": rank,
+                    "neighbour_id": neighbour_id,
+                    "score": score,
+                }
+            )
+    pd.DataFrame(rows, columns=["query_id", "rank", "neighbour_id", "score"]).to_csv(
+        save_path, index=False
     )
 
 
@@ -212,18 +293,25 @@ def _get_save_path(data_path: str, *, save_suffix: Optional[str] = None) -> str:
     return f"{base_path}_max_sequence_identity{suffix}.csv"
 
 
+def _get_topk_save_path(data_path: str) -> str:
+    extension = data_path.split(".")[-1]
+    base_path = data_path[: -len(extension) - 1]
+    return f"{base_path}_max_sequence_identity_topk.csv"
+
+
 def max_sequence_identity(
     fasta_path: str,
     *,
     train_path: Optional[str] = None,
+    top_k: Optional[int] = None,
 ):
     if train_path is None:
-        main_train_sequences(fasta_path)
+        main_train_sequences(fasta_path, top_k=top_k)
     else:
-        main_generated_sequences(fasta_path=fasta_path, train_path=train_path)
+        main_generated_sequences(fasta_path=fasta_path, train_path=train_path, top_k=top_k)
 
 
-def main_generated_sequences(*, fasta_path: str, train_path: str):
+def main_generated_sequences(*, fasta_path: str, train_path: str, top_k: Optional[int] = None):
     generated_identifiers, generated = separate_identifiers(
         load_fasta_sequences(fasta_path, load_identifiers=True)
     )
@@ -237,17 +325,19 @@ def main_generated_sequences(*, fasta_path: str, train_path: str):
         generated_identifiers,
         train_identifiers,
         save_path=save_path,
+        top_k=top_k,
+        topk_save_path=_get_topk_save_path(fasta_path),
     )
 
 
-def main_train_sequences(train_path: str):
+def main_train_sequences(train_path: str, *, top_k: Optional[int] = None):
     train_identifiers, train = separate_identifiers(
         load_fasta_sequences(train_path, load_identifiers=True)
     )
-    _main_train_sequences(train_path, train, train_identifiers)
+    _main_train_sequences(train_path, train, train_identifiers, top_k=top_k)
 
 
-def _main_train_sequences(train_path: str, train, train_identifiers):
+def _main_train_sequences(train_path: str, train, train_identifiers, *, top_k: Optional[int] = None):
     save_path = _get_save_path(train_path, save_suffix="self")
     evaluate_max_sequence_identity(
         train,
@@ -256,4 +346,6 @@ def _main_train_sequences(train_path: str, train, train_identifiers):
         train_identifiers,
         save_path=save_path,
         return_second_max=True,
+        top_k=top_k,
+        topk_save_path=_get_topk_save_path(train_path),
     )

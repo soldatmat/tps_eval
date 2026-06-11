@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path> --train]"
+USAGE="--embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path> --train --top_k <N>]"
 
 Help()
 {
@@ -14,6 +14,7 @@ Help()
     echo "  --embeddings_path           Path to the CSV file with embeddings (required)"
     echo "  --train_embeddings_path     Path to the reference CSV file with embeddings (optional)"
     echo "  --train                     Turns on train data mode. "_self" results will be also copied as non-"_self" results."
+    echo "  --top_k                     If >=1, also write <input>_min_embedding_distance_topk.csv (query_id,rank,neighbour_id,score; score = embedding distance, SMALLER closer)"
     echo "  -h, --help                  Show this help message and exit"
     echo
 }
@@ -35,6 +36,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --train)
             train_mode=true
+            shift
+            ;;
+        --top_k)
+            top_k="$2"
+            shift
             shift
             ;;
         -h|--help)
@@ -87,10 +93,15 @@ echo "Using python: $(which python)"
 
 cd src/sequence_metrics
 
+topk_args=()
+if [[ -n "$top_k" ]]; then
+    topk_args=(--top_k "$top_k")
+fi
+
 if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != "" ]]; then
-    python run_min_embedding_distance.py "$embeddings_path" "$train_embeddings_path"
+    python run_min_embedding_distance.py "$embeddings_path" "$train_embeddings_path" "${topk_args[@]}"
 else
-    python run_min_embedding_distance.py "$embeddings_path"
+    python run_min_embedding_distance.py "$embeddings_path" "${topk_args[@]}"
 fi
 
 if $train_mode; then

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--structs_dir <structs_dir> --known_structs_dir <known_structs_dir> [--save_path <save_path>]"
+USAGE="--structs_dir <structs_dir> --known_structs_dir <known_structs_dir> [--save_path <save_path> --top_k <N>]"
 
 Help()
 {
@@ -10,6 +10,7 @@ Help()
     echo "  --structs_dir         Directory of generated structures (.pdb/.cif) (required)"
     echo "  --known_structs_dir   Directory of known-TPS reference structures (required)"
     echo "  --save_path           Output CSV path (optional; default <structs_dir>_structural_identity.csv)"
+    echo "  --top_k               If >=1, also write <structs_dir>_structural_identity_topk.csv (query_id,rank,neighbour_id,score; score = TM-score, LARGER closer)"
     echo "  -h, --help            Show this help message and exit"
     echo
 }
@@ -20,6 +21,7 @@ while [[ $# -gt 0 ]]; do
         --structs_dir) structs_dir="$2"; shift 2 ;;
         --known_structs_dir) known_structs_dir="$2"; shift 2 ;;
         --save_path) save_path="$2"; shift 2 ;;
+        --top_k) top_k="$2"; shift 2 ;;
         -h|--help) Help; exit 0 ;;
         *) echo "Unknown option: $1"; Help; exit 1 ;;
     esac
@@ -56,6 +58,9 @@ cd src/structure_metrics
 args=("$structs_dir" "$known_structs_dir")
 if [[ -n "$save_path" ]]; then
     args+=(--save_path "$save_path")
+fi
+if [[ -n "$top_k" ]]; then
+    args+=(--top_k "$top_k")
 fi
 
 python run_structural_identity.py "${args[@]}"
