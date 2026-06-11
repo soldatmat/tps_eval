@@ -95,6 +95,7 @@ def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
 def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.csv"
 def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
 def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
+def out_radius_of_gyration(d): return d.rstrip(os.sep) + "_radius_of_gyration.csv"
 def out_domain_composition(d): return d.rstrip(os.sep) + "_domain_composition.csv"
 def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
 def out_foldseek_swissprot(d): return d.rstrip(os.sep) + "_foldseek_swissprot_search.csv"
@@ -232,6 +233,10 @@ def build_steps(args) -> List[Step]:
         # dir (pass --templates <ids>); omitted here until a curated reference set is wired.
         steps.append(Step("active_site_geom_gen", "active_site_geometry.sh",
                           ["--structs_dir", structs], out_active_site_geom(structs)))
+        # Radius of gyration / compactness: raw geometric shape numbers (Rg, asphericity,
+        # principal radii) over the Cα atoms; no expected-Rg band (compared downstream).
+        steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",
+                          ["--structs_dir", structs], out_radius_of_gyration(structs)))
         # TPS structural-domain composition via EnzymeExplorer's CPU domain detector.
         steps.append(Step("domain_composition_gen", "domain_composition.sh",
                           ["--structs_dir", structs], out_domain_composition(structs)))
