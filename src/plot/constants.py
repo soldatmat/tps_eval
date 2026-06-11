@@ -170,6 +170,15 @@ STRUCTURE_NUMERIC = {
         "asphericity",
         "acylindricity",
     ],
+    "_pocket_descriptors.csv": [
+        "catalytic_pocket_volume",
+        "pocket_hydrophobicity",
+        "pocket_enclosure",
+        "pocket_n_alpha_spheres",
+        "pocket_depth",
+        "p2rank_catalytic_site_score",
+        "p2rank_catalytic_pocket_rank",
+    ],
     "_domain_composition.csv": [
         "n_domains",
         "alpha",
