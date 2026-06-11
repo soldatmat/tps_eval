@@ -7,20 +7,29 @@
 # node or laptop; it does NOT run any metric tools (see compute_reference_stats.sh
 # for the metric-computation half).
 
-USAGE="--input_dir <dir_of_per_metric_csvs> [--output <json_path>] [--reference_name <name>]"
+USAGE="--input_dir <dir_of_per_metric_csvs> [--output <json_path>] [--reference_name <name>] [--group_by <label_file[:name]>]... [--group_by_column <metric:column[:name]>]..."
 
 Help()
 {
     echo "Usage: $0 $USAGE"
     echo
     echo "Arguments:"
-    echo "  --input_dir       Directory holding the per-metric reference CSVs (required)"
-    echo "  --output          Output JSON path (optional; default"
-    echo "                    src/reference_stats/marts_db_metric_stats.json)"
-    echo "  --reference_name  Reference-set label embedded in the JSON (default marts_db)"
-    echo "  -h, --help        Show this help message and exit"
+    echo "  --input_dir         Directory holding the per-metric reference CSVs (required)"
+    echo "  --output            Output JSON path (optional; default"
+    echo "                      src/reference_stats/marts_db_metric_stats.json)"
+    echo "  --reference_name    Reference-set label embedded in the JSON (default marts_db)"
+    echo "  --group_by          'reference_id,label' CSV label file for per-class"
+    echo "                      stratification (adds a by_<name> block to each metric"
+    echo "                      column). Repeatable. NAME defaults to file basename."
+    echo "  --group_by_column   METRIC:COLUMN[:NAME] — stratify using a column of one of"
+    echo "                      the metric CSVs as the labeling (e.g."
+    echo "                      domain_composition:domain_architecture). Repeatable."
+    echo "  -h, --help          Show this help message and exit"
     echo
 }
+
+# Pass-through args for the python entry (group_by flags are repeatable).
+declare -a passthrough=()
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -31,6 +40,10 @@ while [[ $# -gt 0 ]]; do
             output="$2"; shift 2 ;;
         --reference_name)
             reference_name="$2"; shift 2 ;;
+        --group_by)
+            passthrough+=(--group_by "$2"); shift 2 ;;
+        --group_by_column)
+            passthrough+=(--group_by_column "$2"); shift 2 ;;
         -h|--help)
             Help; exit 0 ;;
         *)
@@ -63,5 +76,6 @@ cd src/reference_stats
 args=("$input_dir")
 [[ -n "$output" ]] && args+=(--output "$output")
 [[ -n "$reference_name" ]] && args+=(--reference_name "$reference_name")
+[[ ${#passthrough[@]} -gt 0 ]] && args+=("${passthrough[@]}")
 
 python aggregate_reference_stats.py "${args[@]}"

@@ -20,12 +20,17 @@ Output shape (JSON)::
             "count": 1180, "n_missing": 15,
             "mean": ..., "std": ...,
             "min": ..., "p1": ..., "p5": ..., "p25": ...,
-            "median": ..., "p75": ..., "p95": ..., "p99": ..., "max": ...
+            "median": ..., "p75": ..., "p95": ..., "p99": ..., "max": ...,
+            "by_<labeling>": {            # only when --group_by given
+              "<class>": { ... same stats, restricted to rows in that class ... },
+              ...
+            }
           },
           "<column>": {                   # categorical / boolean column
             "kind": "categorical",
             "count": 1195, "n_missing": 0, "n_unique": 12,
-            "frequencies": {"alpha": 540, "alpha-beta": 320, "": 41, ...}
+            "frequencies": {"alpha": 540, "alpha-beta": 320, "": 41, ...},
+            "by_<labeling>": { "<class>": { ... per-class freq table ... }, ... }
           }
         }
       },
@@ -44,6 +49,15 @@ Design notes:
   see ``_DROP_COLUMNS``. Everything else that is non-numeric becomes a
   categorical frequency table (covers ``domain_architecture`` and any boolean
   motif-presence flags).
+* **Per-class stratification (``--group_by``).** Optionally pass one or more
+  ``reference_id,label`` CSV label files. For every metric column, the same
+  stats are *also* computed restricted to each class, emitted under a
+  ``by_<labeling>`` block keyed by class label. The overall (ungrouped) stats
+  are kept alongside. This is label-agnostic and metric-agnostic: the labeling
+  name comes from the file basename (overridable), the join is a plain
+  ``ID``-vs-``reference_id`` string match, and a labeling whose IDs come from
+  another metric's CSV (e.g. ``domain_architecture`` from
+  ``*_domain_composition.csv``) is supported via the same mechanism.
 """
 
 from __future__ import annotations
@@ -100,6 +114,9 @@ METRIC_SUFFIXES: Dict[str, str] = {
     "domain_composition": "domain_composition",
     "proteinmpnn_score": "proteinmpnn_score",
     "radius_of_gyration": "radius_of_gyration",
+    "pocket_descriptors": "pocket_descriptors",
+    "aromatic_lining": "aromatic_lining",
+    "diphosphate_sensor": "diphosphate_sensor",
 }
 
 
@@ -167,14 +184,62 @@ def _classify_and_stat(series: pd.Series) -> Dict[str, object]:
     return _categorical_stats(series)
 
 
-def aggregate_csv(csv_path: str) -> Dict[str, object]:
-    """Aggregate one metric CSV into ``{n_rows, source_csv, columns: {...}}``."""
+def _column_stats(
+    series: pd.Series,
+    groupings: Optional[Dict[str, pd.Series]] = None,
+) -> Dict[str, object]:
+    """Stats for one column (overall) plus optional per-class ``by_<labeling>``.
+
+    ``groupings`` maps ``labeling_name -> label Series`` aligned to ``series``'s
+    index (same row order; NaN where a row has no label). For each labeling, the
+    column is split by class and the *same* classify-and-stat is applied to each
+    subset, emitted under ``by_<labeling>`` keyed by class label. Rows whose
+    label is missing are excluded from every class (but still counted in the
+    overall stats above). The stat kind (numeric/categorical) is decided ONCE on
+    the full column so every class uses the same shape.
+    """
+    overall = _classify_and_stat(series)
+    if not groupings:
+        return overall
+    is_numeric = overall.get("kind") == "numeric"
+    for labeling_name, labels in groupings.items():
+        by_class: Dict[str, object] = {}
+        # Align labels to this column's index; drop rows with no label.
+        aligned = labels.reindex(series.index)
+        valid_mask = aligned.notna()
+        for class_label, idx in aligned[valid_mask].groupby(aligned[valid_mask]).groups.items():
+            subset = series.loc[idx]
+            if is_numeric:
+                by_class[str(class_label)] = _numeric_stats(subset)
+            else:
+                by_class[str(class_label)] = _categorical_stats(subset)
+        overall[f"by_{labeling_name}"] = by_class
+    return overall
+
+
+def aggregate_csv(
+    csv_path: str,
+    labelings: Optional[Dict[str, Dict[str, str]]] = None,
+) -> Dict[str, object]:
+    """Aggregate one metric CSV into ``{n_rows, source_csv, columns: {...}}``.
+
+    ``labelings`` maps ``labeling_name -> {reference_id: label}``. When given,
+    each numeric/categorical column additionally carries a ``by_<labeling>``
+    block with the same stats computed per class (join: this CSV's ``ID`` vs the
+    labeling's ``reference_id``).
+    """
     df = pd.read_csv(csv_path)
+    # Build per-labeling label Series aligned to df's rows (by the ID column).
+    groupings: Dict[str, pd.Series] = {}
+    if labelings and "ID" in df.columns:
+        ids = df["ID"].astype(str)
+        for labeling_name, mapping in labelings.items():
+            groupings[labeling_name] = ids.map(mapping)
     columns: Dict[str, object] = {}
     for col in df.columns:
         if col in _DROP_COLUMNS:
             continue
-        columns[col] = _classify_and_stat(df[col])
+        columns[col] = _column_stats(df[col], groupings or None)
     return {
         "n_rows": int(len(df)),
         "source_csv": os.path.basename(csv_path),
@@ -203,15 +268,52 @@ def discover_csvs(input_dir: str) -> Dict[str, str]:
     return found
 
 
+def load_label_file(path: str, labeling_name: Optional[str] = None) -> Dict[str, str]:
+    """Load a ``reference_id,label`` (2-column) CSV into a ``{id: label}`` dict.
+
+    Header-agnostic: the first column is the reference id, the second is the
+    label, regardless of their header names (so ``reference_id,label`` and
+    ``ID,domain_architecture`` both work). Blank labels are dropped. Duplicate
+    ids keep the last occurrence.
+    """
+    df = pd.read_csv(path, dtype=str, keep_default_na=False)
+    if df.shape[1] < 2:
+        raise SystemExit(
+            f"Label file {path!r} needs >=2 columns (reference_id,label); "
+            f"found {list(df.columns)}."
+        )
+    id_col, label_col = df.columns[0], df.columns[1]
+    mapping: Dict[str, str] = {}
+    for ref_id, label in zip(df[id_col].astype(str), df[label_col].astype(str)):
+        ref_id = ref_id.strip()
+        label = label.strip()
+        if ref_id and label != "":
+            mapping[ref_id] = label
+    return mapping
+
+
+def labeling_name_from_path(path: str) -> str:
+    """Derive a labeling name from a file path (basename minus extension)."""
+    base = os.path.basename(path)
+    stem = os.path.splitext(base)[0]
+    # Strip a trailing ``_labels`` so first_cyclization_labels.csv -> first_cyclization.
+    if stem.endswith("_labels"):
+        stem = stem[: -len("_labels")]
+    return stem
+
+
 def build_reference_stats(
     input_dir: str,
     *,
     explicit: Optional[Dict[str, str]] = None,
+    labelings: Optional[Dict[str, Dict[str, str]]] = None,
 ) -> Dict[str, object]:
     """Build the full reference-stats dict from a dir of per-metric CSVs.
 
     ``explicit`` optionally maps metric-name -> csv path, overriding/augmenting
     suffix-based discovery (used when a CSV lives elsewhere or is renamed).
+    ``labelings`` maps labeling-name -> {reference_id: label}; when given, every
+    metric column also gets a ``by_<labeling>`` per-class stratification block.
     """
     csvs = discover_csvs(input_dir)
     if explicit:
@@ -226,7 +328,7 @@ def build_reference_stats(
     for metric in sorted(csvs):
         path = csvs[metric]
         print(f"[ok] {metric}: {path}")
-        out[metric] = aggregate_csv(path)
+        out[metric] = aggregate_csv(path, labelings=labelings)
     return out
 
 
@@ -268,12 +370,65 @@ def main() -> None:
         default="marts_db",
         help="Reference set label embedded in the JSON metadata (default: marts_db).",
     )
+    parser.add_argument(
+        "--group_by",
+        action="append",
+        default=[],
+        metavar="LABEL_FILE[:NAME]",
+        help="Add per-class stratification: a 'reference_id,label' (2-column) CSV "
+        "label file. Each metric column then also carries a 'by_<NAME>' block "
+        "with the same stats computed per class. NAME defaults to the file's "
+        "basename (trailing '_labels' stripped). Repeatable for multiple labelings.",
+    )
+    parser.add_argument(
+        "--group_by_column",
+        action="append",
+        default=[],
+        metavar="METRIC:COLUMN[:NAME]",
+        help="Add per-class stratification using a column of one of the metric "
+        "CSVs in input_dir as the labeling (joined on ID). E.g. "
+        "'domain_composition:domain_architecture'. NAME defaults to COLUMN. "
+        "Repeatable.",
+    )
     args = parser.parse_args()
 
-    stats = build_reference_stats(args.input_dir)
+    # Assemble labelings: external label files + columns lifted from metric CSVs.
+    labelings: Dict[str, Dict[str, str]] = {}
+    for spec in args.group_by:
+        path, _, name = spec.partition(":")
+        name = name or labeling_name_from_path(path)
+        labelings[name] = load_label_file(path)
+        print(f"[group_by] {name}: {len(labelings[name])} labels from {path}")
+    if args.group_by_column:
+        csvs = discover_csvs(args.input_dir)
+        for spec in args.group_by_column:
+            parts = spec.split(":")
+            metric, column = parts[0], parts[1]
+            name = parts[2] if len(parts) > 2 else column
+            if metric not in csvs:
+                raise SystemExit(
+                    f"--group_by_column {spec!r}: metric {metric!r} not found in "
+                    f"{args.input_dir!r}. Available: {sorted(csvs)}"
+                )
+            df = pd.read_csv(csvs[metric], dtype=str, keep_default_na=False)
+            if "ID" not in df.columns or column not in df.columns:
+                raise SystemExit(
+                    f"--group_by_column {spec!r}: CSV {csvs[metric]!r} needs an "
+                    f"'ID' column and a {column!r} column; has {list(df.columns)}."
+                )
+            mapping = {
+                str(i).strip(): str(c).strip()
+                for i, c in zip(df["ID"], df[column])
+                if str(i).strip() and str(c).strip() != ""
+            }
+            labelings[name] = mapping
+            print(f"[group_by] {name}: {len(mapping)} labels from {metric}:{column}")
+
+    stats = build_reference_stats(args.input_dir, labelings=labelings or None)
     document = {
         "reference_set": args.reference_name,
         "input_dir": os.path.abspath(args.input_dir),
+        "labelings": sorted(labelings) if labelings else [],
         "metrics": _json_safe(stats),
     }
     with open(args.output, "w") as fh:
