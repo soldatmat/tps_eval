@@ -1,0 +1,40 @@
+reference_id,resnum,expected_residue,note
+# STARTER explicit SDR panel for the TEAS/HPS sesquiterpene-synthase specificity switch.
+#
+# Format (consumed by sdr_divergence.load_panel): one row per specificity-determining
+# position. Lines beginning with '#' are treated as comments by the loader (it reads
+# with comment='#'), so this provenance block is safe to leave in place.
+#
+# Columns:
+#   reference_id      The reference STRUCTURE STEM the resnums are anchored to. Must
+#                     match (or be a prefix of) the design's nearest-neighbour id as it
+#                     appears in the top-k CSV after chain-suffix strip. Anchor the panel
+#                     to whatever known-TPS structure you actually have in
+#                     known_structs_dir (e.g. a MARTS-DB id 'marts_E000NN', or a PDB stem
+#                     like '5eat'/'5eau' for the TEAS crystal structure).
+#   resnum            Author residue number IN THAT REFERENCE STRUCTURE.
+#   expected_residue  (optional) 1-letter code expected at that position; informational
+#                     only -- the metric compares design-vs-neighbour, not vs expected.
+#   note              (optional, ignored by the tool) provenance.
+#
+# CAVEAT -- the resnums below are the WIDELY-CITED TEAS M9 specificity positions
+# (Greenhagen/O'Maille et al., PNAS 2006; O'Maille et al., Nat. Chem. Biol. 2008) that
+# interconvert TEAS<->HPS product specificity. The exact numbering is reported in those
+# papers' FIGURES/supplements and could NOT be machine-verified from open text in this
+# session. TREAT THESE AS A PLACEHOLDER to be confirmed against the actual TEAS sequence
+# numbering (TEAS UniProt Q40577 / PDB 5EAT) and re-anchored to your reference structure
+# before relying on the explicit-panel mode. The structure-derived default panel (no
+# --sdr_panel) needs none of this and is the recommended path until this is curated.
+#
+# To USE this file: set reference_id to your actual reference stem and verify the
+# resnums against that structure, then pass --sdr_panel <this file>. (The '#' lines are
+# skipped automatically; no need to strip them.)
+5eat,274,T,TEAS M9 position (UNVERIFIED numbering)
+5eat,294,T,TEAS M9 position (UNVERIFIED numbering)
+5eat,402,T,TEAS M9 position (UNVERIFIED numbering)
+5eat,403,T,TEAS M9 position (UNVERIFIED numbering)
+5eat,404,V,TEAS M9 position (UNVERIFIED numbering)
+5eat,406,Y,TEAS M9 position (UNVERIFIED numbering)
+5eat,438,L,TEAS M9 position (UNVERIFIED numbering)
+5eat,516,I,TEAS M9 position (UNVERIFIED numbering)
+5eat,525,V,TEAS M9 position (UNVERIFIED numbering)
