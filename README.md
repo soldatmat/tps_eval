@@ -3,6 +3,68 @@
 - Every evaluation tool has its main run script created as `tps_eval/scripts/run_<tool_name>`.
 - The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/jobs/<tool_name>.sh`.
 
+# Tools
+The pipeline is a suite of evaluation tools, each writing a CSV keyed by `ID` so metrics merge for filtration. Run the whole suite with the declarative orchestrator:
+```sh
+python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta \
+    [--train_path train.fasta] [--structs_dir structs/] [--known_structs_dir known/]
+python scripts/run_eval_pipeline.py --list-tools   # show all tools + select with --only/--include/--exclude
+```
+The table below summarizes each tool; **full per-tool documentation** (inputs, output columns, method, citations, conda env) is in [`docs/TOOLS.md`](docs/TOOLS.md). Branch is `seq` (keyed off a FASTA → `<input>_<tool>.csv`) or `struct` (keyed off a structures dir → `<structs_dir>_<tool>.csv`).
+
+### Sequence
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [motif_search](docs/TOOLS.md#motif_search) | seq | DDXXD / NSE-DTE motif presence search. | `<fasta>_motifs.csv` |
+| [motif_pair_distance](docs/TOOLS.md#motif_pair_distance) | seq | Sequence distance between the two metal-binding motifs. | `<fasta>_motif_pair_distance.csv` |
+| [esm_embedding](docs/TOOLS.md#esm_embedding) | seq | ESM-1b embeddings (feeds the min-distance metrics). | `<fasta>_embedding_esm1b.csv` |
+| [esm_pseudo_perplexity](docs/TOOLS.md#esm_pseudo_perplexity) | seq | ESM pseudo-perplexity (sequence likelihood / naturalness). | `<fasta>_esm_pseudo_perplexity.csv` |
+| [max_sequence_identity](docs/TOOLS.md#max_sequence_identity) | seq | Max pairwise sequence identity (self) / vs the train set. | `<fasta>_max_sequence_identity[_self].csv` |
+| [min_embedding_distance](docs/TOOLS.md#min_embedding_distance) | seq | Min ESM-embedding distance (self) / vs train (needs esm). | `<fasta>_embedding_esm1b_min_embedding_distance[_self].csv` |
+| [soluprot](docs/TOOLS.md#soluprot) | seq | SoluProt predicted solubility. | `<fasta>_soluprot.csv` |
+| [enzyme_explorer_sequence_only](docs/TOOLS.md#enzyme_explorer_sequence_only) | seq | EnzymeExplorer sequence-only TPS classification. | `<fasta>_enzyme_explorer_sequence_only.csv` |
+| [swissprot_search](docs/TOOLS.md#swissprot_search) | seq | DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits). | `<fasta>_swissprot_search.csv` |
+
+### Structure
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [plddt](docs/TOOLS.md#plddt) | struct | AlphaFold/ESMFold pLDDT folding confidence. | `<structs_dir>_plddt.csv` |
+| [motif_structural_distance](docs/TOOLS.md#motif_structural_distance) | struct | Structural distance between the two metal-binding motifs. | `<structs_dir>_motif_structural_distance.csv` |
+| [active_site_geometry](docs/TOOLS.md#active_site_geometry) | struct | Active-site carboxylate-cage geometry (apo-robust). | `<structs_dir>_active_site_geometry.csv` |
+| [radius_of_gyration](docs/TOOLS.md#radius_of_gyration) | struct | Radius of gyration / compactness over Cα atoms. | `<structs_dir>_radius_of_gyration.csv` |
+| [pocket_descriptors](docs/TOOLS.md#pocket_descriptors) | struct | Active-site pocket descriptors (fpocket + P2Rank cross-check). | `<structs_dir>_pocket_descriptors.csv` |
+| [domain_composition](docs/TOOLS.md#domain_composition) | struct | TPS structural-domain composition (EE CPU detector). | `<structs_dir>_domain_composition.csv` |
+| [aggregation](docs/TOOLS.md#aggregation) | struct | Aggrescan3D structure-based aggregation propensity. | `<structs_dir>_aggregation.csv` |
+| [foldseek_swissprot_search](docs/TOOLS.md#foldseek_swissprot_search) | struct | Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits). | `<structs_dir>_foldseek_swissprot_search.csv` |
+| [structural_identity](docs/TOOLS.md#structural_identity) | struct | Foldseek structural identity to nearest known TPS (needs `--known_structs_dir`). | `<structs_dir>_structural_identity.csv` |
+| [proteinmpnn_score](docs/TOOLS.md#proteinmpnn_score) | struct | ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold. | `<structs_dir>_proteinmpnn_score.csv` |
+| [self_consistency](docs/TOOLS.md#self_consistency) | struct | HEAVY scRMSD self-consistency (ProteinMPNN → ESMFold refold → RMSD). Opt-in. | `<structs_dir>_self_consistency.csv` |
+
+### Folding (structure producers)
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [alphafold3](docs/TOOLS.md#alphafold3) | producer | AlphaFold3 folding (Aurum-only); not orchestrator-wired (v2). | `af_output/` + `structs/<ID>.pdb` |
+| [esmfold](docs/TOOLS.md#esmfold) | producer | ESMFold folding (both clusters); not orchestrator-wired (v2). | `structs/<ID>.pdb` |
+
+### Function (structure-dependent)
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [enzyme_explorer](docs/TOOLS.md#enzyme_explorer) | struct | EnzymeExplorer TPS classification with structures; not orchestrator-wired (v2). | `<input>_enzyme_explorer/` |
+
+### Aggregator & viz
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
+| [plot_domains](docs/TOOLS.md#plot_domains) | viz | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
+| [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | viz | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
+
+### Reference & orchestration
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [run_eval_pipeline](docs/TOOLS.md#run_eval_pipeline) | orchestrator | Declarative cluster-agnostic orchestrator (config-driven tool selection). | submits SLURM jobs |
+| [pipeline_tools.json](docs/TOOLS.md#pipeline_tools) | config | Per-tool default on/off + branch + one-liner driving `--list-tools`. | — |
+| [compute_reference_stats](docs/TOOLS.md#compute_reference_stats) | reference | MARTS-DB natural-TPS bands → reference-stats JSON. Standalone. | `src/reference_stats/marts_db_metric_stats.json` |
+
 # Installation
 You will need to [install Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) first if you don't have it on your system.
 

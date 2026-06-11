@@ -50,7 +50,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
    in `build_steps` (sequence-branch in the per-dataset loop; structure-branch in the
    `if structs:` block). Dry-run to confirm it appears, then add its column(s) to the plots
    (`src/plot/constants.py`) and the reference-stats pipeline if it's an intrinsic property.
-5. **Log the change** as an H2 entry in the Obsidian vault `History.md` (see Gotchas —
+   Also add the one-liner/branch/default to `scripts/pipeline_tools.json` (powers `--list-tools`).
+5. **Document it for end users:** add a `docs/TOOLS.md` section (anchored by tool name —
+   purpose/inputs/output columns/method/citation/env+source) and a row in the README "## Tools"
+   table linking to that anchor. Keep the README one-liner consistent with the
+   `pipeline_tools.json` description.
+6. **Log the change** as an H2 entry in the Obsidian vault `History.md` (see Gotchas —
    NOT a repo file), and commit the code per-tool.
 
 ## Gotchas (not visible from the code)
