@@ -18,6 +18,19 @@ PROTEINMPNN_ENV="$ESMFOLD_ENV" # ProteinMPNN conda environment name
 
 AGGRESCAN3D_ENV="aggrescan3d" # Aggrescan3D (A3D, structure-based aggregation propensity) conda environment name
 
+# Active-site pocket descriptors (fpocket geometric + P2Rank ML ligandability).
+# Dedicated env created via conda-forge:
+#   conda create -n pocket -c conda-forge fpocket openjdk=21 python=3.11 pandas numpy biopython
+# (openjdk is required by P2Rank's `prank` launcher; the env puts `java` on PATH.)
+POCKET_ENV="pocket" # fpocket + P2Rank conda environment name
+
+# P2Rank prebuilt distribution dir (must contain the `prank` launcher). PER-INSTALL
+# absolute path — the official release tarball unpacked ON the cluster OUTSIDE the
+# repo, never committed (like SOLUPROT_PATH). Download from:
+#   https://github.com/rdk/p2rank/releases  (p2rank_<ver>.tar.gz)
+# Leave empty / unset to skip the P2Rank cross-check (fpocket still runs).
+P2RANK_PATH="/home/soldat/documents/tools/p2rank_2.5.1"
+
 SOLUPROT_PATH="/home2/soldat/documents/soluprot"
 SOLUPROT_ENV="soluprot" # SoluProt conda environment name
 

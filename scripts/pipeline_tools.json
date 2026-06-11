@@ -15,6 +15,7 @@
   "motif_struct":         { "default": true,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs." },
   "active_site_geom":     { "default": true,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)." },
   "radius_of_gyration":   { "default": true,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms." },
+  "pocket_descriptors":   { "default": true,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)." },
   "domain_composition":   { "default": true,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)." },
   "aggregation":          { "default": true,  "branch": "structure", "description": "Aggrescan3D structure-based aggregation propensity." },
   "foldseek_swissprot":   { "default": true,  "branch": "structure", "description": "Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits)." },

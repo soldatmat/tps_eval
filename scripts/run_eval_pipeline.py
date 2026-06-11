@@ -122,6 +122,7 @@ def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.
 def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
 def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
 def out_radius_of_gyration(d): return d.rstrip(os.sep) + "_radius_of_gyration.csv"
+def out_pocket_descriptors(d): return d.rstrip(os.sep) + "_pocket_descriptors.csv"
 def out_domain_composition(d): return d.rstrip(os.sep) + "_domain_composition.csv"
 def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
 def out_foldseek_swissprot(d): return d.rstrip(os.sep) + "_foldseek_swissprot_search.csv"
@@ -153,6 +154,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "motif_struct":         {"default": True,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs."},
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
     "radius_of_gyration":   {"default": True,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms."},
+    "pocket_descriptors":   {"default": True,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)."},
     "domain_composition":   {"default": True,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)."},
     "aggregation":          {"default": True,  "branch": "structure", "description": "Aggrescan3D structure-based aggregation propensity."},
     "foldseek_swissprot":   {"default": True,  "branch": "structure", "description": "Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits)."},
@@ -371,6 +373,12 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",
                           ["--structs_dir", structs], out_radius_of_gyration(structs),
                           tool="radius_of_gyration"))
+        # Active-site pocket descriptors: fpocket geometry (catalytic-pocket volume,
+        # hydrophobicity, enclosure) + P2Rank ML ligandability, anchored on the
+        # carboxylate-cage metal point. Raw numbers; band from the reference-stats pipeline.
+        steps.append(Step("pocket_descriptors_gen", "pocket_descriptors.sh",
+                          ["--structs_dir", structs], out_pocket_descriptors(structs),
+                          tool="pocket_descriptors"))
         # TPS structural-domain composition via EnzymeExplorer's CPU domain detector.
         steps.append(Step("domain_composition_gen", "domain_composition.sh",
                           ["--structs_dir", structs], out_domain_composition(structs),
