@@ -130,6 +130,8 @@ def out_proteinmpnn(d): return d.rstrip(os.sep) + "_proteinmpnn_score.csv"
 def out_self_consistency(d): return d.rstrip(os.sep) + "_self_consistency.csv"
 def out_interdomain_pae(d): return d.rstrip(os.sep) + "_interdomain_pae.csv"
 def out_global_confidence(d): return d.rstrip(os.sep) + "_global_confidence.csv"
+def out_aromatic_lining(d): return d.rstrip(os.sep) + "_aromatic_lining.csv"
+def out_diphosphate_sensor(d): return d.rstrip(os.sep) + "_diphosphate_sensor.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -155,6 +157,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "plddt":                {"default": True,  "branch": "structure", "description": "AlphaFold/ESMFold pLDDT folding confidence."},
     "motif_struct":         {"default": True,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs."},
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
+    "aromatic_lining":      {"default": True,  "branch": "structure", "description": "Aromatic / cation-pi pocket lining (carbocation-stabilization proxy)."},
+    "diphosphate_sensor":   {"default": True,  "branch": "structure", "description": "Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site."},
     "radius_of_gyration":   {"default": True,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms."},
     "pocket_descriptors":   {"default": True,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)."},
     "domain_composition":   {"default": True,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)."},
@@ -373,6 +377,14 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("active_site_geom_gen", "active_site_geometry.sh",
                           ["--structs_dir", structs], out_active_site_geom(structs),
                           tool="active_site_geom"))
+        # Aromatic / cation-π pocket lining (carbocation-stabilization proxy).
+        steps.append(Step("aromatic_lining_gen", "aromatic_lining.sh",
+                          ["--structs_dir", structs], out_aromatic_lining(structs),
+                          tool="aromatic_lining"))
+        # Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site.
+        steps.append(Step("diphosphate_sensor_gen", "diphosphate_sensor.sh",
+                          ["--structs_dir", structs], out_diphosphate_sensor(structs),
+                          tool="diphosphate_sensor"))
         # Radius of gyration / compactness: raw geometric shape numbers (Rg, asphericity,
         # principal radii) over the Cα atoms; no expected-Rg band (compared downstream).
         steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",

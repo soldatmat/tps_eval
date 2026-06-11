@@ -165,6 +165,15 @@ STRUCTURE_NUMERIC = {
         "metal_point_void",
         "catalytic_constellation_rmsd",
     ],
+    "_aromatic_lining.csv": [
+        "n_pocket_aromatics",
+        "n_inward_facing_aromatics",
+        "aromatic_fraction",
+    ],
+    "_diphosphate_sensor.csv": [
+        "n_diphosphate_basic_residues",
+        "n_RY_pairs",
+    ],
     "_radius_of_gyration.csv": [
         "radius_of_gyration",
         "asphericity",
@@ -221,6 +230,7 @@ STRUCTURE_NUMERIC = {
 STRUCTURE_CATEGORICAL = {
     "_domain_composition.csv": ["domain_architecture"],
     "_foldseek_swissprot_search.csv": ["foldseek_sprot_top_is_tps"],
+    "_diphosphate_sensor.csv": ["has_RY_pair"],
 }
 
 
