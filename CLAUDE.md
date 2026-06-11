@@ -75,6 +75,10 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   paths/env names in `paths.sh`.
 - `vendor/` holds git submodules — `cif_to_pdb`, `pymol_scripts`, `aggrescan3d` (Py2.7),
   `ProteinMPNN` (ships its own weights): `git submodule update --init --recursive`.
+  GOTCHA: the `aggrescan3d` env is an EDITABLE install (`pip install -e vendor/aggrescan3d`);
+  a `git submodule update`/reset on that submodule de-registers it (the `aggrescan` launcher
+  then dies with `DistributionNotFound`). After any submodule reset, re-run
+  `pip install -e vendor/aggrescan3d` in the `aggrescan3d` env.
 - **`/data/` is gitignored.** Committable reference artifacts therefore live under `src/`,
   NOT `data/` — e.g. `src/homology_search/tps_uniprot_accessions.txt` (the TPS-accession
   classification set), and the reference-stats JSON. Large DBs (Swiss-Prot/afdb-swissprot,
