@@ -29,6 +29,10 @@ TARGETS = [
     "swissprot_top_pident",
     "swissprot_best_nontps_pident",
     "swissprot_n_tps_in_topN",
+    # --- k-NN coarse-label transfer (gen-only; <gen>_knn_label_transfer.csv) ---
+    # `confidence` is the ensembled calibrated confidence in [0, 1]; the predicted
+    # label itself is categorical (see CATEGORICAL_TARGETS below).
+    "confidence",
 ]
 
 
@@ -49,6 +53,7 @@ LOAD = {
     "swissprot_top_pident": ["swissprot_search"],
     "swissprot_best_nontps_pident": ["swissprot_search"],
     "swissprot_n_tps_in_topN": ["swissprot_search"],
+    "confidence": ["knn_label_transfer"],
 }
 
 
@@ -64,6 +69,7 @@ MIN_VAL = {
     "isTPS": 0.0 - 0.01,
     "isTPS_seq": 0.0 - 0.01,
     "soluble": 0.0 - 0.01,
+    "confidence": 0.0 - 0.01,
 }
 
 
@@ -77,6 +83,7 @@ MAX_VAL = {
     "isTPS": 1.0 + 0.01,
     "isTPS_seq": 1.0 + 0.01,
     "soluble": 1.0 + 0.01,
+    "confidence": 1.0 + 0.01,
 }
 
 
@@ -94,6 +101,7 @@ TICKS = {
     "isTPS": _ticks(0.0, 1.0, 0.05),
     "isTPS_seq": _ticks(0.0, 1.0, 0.05),
     "soluble": _ticks(0.0, 1.0, 0.05),
+    "confidence": _ticks(0.0, 1.0, 0.05),
 }
 
 
@@ -134,6 +142,8 @@ OFFSET = {
 # time, so they aren't enumerated here.
 CATEGORICAL_TARGETS = {
     "swissprot_top_is_tps": ["swissprot_search"],
+    # k-NN ensembled predicted coarse label (gen-only; "unknown" = abstained).
+    "predicted_label": ["knn_label_transfer"],
 }
 
 
@@ -224,6 +234,13 @@ STRUCTURE_NUMERIC = {
         "sc_rmsd_min",
         "sc_rmsd_mean",
     ],
+    # SDR specificity-divergence: global similarity to the nearest known TPS and the
+    # fraction-identical fraction at the specificity-determining residues. Both in
+    # [0, 1] (fixed-scale below); the divergence flag itself is categorical.
+    "_sdr_divergence.csv": [
+        "nearest_neighbour_similarity",
+        "sdr_identity",
+    ],
 }
 
 # suffix -> list of CATEGORICAL / BOOLEAN metric columns in that CSV
@@ -231,6 +248,7 @@ STRUCTURE_CATEGORICAL = {
     "_domain_composition.csv": ["domain_architecture"],
     "_foldseek_swissprot_search.csv": ["foldseek_sprot_top_is_tps"],
     "_diphosphate_sensor.csv": ["has_RY_pair"],
+    "_sdr_divergence.csv": ["specificity_divergence"],
 }
 
 
@@ -242,6 +260,8 @@ _PROB_LIKE_STRUCTURE = (
     "structural_lddt_to_known",
     "foldseek_sprot_top_tmscore",
     "foldseek_sprot_best_nontps_tmscore",
+    "nearest_neighbour_similarity",
+    "sdr_identity",
 )
 for _t in _PROB_LIKE_STRUCTURE:
     MIN_VAL[_t] = 0.0 - 0.01

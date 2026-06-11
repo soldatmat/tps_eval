@@ -66,6 +66,18 @@ from typing import Dict, List, Optional
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # scripts/.. == repo root
 TOOLS_CONFIG = os.path.join(REPO, "scripts", "pipeline_tools.json")
 
+# Single pipeline-wide top-k for the three feeder tools (max_sequence_identity,
+# min_embedding_distance, structural_identity). Their *_topk.csv outputs feed the
+# k-NN label-transfer and SDR-divergence consumers. Built-in fallback; overridden by
+# the JSON config "_settings.top_k" and then by the --top_k CLI flag.
+DEFAULT_TOP_K = 15
+
+# Default k-NN reference artifacts (committed under src/, see CLAUDE.md "/data/ is
+# gitignored" -> committable reference artifacts live under src/).
+DEFAULT_KNN_LABEL_FILE = os.path.join(REPO, "src", "knn", "first_cyclization_labels.csv")
+DEFAULT_KNN_CALIBRATION = os.path.join(
+    REPO, "src", "reference_stats", "knn_calibration_first_cyclization.json")
+
 
 # --------------------------------------------------------------------------- #
 # Cluster adapters                                                            #
@@ -110,6 +122,13 @@ def out_mindist(f): return _base(f) + "_embedding_esm1b_min_embedding_distance.c
 def out_mindist_self(f): return _base(f) + "_embedding_esm1b_min_embedding_distance_self.csv"
 def out_maxid(f): return _base(f) + "_max_sequence_identity.csv"
 def out_maxid_self(f): return _base(f) + "_max_sequence_identity_self.csv"
+# top-k feeder outputs (consumed by knn / sdr_divergence). The feeder tools key
+# the top-k CSV off the SAME input as their single-best CSV:
+#   max_sequence_identity  -> <fasta>_max_sequence_identity_topk.csv
+#   min_embedding_distance -> <embeddings_csv>_min_embedding_distance_topk.csv
+#   structural_identity    -> <structs_dir>_structural_identity_topk.csv
+def out_maxid_topk(f): return _base(f) + "_max_sequence_identity_topk.csv"
+def out_mindist_topk(emb_csv): return os.path.splitext(emb_csv)[0] + "_min_embedding_distance_topk.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
 def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
@@ -119,6 +138,10 @@ def out_esm_ppl(f): return _base(f) + "_esm_pseudo_perplexity.csv"
 # the tools save "<structs_dir>_<tool>.csv" as a sibling of the directory.
 def out_plddt(d): return d.rstrip(os.sep) + "_plddt.csv"
 def out_structural_identity(d): return d.rstrip(os.sep) + "_structural_identity.csv"
+def out_structural_identity_topk(d): return d.rstrip(os.sep) + "_structural_identity_topk.csv"
+# Consumer (dependency-heavy) outputs keyed by the gen fasta / structs dir:
+def out_knn(f): return _base(f) + "_knn_label_transfer.csv"
+def out_sdr_divergence(d): return d.rstrip(os.sep) + "_sdr_divergence.csv"
 def out_motif_struct(d): return d.rstrip(os.sep) + "_motif_structural_distance.csv"
 def out_active_site_geom(d): return d.rstrip(os.sep) + "_active_site_geometry.csv"
 def out_radius_of_gyration(d): return d.rstrip(os.sep) + "_radius_of_gyration.csv"
@@ -169,6 +192,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "global_confidence":    {"default": True,  "branch": "structure", "description": "Global fold confidence (pTM/iPTM) from the saved PAE npz (needs --pae_dir)."},
     "interdomain_pae":      {"default": True,  "branch": "structure", "description": "Mean/max inter-domain PAE between TPS domains (needs --pae_dir; EE domain ranges)."},
     "self_consistency":     {"default": False, "branch": "structure", "description": "HEAVY scRMSD self-consistency (ProteinMPNN -> ESMFold refold -> RMSD). Opt-in."},
+    "knn":                  {"default": True,  "branch": "structure", "description": "k-NN coarse-label transfer: ensembled vote over the sequence/embedding/structural top-k neighbours -> predicted coarse label + confidence (needs --train_path + --structs_dir + --known_structs_dir)."},
+    "sdr_divergence":       {"default": True,  "branch": "structure", "description": "SDR specificity-divergence: flags designs globally close to a known TPS but divergent at the specificity-determining active-site residues (needs --structs_dir + --known_structs_dir)."},
     "plots":                {"default": True,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless excluded."},
 }
 
@@ -197,6 +222,44 @@ def load_tools_catalog() -> Dict[str, dict]:
         entry.update({k: spec[k] for k in ("default", "branch", "description") if k in spec})
         catalog[key] = entry
     return catalog
+
+
+def knn_calibrated_spaces(calibration_path: str) -> set:
+    """Return the similarity spaces the k-NN calibration JSON actually covers.
+
+    `transfer_labels` indexes calibration["spaces"][space] for EVERY space whose
+    top-k CSV is passed, so passing an UNCALIBRATED space (e.g. 'sequence' while only
+    embedding+structural are calibrated) raises KeyError. The orchestrator therefore
+    only forwards the topk flags for the calibrated spaces. Returns an empty set if the
+    file is unreadable (the caller then [note]-skips knn).
+    """
+    try:
+        with open(calibration_path) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return set()
+    spaces = data.get("spaces")
+    return set(spaces) if isinstance(spaces, dict) else set()
+
+
+def load_top_k() -> int:
+    """Resolve the pipeline-wide top-k from JSON "_settings.top_k", else DEFAULT_TOP_K.
+
+    The tools-catalog loader ignores '_'-prefixed keys, so the top-k setting is read
+    here explicitly from "_settings": {"top_k": N}. Missing/unreadable/malformed ->
+    the built-in DEFAULT_TOP_K fallback.
+    """
+    try:
+        with open(TOOLS_CONFIG) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return DEFAULT_TOP_K
+    settings = data.get("_settings")
+    if isinstance(settings, dict):
+        val = settings.get("top_k")
+        if isinstance(val, int) and val >= 1:
+            return val
+    return DEFAULT_TOP_K
 
 
 def _parse_keys(csv: Optional[str]) -> List[str]:
@@ -326,6 +389,14 @@ def build_steps(args, enabled: set) -> List[Step]:
 
     datasets = [("gen", gen)] + ([("train", train)] if train else [])
 
+    # The k-NN + SDR consumers read the gen-vs-train / gen-vs-known *_topk.csv CSVs
+    # emitted by the three feeders. Only ask the feeders for top-k when a consumer is
+    # actually enabled (no wasted top-k otherwise). topk_args is appended to the three
+    # gen-vs-{train,known} feeder Steps below.
+    topk_consumers = {"knn", "sdr_divergence"}
+    want_topk = bool(topk_consumers & enabled)
+    topk_args = ["--top_k", str(args.top_k)] if want_topk else []
+
     for tag, fa in datasets:
         is_train = tag == "train"
         steps.append(Step(f"motif_{tag}", "motif_search.sh", ["--fasta_path", fa],
@@ -356,10 +427,11 @@ def build_steps(args, enabled: set) -> List[Step]:
     if train:
         train_emb = args.train_embeddings_path or out_esm(train)
         steps.append(Step("maxid_gen_vs_train", "max_sequence_identity.sh",
-                          ["--fasta_path", gen, "--train_path", train], out_maxid(gen),
+                          ["--fasta_path", gen, "--train_path", train] + topk_args, out_maxid(gen),
                           tool="maxid_gen_vs_train"))
         steps.append(Step("mindist_gen_vs_train", "min_embedding_distance.sh",
-                          ["--embeddings_path", out_esm(gen), "--train_embeddings_path", train_emb],
+                          ["--embeddings_path", out_esm(gen), "--train_embeddings_path", train_emb]
+                          + topk_args,
                           out_mindist(gen), tool="mindist_gen_vs_train", deps=["esm_gen", "esm_train"]))
 
     # Structure branch: pLDDT (folding confidence) + foldseek structural identity to the
@@ -418,7 +490,8 @@ def build_steps(args, enabled: set) -> List[Step]:
                           out_self_consistency(structs), tool="self_consistency"))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
-                              ["--structs_dir", structs, "--known_structs_dir", known_structs],
+                              ["--structs_dir", structs, "--known_structs_dir", known_structs]
+                              + topk_args,
                               out_structural_identity(structs), tool="structural_identity"))
         else:
             print("[note] --structs_dir without --known_structs_dir: skipping "
@@ -436,6 +509,78 @@ def build_steps(args, enabled: set) -> List[Step]:
         else:
             print("[note] --structs_dir without --pae_dir: skipping global_confidence + "
                   "interdomain_pae (need <ID>_pae.npz from a PAE-saving fold).")
+
+    # --- Dependency-heavy consumers: k-NN label transfer + SDR divergence --------- #
+    # Both read the three feeders' *_topk.csv. They are gated on the feeders actually
+    # existing (train -> sequence/embedding feeders; structs+known_structs -> structural
+    # feeder) and skip cleanly with a [note] otherwise, like structural_identity does
+    # without --known_structs_dir.
+    #
+    # k-NN: ensembled coarse-label transfer over the three similarity spaces. predict
+    # mode needs ALL THREE feeders present, plus the label_file + calibration artifacts.
+    # The calibration currently covers only the embedding+structural spaces (sequence
+    # space pending); predict abstains in uncalibrated spaces, so we still pass all three
+    # topk paths and let it use whatever the calibration covers.
+    if "knn" in enabled:
+        knn_ok = bool(train and structs and known_structs)
+        if not knn_ok:
+            print("[note] knn: skipping label transfer (needs --train_path AND "
+                  "--structs_dir AND --known_structs_dir for the three feeders).")
+        elif not os.path.isfile(args.knn_label_file):
+            print(f"[note] knn: skipping (label file not found: {args.knn_label_file}).")
+        elif not os.path.isfile(args.knn_calibration):
+            print(f"[note] knn: skipping (calibration not found: {args.knn_calibration}).")
+        else:
+            # Only forward the topk for spaces the calibration actually covers:
+            # transfer_labels indexes calibration["spaces"][space] for every passed
+            # space, so an uncalibrated one (e.g. sequence while only embedding+
+            # structural are calibrated) would KeyError. space -> (flag, topk, feeder).
+            cal_spaces = knn_calibrated_spaces(args.knn_calibration)
+            space_specs = {
+                "sequence":   ("--sequence_topk",   out_maxid_topk(gen),
+                               "maxid_gen_vs_train"),
+                "embedding":  ("--embedding_topk",  out_mindist_topk(out_esm(gen)),
+                               "mindist_gen_vs_train"),
+                "structural": ("--structural_topk", out_structural_identity_topk(structs),
+                               "structural_identity_gen"),
+            }
+            knn_args = ["predict"]
+            knn_deps: List[str] = []
+            for space in ("sequence", "embedding", "structural"):
+                if space not in cal_spaces:
+                    continue
+                flag, topk_path, feeder = space_specs[space]
+                knn_args += [flag, topk_path]
+                knn_deps.append(feeder)
+            if not knn_deps:
+                print(f"[note] knn: skipping (calibration covers no known space: "
+                      f"{sorted(cal_spaces)}).")
+            else:
+                if "sequence" not in cal_spaces:
+                    print("[note] knn: sequence space not yet calibrated -> using "
+                          f"{sorted(s for s in cal_spaces if s in space_specs)} only.")
+                knn_args += ["--label_file", args.knn_label_file,
+                             "--calibration", args.knn_calibration,
+                             "--out", out_knn(gen)]
+                steps.append(Step("knn_gen", "knn_label_transfer.sh", knn_args,
+                                  out_knn(gen), tool="knn", deps=knn_deps))
+
+    # SDR divergence: needs the structural feeder (structs + known_structs); the sequence
+    # feeder (--sequence_topk) is an optional fallback added only when train is present.
+    if "sdr_divergence" in enabled:
+        if not (structs and known_structs):
+            print("[note] sdr_divergence: skipping (needs --structs_dir AND "
+                  "--known_structs_dir).")
+        else:
+            sdr_args = ["--structs_dir", structs, "--known_structs_dir", known_structs,
+                        "--structural_topk", out_structural_identity_topk(structs)]
+            sdr_deps = ["structural_identity_gen"]
+            if train:
+                sdr_args += ["--sequence_topk", out_maxid_topk(gen)]
+                sdr_deps.append("maxid_gen_vs_train")
+            sdr_args += ["--save_path", out_sdr_divergence(structs)]
+            steps.append(Step("sdr_divergence_gen", "sdr_divergence.sh", sdr_args,
+                              out_sdr_divergence(structs), tool="sdr_divergence", deps=sdr_deps))
 
     # Filter to enabled tools BEFORE wiring plots, so plots only soft-depends on the
     # metric steps that actually survived (it never waits on a disabled tool).
@@ -486,6 +631,20 @@ def main() -> None:
                         "~1-2.5 min/structure x num_seqs on GPU). Off by default.")
     p.add_argument("--sc_num_seqs", type=int, default=8,
                    help="ProteinMPNN sequences per structure for self_consistency (default 8).")
+    # Single pipeline-wide top-k for the three feeders that emit *_topk.csv for the
+    # knn + sdr_divergence consumers. Default comes from pipeline_tools.json
+    # "_settings.top_k" (else the built-in DEFAULT_TOP_K); this overrides it.
+    p.add_argument("--top_k", type=int, default=None,
+                   help="Neighbours per query in the feeders' *_topk.csv (consumed by knn + "
+                        f"sdr_divergence). Default: pipeline_tools.json _settings.top_k or "
+                        f"{DEFAULT_TOP_K}. Only emitted when knn or sdr_divergence is enabled.")
+    p.add_argument("--knn_label_file", default=DEFAULT_KNN_LABEL_FILE,
+                   help="CSV mapping reference_id,label for k-NN label transfer "
+                        f"(default {os.path.relpath(DEFAULT_KNN_LABEL_FILE, REPO)}).")
+    p.add_argument("--knn_calibration", default=DEFAULT_KNN_CALIBRATION,
+                   help="k-NN calibration JSON from `calibrate` "
+                        f"(default {os.path.relpath(DEFAULT_KNN_CALIBRATION, REPO)}; "
+                        "currently embedding+structural spaces, sequence space pending).")
     # Config-driven tool selection (precedence: config defaults -> only -> include -> exclude).
     p.add_argument("--only", default=None, metavar="A,B,...",
                    help="Run ONLY these tool keys (comma-separated); plots is kept on unless "
@@ -512,9 +671,13 @@ def main() -> None:
 
     args.fasta_path = os.path.abspath(args.fasta_path)
     for opt in ("train_path", "structs_dir", "known_structs_dir", "pae_dir", "train_structs_dir",
-                "train_embeddings_path"):
+                "train_embeddings_path", "knn_label_file", "knn_calibration"):
         if getattr(args, opt):
             setattr(args, opt, os.path.abspath(getattr(args, opt)))
+
+    # Resolve the single pipeline top-k: CLI --top_k wins, else JSON _settings/DEFAULT.
+    if args.top_k is None:
+        args.top_k = load_top_k()
 
     ts = datetime.now().strftime("%Y_%m_%d_%H%M%S")
     log_dir = os.path.join(REPO, "logs", f"run_eval_pipeline-{ts}")
