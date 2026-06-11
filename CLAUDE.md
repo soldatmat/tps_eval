@@ -33,9 +33,11 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   existing `src/alphafold/run_alphafold_jobs.py` to submit one AF3 job per sequence and
   prints the N job ids; the Engine captures them (`fanout_ids`) so every structure Step
   `afterok`-waits on all N, then an `extract_pae` step populates the PAE dir (PAE-consumers
-  wait on it). NOT yet ported (v2): EnzymeExplorer-with-structures, and AF3 ligand/ion
-  co-folding (apo only). Sequence + structure-consuming branches verified end-to-end on
-  Aurum; the AF3 fan-out wiring is dry-run-verified (a live AF3 fold is expensive).
+  wait on it). AF3 holo co-folding of the trinuclear Mg2+ cluster (+ diphosphate) is
+  available via `--af3_cofold {none,mg,mg_ppi}` (CCD `MG`/`POP`; AF3 ion placement is a
+  hypothesis — verify Mg lands at DDXXD/NSE). NOT yet ported (v2):
+  EnzymeExplorer-with-structures. Sequence + structure-consuming branches verified
+  end-to-end on Aurum; the AF3 fan-out wiring is dry-run-verified (a live fold is expensive).
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).

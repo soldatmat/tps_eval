@@ -20,7 +20,7 @@ job) and 'alphafold3' (Aurum-only, a per-sequence FAN-OUT — one AF3 job per de
 a login-node driver that captures the N job ids, then a PAE-extraction step). Either
 folds the generated FASTA into a structs dir (+ PAE) the whole structure branch then
 consumes, so no pre-supplied --structs_dir is needed. What is NOT yet ported (v2):
-EnzymeExplorer-with-structures, and AF3 ligand/ion co-folding (apo only for now).
+EnzymeExplorer-with-structures (AF3 holo co-folding via --af3_cofold IS wired).
 
 Usage:
     python scripts/run_eval_pipeline.py --cluster aurum \
@@ -572,6 +572,7 @@ def build_steps(args, enabled: set) -> List[Step]:
             fanout_cmd = ["bash", os.path.join(REPO, "scripts", "run_alphafold_fanout.sh"),
                           "--cluster", args.cluster, "--fasta_path", gen,
                           "--working_directory", af3_work,
+                          "--cofold", args.af3_cofold,
                           "--model_seeds"] + [str(s) for s in args.af3_model_seeds]
             steps.append(Step("af3_fold_gen", "", fanout_cmd,
                               os.path.join(af3_work, ".__never__"),
@@ -841,6 +842,11 @@ def main() -> None:
                         "interdomain_pae. Ignored if --structs_dir is given.")
     p.add_argument("--af3_model_seeds", type=int, nargs="+", default=[42],
                    help="With --fold alphafold3: AF3 model seeds per sequence (default 42).")
+    p.add_argument("--af3_cofold", default="none", choices=["none", "mg", "mg_ppi"],
+                   help="With --fold alphafold3: co-fold the class-I TPS active site for a "
+                        "HOLO prediction. 'none' (default) = apo protein only; 'mg' = the "
+                        "trinuclear Mg2+ cluster; 'mg_ppi' = Mg2+ cluster + a diphosphate "
+                        "head group (substrate-agnostic). Filenames stay <ID>.pdb regardless.")
     p.add_argument("--no_fold_pae", action="store_true",
                    help="With --fold: do NOT save/extract the PAE matrices (skips "
                         "global_confidence + interdomain_pae). Default: save them.")
