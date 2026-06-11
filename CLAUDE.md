@@ -12,24 +12,45 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `run_<tool>.sh "$@"` (the `#SBATCH` header is the only cluster-specific part).
 - `src/<subdir>/run_<tool>.py` — argv entry; `src/<subdir>/<tool>.py` — logic.
 - **Output is a CSV keyed by `ID`** with the metric column(s), so metrics compose/merge
-  for filtration. Save name follows `<input>_<tool>.csv`.
+  for filtration. **Sequence-branch** tools key off the fasta → `<input>_<tool>.csv`;
+  **structure-branch** tools key off the structures DIR → `<structs_dir>_<tool>.csv`
+  (sibling of the dir). Tools emit RAW numbers only — "natural TPS" bands are computed
+  separately by the reference-stats pipeline (see below), not baked into the tool.
 - `scripts/submit_job.sh --cluster <c> --job_name <tool> [--job_args ...]` submits the
   right job script. `paths.sh` holds conda env names + external-tool install paths.
 - **Full pipeline:** `scripts/run_eval_pipeline.py --cluster <c> --fasta_path <gen>
-  [--train_path <train>]` — the cluster-agnostic *declarative* orchestrator (one Step
-  list; idempotent; deps chained as a single `--dependency=afterok:…`). Covers the
-  sequence branch + plots + the structure-consuming metrics (pLDDT via `--structs_dir`,
-  foldseek structural-identity via `--structs_dir --known_structs_dir`); it supersedes
-  `scripts/<cluster>/submit_all.sh`. NOT yet ported (v2): the AlphaFold fan-out that
-  *produces* structures and EnzymeExplorer-with-structures — `submit_all.sh` still
-  carries the fold step; pass `--structs_dir` to the orchestrator once structures exist.
+  [--train_path <train>] [--structs_dir <s>] [--known_structs_dir <k>]
+  [--self_consistency]` — the cluster-agnostic *declarative* orchestrator (one Step
+  list; idempotent; deps chained as a single `--dependency=afterok:…`). It supersedes
+  `scripts/<cluster>/submit_all.sh` and covers the **full sequence branch** + plots and
+  the **full structure-consuming branch** (pLDDT, structural-identity, motif-structural-
+  distance, active-site geometry, domain composition, aggregation, broad foldseek search,
+  ProteinMPNN-NLL, radius-of-gyration; scRMSD is opt-in via `--self_consistency`, it's
+  heavy). NOT yet ported (v2): the AlphaFold/ESMFold fan-out that *produces* structures
+  and EnzymeExplorer-with-structures — pass `--structs_dir` once structures exist.
+  Verified end-to-end on Aurum. Wiring audit: every `run_<tool>.sh` except the producers
+  (`esmfold`, EE-with-structures) and the standalone `plot_domains`/`plot_residue_similarity`
+  viz is a Step here.
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
+   - **Structure-branch tool?** Reuse the canonical loader in `src/structure_metrics/plddt.py`
+     (af3-`af_output`-vs-flat-dir auto-detection, ID = filename stem, `<structs_dir>_<tool>.csv`
+     naming) — `motif_structural_distance.py`/`active_site_geometry.py`/`aggregation.py` all mirror it.
+   - **Need the DDXXD / NSE/DTE motif positions?** Use the shared
+     `src/sequence_metrics/motif_localization.py` (the single source of truth — regexes +
+     coordinating-residue offsets). Don't re-encode the motifs.
 2. `scripts/run_<tool>.sh` — copy an existing one (e.g. `run_max_sequence_identity.sh`):
-   keep the `conda activate` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."` block.
-3. `scripts/<cluster>/jobs/<tool>.sh` per cluster — Aurum uses `--constraint=gen-a`
-   (NО `-p`); Karolina uses `--partition=qcpu`/`qgpu`. `--time` + `--mem` are mandatory.
+   keep the `conda activate "$<ENV>"` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."` block.
+   Pick the right env (see Gotchas — not every tool uses `TPS_EVAL_ENV`).
+3. `scripts/<cluster>/jobs/<tool>.sh` per cluster — Aurum uses `--constraint=gen-a` for CPU,
+   `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1` for GPU (NО `-p`); Karolina uses
+   `--partition=qcpu`/`qgpu`. `--time` + `--mem` mandatory.
+4. **Wire it into `scripts/run_eval_pipeline.py`**: add an `out_<tool>()` helper + a `Step(...)`
+   in `build_steps` (sequence-branch in the per-dataset loop; structure-branch in the
+   `if structs:` block). Dry-run to confirm it appears, then add its column(s) to the plots
+   (`src/plot/constants.py`) and the reference-stats pipeline if it's an intrinsic property.
+5. **Update `History.md`** (running changelog) — it's maintained per-tool.
 
 ## Gotchas (not visible from the code)
 - **`paths.sh` is per-install and is NEVER committed with cluster-specific paths.** Each
@@ -42,10 +63,27 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   B-factor already holds pLDDT. The extracted `structs/*.pdb` carry pLDDT only because
   `vendor/cif_to_pdb` was patched (Biopython, preserves B-factor) — structs extracted by
   the old Open Babel converter are zeroed, so prefer `af_output` when unsure.
+- **Multiple conda envs — not every tool uses `TPS_EVAL_ENV`.** `paths.sh` names them:
+  `TPS_EVAL_ENV` (most tools + foldseek + DIAMOND + ESM), `ESMFOLD_ENV` (ESMFold *and*
+  ProteinMPNN — `PROTEINMPNN_ENV` defaults to it), `AGGRESCAN3D_ENV` (**Python 2.7** — A3D
+  upstream is Py2-only), `ENZYME_EXPLORER_ENV` (= `enzyme_explorer_prod` on Aurum, the
+  `revision` branch), `SOLUPROT_ENV`. Each `run_<tool>.sh` activates the right one.
 - **SoluProt / EnzymeExplorer are external installs**, not pip/conda packages. SoluProt:
   `scripts/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
   EnzymeExplorer: its own repo's `scripts/setup_env.sh`. tps_eval only calls them via the
   paths/env names in `paths.sh`.
-- `vendor/` holds git submodules (`cif_to_pdb`, `pymol_scripts`):
-  `git submodule update --init --recursive`.
-- AlphaFold jobs are currently configured for the IOCB **Aurum** cluster only.
+- `vendor/` holds git submodules — `cif_to_pdb`, `pymol_scripts`, `aggrescan3d` (Py2.7),
+  `ProteinMPNN` (ships its own weights): `git submodule update --init --recursive`.
+- **`/data/` is gitignored.** Committable reference artifacts therefore live under `src/`,
+  NOT `data/` — e.g. `src/homology_search/tps_uniprot_accessions.txt` (the TPS-accession
+  classification set), and the reference-stats JSON. Large DBs (Swiss-Prot/afdb-swissprot,
+  AFDB structures) live OUTSIDE the repo on each cluster, pointed to by `paths.sh`.
+- **Folding:** AlphaFold3 is **Aurum-only**; ESMFold (`run_esmfold.sh`) runs on both
+  clusters. ESMFold writes pLDDT on a **0–1 scale** — `esmfold.py` rescales the B-factor
+  ×100 so the 0–100-based `plddt` tool reads it. Both produce a `structs/` dir of
+  `<ID>.pdb` consumed unchanged by the structure branch.
+- **Aurum GPU routing:** use `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1`. `gen-a`+`gpu:1`
+  routes to the single-node `a36_96_gpu` partition (`a233`), which is frequently down →
+  jobs stuck PENDING (this bit `esm_pseudo_perplexity`). See the `aurum-connect` skill.
+- **Keep `History.md` current** — it's the running change/metric log (Done + research-backed
+  backlog). Update it whenever a tool/metric is added or changed.
