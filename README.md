@@ -70,6 +70,16 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
 | [plot_domains](docs/TOOLS.md#plot_domains) | visualization | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
 | [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | visualization | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
+| [run_visualization](docs/TOOLS.md#run_visualization) | visualization | Dataset-level class-coloured 2D landscape map of a protein set from any representation (PCA / t-SNE / UMAP / PaCMAP / PCoA; vectors or precomputed distances). Standalone. | PNG figure(s) at `--out` |
+
+### Representation / embedding producers
+These emit a per-`id` feature CSV (first column `id`, then feature dims) for a whole protein set; **standalone, NOT orchestrator Steps** — run them directly, then feed into [run_visualization](docs/TOOLS.md#run_visualization).
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [saprot_embedding](docs/TOOLS.md#saprot_embedding) | producer | SaProt-650M structure-aware embeddings (per-residue AA + foldseek-3Di tokens, mean-pooled). Standalone. | feature CSV keyed by `id` |
+| [ee_domain_features](docs/TOOLS.md#ee_domain_features) | producer | EnzymeExplorer domain-comparison features (1 − foldseek TM-score to reference functional domains, `domains_subset`). Standalone. | feature CSV keyed by `id` |
+| [ee_esm1v_embeddings](docs/TOOLS.md#ee_esm1v_embeddings) | producer | EnzymeExplorer ESM-1v-TPS (subseq-finetuned, 650M) mean embeddings. Standalone. | feature CSV keyed by `id` |
+| [active_site_features](docs/TOOLS.md#active_site_features) | producer | 32-d active-site/cation-residue property + geometry profile of the shell within 12 Å of the Mg²⁺ carboxylate cage (class-I; OSC class-12 excluded by label). Standalone. | feature CSV keyed by `id` |
 
 ### Reference & orchestration
 | Tool | Branch | Description | Output |
