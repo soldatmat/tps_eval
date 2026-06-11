@@ -312,7 +312,8 @@ def self_consistency_dir(
     tokenizer, model, device = _load_model(device)
 
     def fold_fn(seq: str) -> str:
-        return fold_sequence(model, tokenizer, device, seq)
+        # fold_sequence returns (pdb_str, pae); self-consistency only needs the PDB.
+        return fold_sequence(model, tokenizer, device, seq)[0]
 
     rows: List[Dict[str, float]] = []
     n = len(structures)

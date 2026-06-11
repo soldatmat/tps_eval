@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--fasta_path <fasta_path> --save_dir <save_dir> [--no-skip_existing] [--chunk_size <n>] [--device <cuda|cpu>]"
+USAGE="--fasta_path <fasta_path> --save_dir <save_dir> [--no-skip_existing] [--chunk_size <n>] [--device <cuda|cpu>] [--pae_dir <dir>] [--no-save_pae]"
 
 Help()
 {
@@ -12,12 +12,15 @@ Help()
     echo "  --no-skip_existing  Re-fold sequences even if <ID>.pdb already exists (optional)"
     echo "  --chunk_size        Force ESMFold trunk chunk size, lower = less GPU memory (optional)"
     echo "  --device            Torch device cuda/cpu (optional; default cuda if available)"
+    echo "  --pae_dir           Directory for <ID>_pae.npz PAE matrices (optional; default <save_dir>_pae/)"
+    echo "  --no-save_pae       Do not save PAE matrices (optional; default: save them)"
     echo "  -h, --help          Show this help message and exit"
     echo
 }
 
 # Parse long options manually
 skip_existing_flag=""
+save_pae_flag=""
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
@@ -40,6 +43,14 @@ while [[ $# -gt 0 ]]; do
         --device)
             device="$2"
             shift 2
+            ;;
+        --pae_dir)
+            pae_dir="$2"
+            shift 2
+            ;;
+        --no-save_pae)
+            save_pae_flag="--no-save_pae"
+            shift
             ;;
         -h|--help)
             Help
@@ -66,6 +77,13 @@ fi
 mkdir -p "$save_dir"
 if [[ "$save_dir" != /* ]]; then
     save_dir="$(cd "$save_dir" && pwd)"
+fi
+# Convert pae_dir to absolute path if relative (create it first so cd/dirname works)
+if [[ -n "$pae_dir" ]]; then
+    mkdir -p "$pae_dir"
+    if [[ "$pae_dir" != /* ]]; then
+        pae_dir="$(cd "$pae_dir" && pwd)"
+    fi
 fi
 
 ############################################################
@@ -94,6 +112,12 @@ if [[ -n "$chunk_size" ]]; then
 fi
 if [[ -n "$device" ]]; then
     args+=(--device "$device")
+fi
+if [[ -n "$pae_dir" ]]; then
+    args+=(--pae_dir "$pae_dir")
+fi
+if [[ -n "$save_pae_flag" ]]; then
+    args+=("$save_pae_flag")
 fi
 
 python run_esmfold.py "${args[@]}"

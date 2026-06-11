@@ -21,6 +21,8 @@
   "foldseek_swissprot":   { "default": true,  "branch": "structure", "description": "Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits)." },
   "structural_identity":  { "default": true,  "branch": "structure", "description": "Foldseek structural identity to nearest known TPS (needs --known_structs_dir)." },
   "proteinmpnn":          { "default": true,  "branch": "structure", "description": "ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold." },
+  "global_confidence":    { "default": true,  "branch": "structure", "description": "Global fold confidence (pTM/iPTM) from the saved PAE npz (needs --pae_dir)." },
+  "interdomain_pae":      { "default": true,  "branch": "structure", "description": "Mean/max inter-domain PAE between TPS domains (needs --pae_dir; EE domain ranges)." },
   "self_consistency":     { "default": false, "branch": "structure", "description": "HEAVY scRMSD self-consistency (ProteinMPNN -> ESMFold refold -> RMSD). Opt-in." },
   "plots":                { "default": true,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless explicitly excluded." }
 }

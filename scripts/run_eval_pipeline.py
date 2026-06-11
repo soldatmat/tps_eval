@@ -128,6 +128,8 @@ def out_aggregation(d): return d.rstrip(os.sep) + "_aggregation.csv"
 def out_foldseek_swissprot(d): return d.rstrip(os.sep) + "_foldseek_swissprot_search.csv"
 def out_proteinmpnn(d): return d.rstrip(os.sep) + "_proteinmpnn_score.csv"
 def out_self_consistency(d): return d.rstrip(os.sep) + "_self_consistency.csv"
+def out_interdomain_pae(d): return d.rstrip(os.sep) + "_interdomain_pae.csv"
+def out_global_confidence(d): return d.rstrip(os.sep) + "_global_confidence.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -160,6 +162,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "foldseek_swissprot":   {"default": True,  "branch": "structure", "description": "Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits)."},
     "structural_identity":  {"default": True,  "branch": "structure", "description": "Foldseek structural identity to nearest known TPS (needs --known_structs_dir)."},
     "proteinmpnn":          {"default": True,  "branch": "structure", "description": "ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold."},
+    "global_confidence":    {"default": True,  "branch": "structure", "description": "Global fold confidence (pTM/iPTM) from the saved PAE npz (needs --pae_dir)."},
+    "interdomain_pae":      {"default": True,  "branch": "structure", "description": "Mean/max inter-domain PAE between TPS domains (needs --pae_dir; EE domain ranges)."},
     "self_consistency":     {"default": False, "branch": "structure", "description": "HEAVY scRMSD self-consistency (ProteinMPNN -> ESMFold refold -> RMSD). Opt-in."},
     "plots":                {"default": True,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless excluded."},
 }
@@ -311,6 +315,7 @@ def build_steps(args, enabled: set) -> List[Step]:
 
     structs = args.structs_dir
     known_structs = args.known_structs_dir
+    pae_dir = args.pae_dir
     if args.train_structs_dir:
         print("[warn] --train_structs_dir is not used by the orchestrator yet "
               "(EnzymeExplorer-with-structures and the AlphaFold fan-out are not ported).")
@@ -406,6 +411,19 @@ def build_steps(args, enabled: set) -> List[Step]:
         else:
             print("[note] --structs_dir without --known_structs_dir: skipping "
                   "structural_identity (needs a known-TPS reference structure dir).")
+        # PAE-consuming metrics need the per-structure PAE matrices saved at fold time
+        # (<ID>_pae.npz, produced by ESMFold / the AF3 extract_pae step). Gated on
+        # --pae_dir, like structural_identity is gated on --known_structs_dir.
+        if pae_dir:
+            steps.append(Step("global_confidence_gen", "global_confidence.sh",
+                              ["--structs_dir", structs, "--pae_dir", pae_dir],
+                              out_global_confidence(structs), tool="global_confidence"))
+            steps.append(Step("interdomain_pae_gen", "interdomain_pae.sh",
+                              ["--structs_dir", structs, "--pae_dir", pae_dir],
+                              out_interdomain_pae(structs), tool="interdomain_pae"))
+        else:
+            print("[note] --structs_dir without --pae_dir: skipping global_confidence + "
+                  "interdomain_pae (need <ID>_pae.npz from a PAE-saving fold).")
 
     # Filter to enabled tools BEFORE wiring plots, so plots only soft-depends on the
     # metric steps that actually survived (it never waits on a disabled tool).
@@ -442,6 +460,10 @@ def main() -> None:
     p.add_argument("--known_structs_dir", default=None,
                    help="Known-TPS reference structures dir for the foldseek structural-identity "
                         "metric (e.g. MARTS-DB train AFDB structures, or EE reference domains).")
+    p.add_argument("--pae_dir", default=None,
+                   help="Dir of per-structure PAE matrices (<ID>_pae.npz from a PAE-saving "
+                        "ESMFold run or the AF3 extract_pae step) -> enables global_confidence "
+                        "(pTM) and interdomain_pae.")
     p.add_argument("--train_structs_dir", default=None, help="(v2) train structures dir.")
     p.add_argument("--train_embeddings_path", default=None, help="Precomputed train embeddings CSV.")
     p.add_argument("--data_colors", nargs=2, default=["dodgerblue", "goldenrod"],
@@ -477,7 +499,7 @@ def main() -> None:
         return
 
     args.fasta_path = os.path.abspath(args.fasta_path)
-    for opt in ("train_path", "structs_dir", "known_structs_dir", "train_structs_dir",
+    for opt in ("train_path", "structs_dir", "known_structs_dir", "pae_dir", "train_structs_dir",
                 "train_embeddings_path"):
         if getattr(args, opt):
             setattr(args, opt, os.path.abspath(getattr(args, opt)))

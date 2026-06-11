@@ -41,6 +41,18 @@ def main() -> None:
         default=None,
         help="Torch device ('cuda'/'cpu'). Default: cuda if available, else cpu.",
     )
+    parser.add_argument(
+        "--pae_dir",
+        default=None,
+        help="Directory to write <ID>_pae.npz Predicted-Aligned-Error matrices into "
+        "(default: <save_dir>_pae/ sibling). Consumed by run_interdomain_pae.sh.",
+    )
+    parser.add_argument(
+        "--no-save_pae",
+        dest="save_pae",
+        action="store_false",
+        help="Do not save the PAE matrices (default: save <ID>_pae.npz alongside).",
+    )
     args = parser.parse_args()
     fold_fasta(
         args.fasta_path,
@@ -48,6 +60,8 @@ def main() -> None:
         skip_existing=args.skip_existing,
         chunk_size=args.chunk_size,
         device=args.device,
+        save_pae=args.save_pae,
+        pae_dir=args.pae_dir,
     )
 
 

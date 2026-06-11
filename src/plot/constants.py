@@ -202,6 +202,14 @@ STRUCTURE_NUMERIC = {
     "_proteinmpnn_score.csv": [
         "proteinmpnn_nll",
     ],
+    "_global_confidence.csv": [
+        "ptm",
+        "iptm",
+    ],
+    "_interdomain_pae.csv": [
+        "mean_interdomain_pae",
+        "max_interdomain_pae",
+    ],
     # Opt-in; the CSV is frequently absent (skipped cleanly).
     "_self_consistency.csv": [
         "sc_rmsd_min",
