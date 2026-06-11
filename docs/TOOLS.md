@@ -275,7 +275,7 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 
 ---
 
-## Aggregator & viz
+## Aggregator & visualization
 
 ### plots
 - **Purpose** — The comparison aggregator: merge every enabled metric CSV (by `ID`) across datasets and render the comparison figures. Effectively always on in the orchestrator unless excluded.

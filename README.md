@@ -64,12 +64,12 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 |------|--------|-------------|--------|
 | [enzyme_explorer](docs/TOOLS.md#enzyme_explorer) | struct | EnzymeExplorer TPS classification with structures; not orchestrator-wired (v2). | `<input>_enzyme_explorer/` |
 
-### Aggregator & viz
+### Aggregator & visualization
 | Tool | Branch | Description | Output |
 |------|--------|-------------|--------|
 | [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
-| [plot_domains](docs/TOOLS.md#plot_domains) | viz | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
-| [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | viz | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
+| [plot_domains](docs/TOOLS.md#plot_domains) | visualization | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
+| [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | visualization | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
 
 ### Reference & orchestration
 | Tool | Branch | Description | Output |
