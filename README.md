@@ -56,7 +56,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 ### Folding (structure producers)
 | Tool | Branch | Description | Output |
 |------|--------|-------------|--------|
-| [alphafold3](docs/TOOLS.md#alphafold3) | producer | AlphaFold3 folding (Aurum-only); not orchestrator-wired (v2). | `af_output/` + `structs/<ID>.pdb` |
+| [alphafold3](docs/TOOLS.md#alphafold3) | producer | AlphaFold3 folding (Aurum-only); orchestrator-wired via `--fold alphafold3` (per-sequence fan-out → structs + PAE, then runs the structure branch). | `af_output/` + `structs/<ID>.pdb` + `pae/<ID>_pae.npz` |
 | [esmfold](docs/TOOLS.md#esmfold) | producer | ESMFold folding (both clusters); orchestrator-wired via `--fold esmfold` (folds the gen FASTA, then runs the structure branch on the result). | `structs/<ID>.pdb` + `structs_pae/<ID>_pae.npz` |
 
 ### Function (structure-dependent)
@@ -122,7 +122,7 @@ Currently, Alphafold jobs are configured only for the IOCB Aurum cluster.
 
 2) Run alphafold jobs like so:
 ```sh
-cd "tps_eval/scripts/alphafold"
+cd "tps_eval/src/alphafold"
 conda activate tps_eval
 ```
 ```sh

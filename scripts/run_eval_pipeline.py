@@ -15,16 +15,17 @@ Scope: covers the SEQUENCE branch + plots (motif, esm, min/max distance/identity
 soluprot, enzyme_explorer_sequence_only) AND the structure-level metrics that
 consume already-folded structures: pLDDT (folding confidence) and foldseek
 structural identity to the nearest known TPS (--structs_dir / --known_structs_dir).
-The ESMFold structure PRODUCER is wired via --fold esmfold: it folds the generated
-FASTA into a structs dir (+ PAE) that the whole structure branch then consumes, so
-no pre-supplied --structs_dir is needed. What is NOT yet ported (v2): the AlphaFold3
-per-sequence FAN-OUT (a separate per-sequence producer with ligands/ions + a custom
-partition), and EnzymeExplorer-with-structures.
+Structure PRODUCERS are wired via --fold: 'esmfold' (both clusters, one whole-FASTA
+job) and 'alphafold3' (Aurum-only, a per-sequence FAN-OUT — one AF3 job per design via
+a login-node driver that captures the N job ids, then a PAE-extraction step). Either
+folds the generated FASTA into a structs dir (+ PAE) the whole structure branch then
+consumes, so no pre-supplied --structs_dir is needed. What is NOT yet ported (v2):
+EnzymeExplorer-with-structures, and AF3 ligand/ion co-folding (apo only for now).
 
 Usage:
     python scripts/run_eval_pipeline.py --cluster aurum \
         --fasta_path gen.fasta [--train_path train.fasta] \
-        [--fold esmfold | --structs_dir structs/] [--known_structs_dir known_tps_structs/] \
+        [--fold esmfold|alphafold3 | --structs_dir structs/] [--known_structs_dir known_tps_structs/] \
         [--train_embeddings_path <csv>] [--data_colors dodgerblue goldenrod] [--dry-run]
 
 Config-driven tool selection
@@ -107,11 +108,23 @@ def _slurm_jobid(submit_stdout: str) -> str:
     return m.group(1)
 
 
+def _slurm_fanout_ids(driver_stdout: str) -> List[str]:
+    """Parse the job ids a fan-out driver submitted. run_alphafold_jobs.py prints
+    ``AlphaFold job IDs: ['123', '456']`` as its LAST line (its own contract). Extract
+    every integer on that line. Empty (e.g. all structures already present) -> [], so
+    downstream steps simply don't wait on a fold job."""
+    m = re.search(r"AlphaFold job IDs:\s*(.*)", driver_stdout)
+    if not m:
+        raise RuntimeError(
+            f"could not find the 'AlphaFold job IDs:' line in fan-out output:\n{driver_stdout}")
+    return re.findall(r"\d+", m.group(1))
+
+
 CLUSTERS: Dict[str, dict] = {
     "aurum": {"submit": "sbatch", "dep": _slurm_dep, "log": _slurm_log,
-              "jobid": _slurm_jobid, "caps": {"alphafold"}},
+              "jobid": _slurm_jobid, "fanout_ids": _slurm_fanout_ids, "caps": {"alphafold"}},
     "karolina": {"submit": "sbatch", "dep": _slurm_dep, "log": _slurm_log,
-                 "jobid": _slurm_jobid, "caps": set()},  # AlphaFold is Aurum-only
+                 "jobid": _slurm_jobid, "fanout_ids": _slurm_fanout_ids, "caps": set()},  # AF3 Aurum-only
 }
 
 
@@ -201,6 +214,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "maxid_gen_vs_train":   {"default": True,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set."},
     "mindist_gen_vs_train": {"default": True,  "branch": "sequence",  "description": "Min ESM-embedding distance of gen vs train (needs esm)."},
     "esmfold":              {"default": False, "branch": "producer",  "description": "ESMFold structure PRODUCER (both clusters): folds the gen FASTA into a structs dir + PAE. Opt-in via --fold esmfold (auto-enabled then); not a default-on metric."},
+    "alphafold3":           {"default": False, "branch": "producer",  "description": "AlphaFold3 structure PRODUCER (Aurum-only): per-sequence fan-out (one AF3 job each) into <gen>_af3/structs + af_output, then a PAE-extraction step. Opt-in via --fold alphafold3 (auto-enabled then); not a default-on metric."},
     "plddt":                {"default": True,  "branch": "structure", "description": "AlphaFold/ESMFold pLDDT folding confidence."},
     "motif_struct":         {"default": True,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs."},
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
@@ -319,10 +333,11 @@ def resolve_enabled_tools(catalog: Dict[str, dict], args) -> set:
     else:
         enabled = {k for k, v in catalog.items() if v.get("default", False)}
     enabled |= set(include)
-    # --fold esmfold turns on the (opt-in) producer so its Step survives the tool filter.
+    # --fold turns on the (opt-in) producer tool so its Step(s) survive the tool filter.
     # Ignored when --structs_dir is given (structures already exist; no folding).
-    if getattr(args, "fold", None) == "esmfold" and not args.structs_dir:
-        enabled.add("esmfold")
+    fold = getattr(args, "fold", None)
+    if fold and not args.structs_dir:
+        enabled.add("esmfold" if fold == "esmfold" else "alphafold3")
     enabled -= set(exclude)
     return enabled
 
@@ -340,6 +355,9 @@ class Step:
     deps: List[str] = field(default_factory=list)        # HARD deps: skip step if unmet
     soft_deps: List[str] = field(default_factory=list)   # wait-on-if-submitted; never gates
     requires_cap: Optional[str] = None
+    driver: bool = False           # login-node FAN-OUT driver: run args directly (no
+                                   # sbatch), capturing the N submitted job ids it prints.
+                                   # Downstream deps on this step wait on ALL N ids.
 
 
 class Engine:
@@ -349,7 +367,9 @@ class Engine:
         self.log_dir = log_dir
         self.dry_run = dry_run
         self.jobs_dir = os.path.join(REPO, "scripts", cluster, "jobs")
-        self.job_ids: Dict[str, str] = {}   # step -> SLURM id (submitted steps only)
+        # step -> list of SLURM ids (normal steps -> [id]; fan-out driver -> [id1, id2, …];
+        # skipped/output-exists steps -> absent, so downstream deps add nothing and don't wait).
+        self.job_ids: Dict[str, List[str]] = {}
         self.satisfied: set = set()         # steps whose output exists or were submitted
 
     def _exists(self, path: str) -> bool:
@@ -370,18 +390,43 @@ class Engine:
                 print(f"[skip] {s.name}: output exists ({os.path.relpath(s.output, REPO)})")
                 self.satisfied.add(s.name)
                 continue
+
+            # Dep ids: a dep that fanned out contributes ALL its job ids (flatten).
+            dep_ids = [jid for d in (s.deps + s.soft_deps)
+                       for jid in self.job_ids.get(d, [])]
+
+            # Fan-out driver: NOT an sbatch job — run the command directly on the login
+            # node (the orchestrator already runs there). It internally submits N jobs and
+            # prints their ids; capture all so downstream steps afterok-wait on every one.
+            if s.driver:
+                if self.dry_run:
+                    wait = f" [after {':'.join(dep_ids)}]" if dep_ids else ""
+                    print(f"[dry ] {s.name} (fan-out driver){wait}: {' '.join(s.args)}")
+                    self.job_ids[s.name] = [f"<{s.name}:N>"]
+                    self.satisfied.add(s.name)
+                    continue
+                proc = subprocess.run(s.args, capture_output=True, text=True)
+                out = (proc.stdout or "") + (proc.stderr or "")
+                if proc.returncode != 0:
+                    raise SystemExit(f"[FAIL] {s.name}: fan-out driver failed\n{out}")
+                jids = self.cfg["fanout_ids"](out)
+                print(f"[fan ] {s.name}: submitted {len(jids)} fold job(s)"
+                      f"{' ' + ':'.join(jids) if jids else ' (none — all structures present)'}")
+                self.job_ids[s.name] = jids
+                self.satisfied.add(s.name)
+                continue
+
             job_path = os.path.join(self.jobs_dir, s.job)
             if not os.path.isfile(job_path):
                 print(f"[MISS] {s.name}: job script not found ({job_path}) -- skipping")
                 continue
 
-            dep_ids = [self.job_ids[d] for d in (s.deps + s.soft_deps) if d in self.job_ids]
             cmd = ([self.cfg["submit"]] + self.cfg["dep"](dep_ids)
                    + self.cfg["log"](self.log_dir) + [job_path] + s.args)
             if self.dry_run:
                 wait = f" [after {':'.join(dep_ids)}]" if dep_ids else ""
                 print(f"[dry ] {s.name}{wait}: {' '.join(cmd)}")
-                self.job_ids[s.name] = f"<{s.name}>"
+                self.job_ids[s.name] = [f"<{s.name}>"]
                 self.satisfied.add(s.name)
                 continue
             proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -392,7 +437,7 @@ class Engine:
                 raise SystemExit(f"[FAIL] {s.name}: submission failed\n{out}") from e
             dep_note = f" (after {':'.join(dep_ids)})" if dep_ids else ""
             print(f"[sub ] {s.name}: job {jid}{dep_note}")
-            self.job_ids[s.name] = jid
+            self.job_ids[s.name] = [jid]
             self.satisfied.add(s.name)
 
 
@@ -414,18 +459,27 @@ def build_steps(args, enabled: set) -> List[Step]:
     known_structs = args.known_structs_dir
     pae_dir = args.pae_dir
 
-    # Fold producer: when --fold esmfold is given without a pre-supplied --structs_dir,
-    # ESMFold produces the structures (+ PAE) the structure branch then consumes. The
-    # derived dirs mirror run_esmfold.sh's own defaults (<save_dir> + <save_dir>_pae).
-    do_fold = (getattr(args, "fold", None) == "esmfold") and not args.structs_dir
-    if do_fold:
+    # Fold producer: when --fold is given without a pre-supplied --structs_dir, the
+    # producer makes the structures (+ PAE) the structure branch then consumes.
+    #   esmfold     -> one whole-FASTA job; dirs mirror run_esmfold.sh's defaults.
+    #   alphafold3  -> a per-sequence FAN-OUT (one AF3 job each, Aurum-only) under a
+    #                  <gen>_af3/ work dir (structs/ + af_output/), then an extract_pae step.
+    fold_mode = getattr(args, "fold", None)
+    do_fold = bool(fold_mode) and not args.structs_dir
+    af3_work = None
+    if do_fold and fold_mode == "esmfold":
         structs = _base(gen) + "_esmfold_structs"
         if pae_dir is None and not args.no_fold_pae:
             pae_dir = structs + "_pae"
+    elif do_fold and fold_mode == "alphafold3":
+        af3_work = _base(gen) + "_af3"
+        structs = os.path.join(af3_work, "structs")  # where alphafold.sh writes <ID>.pdb
+        if pae_dir is None and not args.no_fold_pae:
+            pae_dir = os.path.join(af3_work, "pae")
 
     if args.train_structs_dir:
         print("[warn] --train_structs_dir is not used by the orchestrator yet "
-              "(EnzymeExplorer-with-structures and the AlphaFold fan-out are not ported).")
+              "(EnzymeExplorer-with-structures is not ported).")
 
     datasets = [("gen", gen)] + ([("train", train)] if train else [])
 
@@ -498,14 +552,38 @@ def build_steps(args, enabled: set) -> List[Step]:
     # block); without --fold they have no SLURM dep and plots picks them up via the snapshot.
     if structs:
         struct_block_start = len(steps)
-        if do_fold:
+        fold_producer = None          # step name the structure branch waits on
+        pae_producer = None           # step name the PAE-consumers wait on (AF3: a later step)
+        if do_fold and fold_mode == "esmfold":
             # ESMFold producer: folds the gen FASTA into `structs` (+ PAE into pae_dir).
             # output=structs (a dir) -> the Engine skips folding if it already exists
-            # and is non-empty (idempotent re-runs).
+            # and is non-empty (idempotent re-runs). PAE is written by the SAME job.
             esmfold_args = ["--fasta_path", gen, "--save_dir", structs]
             esmfold_args += (["--pae_dir", pae_dir] if pae_dir else ["--no-save_pae"])
             steps.append(Step("esmfold_gen", "esmfold.sh", esmfold_args, structs,
                               tool="esmfold"))
+            fold_producer = pae_producer = "esmfold_gen"
+        elif do_fold and fold_mode == "alphafold3":
+            # AF3 FAN-OUT producer (Aurum-only). A login-node driver runs the existing
+            # run_alphafold_jobs.py (one AF3 job per sequence -> structs/ + af_output/) and
+            # prints the N job ids; the Engine captures them so the structure branch waits
+            # on all N. A sentinel output (never created) -> the driver always runs and
+            # run_alphafold_jobs' own --skip_existing handles per-design idempotency.
+            fanout_cmd = ["bash", os.path.join(REPO, "scripts", "run_alphafold_fanout.sh"),
+                          "--cluster", args.cluster, "--fasta_path", gen,
+                          "--working_directory", af3_work,
+                          "--model_seeds"] + [str(s) for s in args.af3_model_seeds]
+            steps.append(Step("af3_fold_gen", "", fanout_cmd,
+                              os.path.join(af3_work, ".__never__"),
+                              tool="alphafold3", driver=True, requires_cap="alphafold"))
+            fold_producer = "af3_fold_gen"
+            if pae_dir:
+                # Extract <ID>_pae.npz from the af_output tree once ALL fold jobs finish.
+                steps.append(Step("af3_pae_gen", "extract_pae.sh",
+                                  ["--structs_dir", structs, "--pae_dir", pae_dir],
+                                  pae_dir, tool="alphafold3", deps=["af3_fold_gen"],
+                                  requires_cap="alphafold"))
+                pae_producer = "af3_pae_gen"
         steps.append(Step("plddt_gen", "plddt.sh", ["--structs_dir", structs],
                           out_plddt(structs), tool="plddt"))
         steps.append(Step("motif_struct_gen", "motif_structural_distance.sh",
@@ -584,15 +662,22 @@ def build_steps(args, enabled: set) -> List[Step]:
             print("[note] --structs_dir without --pae_dir: skipping global_confidence + "
                   "interdomain_pae (need <ID>_pae.npz from a PAE-saving fold).")
 
-        # With --fold, the structures are produced by esmfold_gen, so every structure
-        # step in this block must wait on it (the producer itself excepted). The
-        # downstream knn/sdr/substrate consumers don't need it added explicitly —
-        # they already hard-dep on structural_identity_gen, which gets it here, and
-        # SLURM afterok is transitive in effect.
+        # With --fold the structures are produced in-pipeline, so every structure step in
+        # this block must wait on the producer (the producer steps themselves excepted).
+        # PAE-consumers wait on the PAE producer specifically (for AF3 that's the separate
+        # af3_pae_gen extraction step, which itself waits on all fold jobs; for ESMFold the
+        # fold job writes the PAE so it's the same step). The downstream knn/sdr/substrate
+        # consumers need nothing added — they hard-dep on structural_identity_gen (which
+        # gets the producer dep here) and SLURM afterok is transitive in effect.
         if do_fold:
+            pae_consumers = {"global_confidence_gen", "interdomain_pae_gen"}
+            producers = {p for p in (fold_producer, pae_producer) if p}
             for s in steps[struct_block_start:]:
-                if s.name != "esmfold_gen" and "esmfold_gen" not in s.deps:
-                    s.deps = ["esmfold_gen"] + list(s.deps)
+                if s.name in producers:
+                    continue
+                dep = pae_producer if (s.name in pae_consumers and pae_producer) else fold_producer
+                if dep and dep not in s.deps:
+                    s.deps = [dep] + list(s.deps)
 
     # --- Dependency-heavy consumers: k-NN label transfer + SDR divergence --------- #
     # Both read the three feeders' *_topk.csv. They are gated on the feeders actually
@@ -746,16 +831,18 @@ def main() -> None:
     p.add_argument("--structs_dir", default=None,
                    help="Generated structures dir (AF3 af_output or flat .pdb/.cif) -> "
                         "enables pLDDT and (with --known_structs_dir) structural-identity steps.")
-    p.add_argument("--fold", default=None, choices=["esmfold"],
+    p.add_argument("--fold", default=None, choices=["esmfold", "alphafold3"],
                    help="Fold the generated sequences FIRST, then run the structure branch "
                         "on the produced structures (no need to pre-supply --structs_dir). "
-                        "'esmfold' runs ESMFold (both clusters) into a derived "
-                        "<gen>_esmfold_structs/ dir + a sibling _pae/ of <ID>_pae.npz (so "
-                        "global_confidence + interdomain_pae also run). Ignored if "
-                        "--structs_dir is given. (AF3 fan-out is a separate per-sequence "
-                        "producer, not wired here.)")
+                        "'esmfold' runs ESMFold (both clusters) into <gen>_esmfold_structs/ "
+                        "+ a sibling _pae/. 'alphafold3' FANS OUT one AF3 job per sequence "
+                        "(Aurum-only) into <gen>_af3/structs/ + af_output/, then extracts PAE "
+                        "-> <gen>_af3/pae/. Both also enable global_confidence + "
+                        "interdomain_pae. Ignored if --structs_dir is given.")
+    p.add_argument("--af3_model_seeds", type=int, nargs="+", default=[42],
+                   help="With --fold alphafold3: AF3 model seeds per sequence (default 42).")
     p.add_argument("--no_fold_pae", action="store_true",
-                   help="With --fold esmfold: do NOT save the PAE matrices (skips "
+                   help="With --fold: do NOT save/extract the PAE matrices (skips "
                         "global_confidence + interdomain_pae). Default: save them.")
     p.add_argument("--known_structs_dir", default=None,
                    help="Known-TPS reference structures dir for the foldseek structural-identity "
@@ -825,6 +912,15 @@ def main() -> None:
                 "substrate_label_file", "substrate_calibration"):
         if getattr(args, opt):
             setattr(args, opt, os.path.abspath(getattr(args, opt)))
+
+    # AF3 folding is Aurum-only (custom partition + apptainer image). Fail fast with a
+    # clear message rather than silently [cap]-skipping the producer (which would cascade
+    # into the whole structure branch skipping on unmet deps).
+    if args.fold == "alphafold3" and not args.structs_dir \
+            and "alphafold" not in CLUSTERS[args.cluster]["caps"]:
+        raise SystemExit(
+            f"[FAIL] --fold alphafold3 is not available on '{args.cluster}' (AlphaFold3 is "
+            "Aurum-only). Use --fold esmfold (both clusters), or pre-fold and pass --structs_dir.")
 
     # Resolve the single pipeline top-k: CLI --top_k wins, else JSON _settings/DEFAULT.
     if args.top_k is None:

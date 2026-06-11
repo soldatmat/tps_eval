@@ -26,12 +26,16 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   the **full structure-consuming branch** (pLDDT, structural-identity, motif-structural-
   distance, active-site geometry, domain composition, aggregation, broad foldseek search,
   ProteinMPNN-NLL, radius-of-gyration; scRMSD is opt-in via `--self_consistency`, it's
-  heavy). The **ESMFold producer is wired** via `--fold esmfold` (folds the gen FASTA into
-  a derived `<gen>_esmfold_structs/` + `_pae/` that the structure branch then consumes,
-  with every structure Step depending on the `esmfold_gen` producer). NOT yet ported (v2):
-  the **AlphaFold3 per-sequence fan-out** (separate producer: per-seq jobs, ligands/ions,
-  custom `b32_128_gpu --constraint=alphafold3` partition) and EnzymeExplorer-with-structures
-  — pass `--structs_dir` for AF3-produced structures. Verified end-to-end on Aurum.
+  heavy). **Both structure producers are wired** via `--fold`: `esmfold` (both clusters,
+  one whole-FASTA job → `<gen>_esmfold_structs/` + `_pae/`) and `alphafold3` (Aurum-only).
+  The AF3 fan-out is an Engine **driver Step** (`Step.driver=True`): it runs
+  `scripts/run_alphafold_fanout.sh` *on the login node* (not via sbatch), which calls the
+  existing `src/alphafold/run_alphafold_jobs.py` to submit one AF3 job per sequence and
+  prints the N job ids; the Engine captures them (`fanout_ids`) so every structure Step
+  `afterok`-waits on all N, then an `extract_pae` step populates the PAE dir (PAE-consumers
+  wait on it). NOT yet ported (v2): EnzymeExplorer-with-structures, and AF3 ligand/ion
+  co-folding (apo only). Sequence + structure-consuming branches verified end-to-end on
+  Aurum; the AF3 fan-out wiring is dry-run-verified (a live AF3 fold is expensive).
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).

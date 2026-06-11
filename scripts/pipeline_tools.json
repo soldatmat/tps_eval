@@ -14,6 +14,7 @@
   "maxid_gen_vs_train":   { "default": true,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set." },
   "mindist_gen_vs_train": { "default": true,  "branch": "sequence",  "description": "Min ESM-embedding distance of gen vs train (needs esm)." },
   "esmfold":              { "default": false, "branch": "producer",  "description": "ESMFold structure PRODUCER (both clusters): folds the gen FASTA into a structs dir + PAE. Opt-in via --fold esmfold (auto-enabled then); not a default-on metric." },
+  "alphafold3":           { "default": false, "branch": "producer",  "description": "AlphaFold3 structure PRODUCER (Aurum-only): per-sequence fan-out (one AF3 job each) into <gen>_af3/structs + af_output, then a PAE-extraction step. Opt-in via --fold alphafold3 (auto-enabled then); not a default-on metric." },
   "plddt":                { "default": true,  "branch": "structure", "description": "AlphaFold/ESMFold pLDDT folding confidence." },
   "motif_struct":         { "default": true,  "branch": "structure", "description": "Structural distance between the two metal-binding motifs." },
   "active_site_geom":     { "default": true,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)." },

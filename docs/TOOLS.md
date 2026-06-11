@@ -229,7 +229,7 @@ All structure tools accept either an AlphaFold3 `af_output` tree (reads the top-
 - **Output** — `<structs_dir>_global_confidence.csv`: `ID`, `ptm`, `iptm` (when present). NaN when the npz/ptm is missing.
 - **Method** — Reads the `ptm`/`iptm` scalars from the saved PAE npz.
 - **External dependency** — numpy.
-- **Env + source** — `tps_eval`; [`src/structure_metrics/global_confidence.py`](../src/structure_metrics/global_confidence.py). PAE/pTM retention lives in [`src/esmfold/esmfold.py`](../src/esmfold/esmfold.py) + [`scripts/alphafold/extract_pae.py`](../scripts/alphafold/extract_pae.py).
+- **Env + source** — `tps_eval`; [`src/structure_metrics/global_confidence.py`](../src/structure_metrics/global_confidence.py). PAE/pTM retention lives in [`src/esmfold/esmfold.py`](../src/esmfold/esmfold.py) + [`src/alphafold/extract_pae.py`](../src/alphafold/extract_pae.py).
 
 ### interdomain_pae
 - **Purpose** — Confidence in the **relative orientation** of the design's domains — a multi-domain failure mode pLDDT can't see.
@@ -246,12 +246,12 @@ All structure tools accept either an AlphaFold3 `af_output` tree (reads the top-
 These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structure tools. They are **not** wired into the orchestrator (v2); run them first, then pass `--structs_dir`.
 
 ### alphafold3
-- **Purpose** — Fold (and optionally co-fold with ligands/ions) sequences with AlphaFold3. **Aurum-only.**
-- **Inputs** — A CSV of proteins (+ optional ligand SMILES / ion CCD codes); see `--protein_id_column_names` / `--protein_sequence_column_names` / `--ligand_*` / `--ion_*`.
-- **Output** — An `af_output` tree (per-job subfolders) plus extracted `structs/<ID>.pdb`/`.cif` (pLDDT preserved in the B-factor via the patched `vendor/cif_to_pdb`). The structure tools auto-detect either layout.
-- **Method** — Fans out one AlphaFold3 SLURM job per row (`run_alphafold_jobs.py`), skipping existing structures by default; helper scripts extract/download/prepare structures.
+- **Purpose** — Fold (and optionally co-fold with ligands/ions) sequences with AlphaFold3. **Aurum-only.** **Orchestrator-wired**: pass `--fold alphafold3` to `run_eval_pipeline.py` and it fans the gen FASTA out into one AF3 job per sequence, extracts PAE, then runs the whole structure branch on the result (no pre-supplied `--structs_dir` needed).
+- **Inputs** — Standalone: a CSV of proteins (+ optional ligand SMILES / ion CCD codes); see `--protein_id_column_names` / `--protein_sequence_column_names` / `--ligand_*` / `--ion_*`. Via the orchestrator: just the gen FASTA — the fan-out wrapper (`scripts/run_alphafold_fanout.sh`) converts it to a CSV and folds apo (protein-only; ligand/ion co-folding is a future pass).
+- **Output** — Under the orchestrator, a `<gen>_af3/` work dir holding `af_output/` (per-job AF3 trees), `structs/<ID>.pdb` (CIF→PDB extracted, pLDDT in the B-factor via the patched `vendor/cif_to_pdb`), and `pae/<ID>_pae.npz` (from the `extract_pae` step). The structure tools auto-detect the layout.
+- **Method** — A login-node driver (`run_alphafold_jobs.py`) submits one AF3 SLURM job per sequence (custom `b32_128_gpu --constraint=alphafold3` partition), skipping existing structures, and prints the N job ids; the orchestrator captures them so the structure branch `afterok`-waits on all N. Each job folds + extracts CIF→PDB; a following `extract_pae` job (`src/alphafold/extract_pae.py`) populates the PAE dir. PAE-consumers (`global_confidence`, `interdomain_pae`) wait on that extraction step.
 - **External dependency** — [AlphaFold3](https://github.com/google-deepmind/alphafold3) (Abramson et al. 2024, *Nature*).
-- **Env + source** — `tps_eval` (for the driver); [`scripts/alphafold/run_alphafold_jobs.py`](../scripts/alphafold/run_alphafold_jobs.py). See README "Running AlphaFold".
+- **Env + source** — `tps_eval` (for the driver); [`src/alphafold/run_alphafold_jobs.py`](../src/alphafold/run_alphafold_jobs.py), fan-out wrapper [`scripts/run_alphafold_fanout.sh`](../scripts/run_alphafold_fanout.sh), PAE extraction [`src/alphafold/extract_pae.py`](../src/alphafold/extract_pae.py). See README "Running AlphaFold".
 
 ### esmfold
 - **Purpose** — Fold single-chain sequences with ESMFold — a fast single-sequence alternative to AF3 that runs on **both clusters**. **Orchestrator-wired**: pass `--fold esmfold` to `run_eval_pipeline.py` and it folds the generated FASTA first, then runs the whole structure branch on the result (no pre-supplied `--structs_dir` needed).
@@ -334,9 +334,9 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 
 ### run_eval_pipeline
 - **Purpose** — Cluster-agnostic declarative orchestrator. Submits every enabled tool's SLURM job in dependency order, skips steps whose output already exists (idempotent/resumable), and chains deps as a single `--dependency=afterok:…`. Supersedes the per-cluster `submit_all.sh`.
-- **Inputs/usage** — `python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta [--train_path train.fasta] [--fold esmfold | --structs_dir structs/] [--known_structs_dir known/] [--self_consistency] [--dry-run]`. `--fold esmfold` produces the structures first (ESMFold; both clusters) so you don't need `--structs_dir`.
+- **Inputs/usage** — `python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta [--train_path train.fasta] [--fold esmfold|alphafold3 | --structs_dir structs/] [--known_structs_dir known/] [--self_consistency] [--dry-run]`. `--fold` produces the structures first (`esmfold` on both clusters; `alphafold3` Aurum-only, a per-sequence fan-out) so you don't need `--structs_dir`.
 - **Tool selection** — Driven by [`pipeline_tools.json`](#pipeline_tools) (each key has a `default` on/off + `branch` + one-line `description`). CLI overrides, in precedence order: `--only A,B` (run only these, + plots), `--include A,B` (force-enable), `--exclude A,B` (force-disable), `--list-tools` (print the catalog and exit). `--self_consistency` is a back-compat alias for `--include self_consistency`.
-- **Scope** — Full sequence branch + plots + the structure-consuming branch (everything that *reads* structures) + the **ESMFold producer** (`--fold esmfold`). **Not yet ported (v2):** the AlphaFold3 per-sequence fan-out (separate producer: per-seq jobs + ligands/ions + custom partition) and `enzyme_explorer`-with-structures — pass `--structs_dir` for AF3-produced structures.
+- **Scope** — Full sequence branch + plots + the structure-consuming branch (everything that *reads* structures) + both structure producers: the **ESMFold producer** (`--fold esmfold`, both clusters) and the **AlphaFold3 per-sequence fan-out** (`--fold alphafold3`, Aurum-only; a login-node driver submits one AF3 job per sequence and the engine waits on all N). **Not yet ported (v2):** `enzyme_explorer`-with-structures, and AF3 ligand/ion co-folding (apo only for now).
 - **Env + source** — pure stdlib (runs on a login node, no conda env); [`scripts/run_eval_pipeline.py`](../scripts/run_eval_pipeline.py).
 
 ### pipeline_tools
