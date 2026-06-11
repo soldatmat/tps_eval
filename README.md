@@ -38,6 +38,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [aggregation](docs/TOOLS.md#aggregation) | struct | Aggrescan3D structure-based aggregation propensity. | `<structs_dir>_aggregation.csv` |
 | [foldseek_swissprot_search](docs/TOOLS.md#foldseek_swissprot_search) | struct | Foldseek search vs AlphaFold-Swiss-Prot (TPS/non-TPS hits). | `<structs_dir>_foldseek_swissprot_search.csv` |
 | [structural_identity](docs/TOOLS.md#structural_identity) | struct | Foldseek structural identity to nearest known TPS (needs `--known_structs_dir`). | `<structs_dir>_structural_identity.csv` |
+| [domain_structural_identity](docs/TOOLS.md#domain_structural_identity) | struct | Domain-level structural identity: EE detects each design's TPS domains, then foldseek-aligns them to the known martsDB reference domains (per-domain-type best TM-score/lddt; `n_detected_domains`). | `<structs_dir>_domain_structural_identity.csv` |
 | [proteinmpnn_score](docs/TOOLS.md#proteinmpnn_score) | struct | ProteinMPNN sequence-likelihood (NLL) of the design's own sequence given its fold. | `<structs_dir>_proteinmpnn_score.csv` |
 | [self_consistency](docs/TOOLS.md#self_consistency) | struct | HEAVY scRMSD self-consistency (ProteinMPNN → ESMFold refold → RMSD). Opt-in. | `<structs_dir>_self_consistency.csv` |
 | [aromatic_lining](docs/TOOLS.md#aromatic_lining) | struct | Aromatic / cation-π pocket lining (Trp/Tyr/Phe count + ring orientation; carbocation-stabilization proxy). | `<structs_dir>_aromatic_lining.csv` |
@@ -50,6 +51,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 |------|--------|-------------|--------|
 | [knn_label_transfer](docs/TOOLS.md#knn_label_transfer) | label | Label-agnostic k-NN coarse-label transfer: distance-weighted vote of nearest MARTS-DB neighbours, ensembled across the three similarity spaces, with leave-one-out calibration. Consumes the three `--top_k` CSVs + a `reference_id,label` file. | `<input>_knn_label_transfer.csv` |
 | [sdr_divergence](docs/TOOLS.md#sdr_divergence) | struct | Specificity-divergence flag: globally close to a known TPS but divergent at the specificity-determining active-site residues (the TEAS/HPS single-switch regime). | `<structs_dir>_sdr_divergence.csv` |
+| [substrate_class](docs/TOOLS.md#substrate_class) | label | Substrate-class combiner: fuses the substrate k-NN vote (3 spaces) with the pocket-volume size band + EnzymeExplorer per-substrate signal into a predicted substrate (GPP/FPP/GGPP/…) + agreement. | `<input>_substrate_class.csv` |
 
 ### Folding (structure producers)
 | Tool | Branch | Description | Output |

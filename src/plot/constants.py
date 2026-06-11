@@ -42,6 +42,13 @@ TARGETS = [
     # `confidence` is the ensembled calibrated confidence in [0, 1]; the predicted
     # label itself is categorical (see CATEGORICAL_TARGETS below).
     "confidence",
+    # --- substrate-class combiner (gen-only; <gen>_substrate_class.csv) ---
+    # `substrate_confidence` is the substrate k-NN calibrated confidence in [0, 1]
+    # (renamed from the CSV's `confidence` to avoid colliding with the k-NN target);
+    # `n_signals_agree` counts how many of {pocket-band, EE} corroborate the call.
+    # The predicted substrate + agreement flags are categorical (see below).
+    "substrate_confidence",
+    "n_signals_agree",
 ]
 
 
@@ -69,6 +76,8 @@ LOAD = {
     "swissprot_best_nontps_pident": ["swissprot_search"],
     "swissprot_n_tps_in_topN": ["swissprot_search"],
     "confidence": ["knn_label_transfer"],
+    "substrate_confidence": ["substrate_class"],
+    "n_signals_agree": ["substrate_class"],
 }
 
 
@@ -85,6 +94,7 @@ MIN_VAL = {
     "isTPS_seq": 0.0 - 0.01,
     "soluble": 0.0 - 0.01,
     "confidence": 0.0 - 0.01,
+    "substrate_confidence": 0.0 - 0.01,
 }
 
 
@@ -99,6 +109,7 @@ MAX_VAL = {
     "isTPS_seq": 1.0 + 0.01,
     "soluble": 1.0 + 0.01,
     "confidence": 1.0 + 0.01,
+    "substrate_confidence": 1.0 + 0.01,
 }
 
 
@@ -129,6 +140,7 @@ TICKS = {
     "isTPS_seq": _ticks(0.0, 1.0, 0.05),
     "soluble": _ticks(0.0, 1.0, 0.05),
     "confidence": _ticks(0.0, 1.0, 0.05),
+    "substrate_confidence": _ticks(0.0, 1.0, 0.05),
 }
 
 # Percentage-scale ticks for the local_sequence_search targets ([0, 100]).
@@ -179,6 +191,10 @@ CATEGORICAL_TARGETS = {
     "swissprot_top_is_tps": ["swissprot_search"],
     # k-NN ensembled predicted coarse label (gen-only; "unknown" = abstained).
     "predicted_label": ["knn_label_transfer"],
+    # Substrate-class combiner (gen-only): the fused substrate call + whether the
+    # pocket-volume size band corroborates it.
+    "predicted_substrate": ["substrate_class"],
+    "substrate_agreement": ["substrate_class"],
 }
 
 
@@ -276,6 +292,13 @@ STRUCTURE_NUMERIC = {
         "nearest_neighbour_similarity",
         "sdr_identity",
     ],
+    # Domain-level structural identity: best TM-score / lddt of each design's detected
+    # TPS domains to the known martsDB reference domains, plus how many domains EE found.
+    "_domain_structural_identity.csv": [
+        "domain_structural_tmscore_to_known",
+        "domain_structural_lddt_to_known",
+        "n_detected_domains",
+    ],
 }
 
 # suffix -> list of CATEGORICAL / BOOLEAN metric columns in that CSV
@@ -297,6 +320,8 @@ _PROB_LIKE_STRUCTURE = (
     "foldseek_sprot_best_nontps_tmscore",
     "nearest_neighbour_similarity",
     "sdr_identity",
+    "domain_structural_tmscore_to_known",
+    "domain_structural_lddt_to_known",
 )
 for _t in _PROB_LIKE_STRUCTURE:
     MIN_VAL[_t] = 0.0 - 0.01

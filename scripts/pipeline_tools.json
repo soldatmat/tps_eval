@@ -30,5 +30,7 @@
   "self_consistency":     { "default": false, "branch": "structure", "description": "HEAVY scRMSD self-consistency (ProteinMPNN -> ESMFold refold -> RMSD). Opt-in." },
   "knn":                  { "default": true,  "branch": "structure", "description": "k-NN coarse-label transfer: ensembled vote over the sequence/embedding/structural top-k neighbours -> predicted coarse label + confidence (needs --train_path + --structs_dir + --known_structs_dir)." },
   "sdr_divergence":       { "default": true,  "branch": "structure", "description": "SDR specificity-divergence: flags designs globally close to a known TPS but divergent at the specificity-determining active-site residues (needs --structs_dir + --known_structs_dir)." },
+  "domain_structural_identity": { "default": true, "branch": "structure", "description": "Domain-level structural identity: EE detects each design's TPS domains, then foldseek-aligns them to the known martsDB reference domains (per-domain-type best TM-score/lddt; n_detected_domains)." },
+  "substrate_class":      { "default": true,  "branch": "structure", "description": "Substrate-class combiner: fuses the SUBSTRATE k-NN vote (3 spaces) with the pocket-volume size band + EnzymeExplorer per-substrate signal -> predicted substrate (GPP/FPP/GGPP/...) + agreement (needs --train_path + --structs_dir + --known_structs_dir)." },
   "plots":                { "default": true,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless explicitly excluded." }
 }

@@ -183,6 +183,14 @@ All structure tools accept either an AlphaFold3 `af_output` tree (reads the top-
 - **External dependency** — [foldseek](https://github.com/steineggerlab/foldseek).
 - **Env + source** — `tps_eval`; [`src/structure_metrics/run_structural_identity.py`](../src/structure_metrics/run_structural_identity.py) (alignment in [`src/foldseek/structure_alignment.py`](../src/foldseek/structure_alignment.py)).
 
+### domain_structural_identity
+- **Purpose** — Structural identity at the **domain** level rather than the whole chain: detect each design's TPS structural domains (α/β/γ/δ/ε/ζ/IDS) and foldseek-align *each domain* to the curated known martsDB reference domains. Catches designs whose overall fold drifts but whose individual catalytic/support domains still match a known TPS (and vice-versa), and reports how many domains were detected.
+- **Inputs** — Generated structures dir. Reference DOMAIN structures default to EnzymeExplorer's curated set (`$ENZYME_EXPLORER_PATH/data/detected_domains/martsDB_detected_domains/domains`); override with `--known_domain_structures_root`.
+- **Output** — `<structs_dir>_domain_structural_identity.csv`, keyed by `ID`. Columns: `domain_structural_tmscore_to_known`, `domain_structural_tmscore_to_known_hit`, `domain_structural_tmscore_to_known_type`, `domain_structural_lddt_to_known`, `n_detected_domains`, and per-type bests `domain_structural_tmscore_to_known_{alpha,beta,gamma,ids,delta,epsilon,zeta}`.
+- **Method** — EnzymeExplorer's `detect_domains` carves each design into its constituent domains, then foldseek aligns the detected domains against the reference domains; per design, keeps the best TM-score/lddt overall and per reference domain-type.
+- **External dependency** — [EnzymeExplorer](https://github.com/) `detect_domains` + [foldseek](https://github.com/steineggerlab/foldseek) (both live in the `enzyme_explorer_prod` env on Aurum).
+- **Env + source** — `enzyme_explorer_prod`; [`src/structure_metrics/run_domain_structural_identity.py`](../src/structure_metrics/run_domain_structural_identity.py) (reuses [`src/foldseek/domain_alignment.py`](../src/foldseek/domain_alignment.py)).
+
 ### proteinmpnn_score
 - **Purpose** — Sequence-given-fold likelihood: how compatible each design's *own* sequence is with its backbone. Lower = more likely given the fold.
 - **Inputs** — Structures dir.
@@ -312,6 +320,13 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 - **Method** — Take the rank-1 neighbour from the top-k, superpose the design onto it (Biopython), compare residues at the SDR/active-site positions, and flag high global similarity + low SDR-residue identity.
 - **External dependency** — Biopython.
 - **Env + source** — `tps_eval`; [`src/specificity/sdr_divergence.py`](../src/specificity/sdr_divergence.py).
+
+### substrate_class
+- **Purpose** — Predict each design's **prenyl-diphosphate substrate class** (GPP/C10 mono, FPP/C15 sesqui, GGPP/C20 di, …) by **fusing three independent signals**: (1) the label-agnostic k-NN vote run with a *substrate* label file + substrate calibration (the call of record), (2) the `pocket_descriptors` catalytic-pocket volume mapped to a coarse size band (the active-site "molecular ruler"), and (3) EnzymeExplorer's per-substrate sequence-only scores (argmax substrate). Reports the fused call plus how many of the corroborating signals agree.
+- **Inputs** — At least one of the three `--{sequence,embedding,structural}_topk` neighbour CSVs (same feeders as the k-NN), a substrate `--label_file` (`reference_id,label`, e.g. [`src/knn/substrate_labels.csv`](../src/knn/substrate_labels.csv)) + `--calibration` (substrate calibration JSON); optional `--pocket_csv` (pocket_descriptors output) and `--ee_csv` (enzyme_explorer_sequence_only output) for the two cross-checks. The orchestrator wires all of these when `--train_path`, `--structs_dir`, and `--known_structs_dir` are present.
+- **Output** — `<input>_substrate_class.csv`, keyed by `ID`. Columns: `predicted_substrate`, `confidence`, `knn_substrate`, `knn_confidence`, `pocket_volume_band`, `substrate_agreement`, `ee_substrate`, `ee_score`, `ee_agreement`, `n_signals_agree`, `predicted_substrate_source`.
+- **Method** — Runs `knn_label_transfer.transfer_labels` over the substrate labels for the primary call, maps the fpocket volume to a size band (coarse, monotonic with chain length), takes EE's argmax substrate, and records within-one-size-class agreement of each cross-check with the k-NN call. When k-NN abstains but EE is confident, falls back to EE's argmax (flagged via `predicted_substrate_source`).
+- **Env + source** — `tps_eval`; [`src/knn/run_substrate_class.py`](../src/knn/run_substrate_class.py) (logic in [`src/knn/substrate_class.py`](../src/knn/substrate_class.py)).
 
 ---
 

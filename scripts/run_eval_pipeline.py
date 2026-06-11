@@ -78,6 +78,13 @@ DEFAULT_KNN_LABEL_FILE = os.path.join(REPO, "src", "knn", "first_cyclization_lab
 DEFAULT_KNN_CALIBRATION = os.path.join(
     REPO, "src", "reference_stats", "knn_calibration_first_cyclization.json")
 
+# Default substrate-class combiner reference artifacts (the substrate label file is the
+# MARTS `Type`-derived GPP/FPP/GGPP/... map; its own calibration mirrors the k-NN one but
+# over the substrate label vocabulary).
+DEFAULT_SUBSTRATE_LABEL_FILE = os.path.join(REPO, "src", "knn", "substrate_labels.csv")
+DEFAULT_SUBSTRATE_CALIBRATION = os.path.join(
+    REPO, "src", "reference_stats", "knn_calibration_substrate.json")
+
 
 # --------------------------------------------------------------------------- #
 # Cluster adapters                                                            #
@@ -165,6 +172,9 @@ def out_interdomain_pae(d): return d.rstrip(os.sep) + "_interdomain_pae.csv"
 def out_global_confidence(d): return d.rstrip(os.sep) + "_global_confidence.csv"
 def out_aromatic_lining(d): return d.rstrip(os.sep) + "_aromatic_lining.csv"
 def out_diphosphate_sensor(d): return d.rstrip(os.sep) + "_diphosphate_sensor.csv"
+def out_domain_structural_identity(d): return d.rstrip(os.sep) + "_domain_structural_identity.csv"
+# substrate_class is keyed off the gen FASTA (it fuses sequence + structure signals).
+def out_substrate_class(f): return _base(f) + "_substrate_class.csv"
 
 
 # --------------------------------------------------------------------------- #
@@ -205,6 +215,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "self_consistency":     {"default": False, "branch": "structure", "description": "HEAVY scRMSD self-consistency (ProteinMPNN -> ESMFold refold -> RMSD). Opt-in."},
     "knn":                  {"default": True,  "branch": "structure", "description": "k-NN coarse-label transfer: ensembled vote over the sequence/embedding/structural top-k neighbours -> predicted coarse label + confidence (needs --train_path + --structs_dir + --known_structs_dir)."},
     "sdr_divergence":       {"default": True,  "branch": "structure", "description": "SDR specificity-divergence: flags designs globally close to a known TPS but divergent at the specificity-determining active-site residues (needs --structs_dir + --known_structs_dir)."},
+    "domain_structural_identity": {"default": True, "branch": "structure", "description": "Domain-level structural identity: EE detects each design's TPS domains, then foldseek-aligns them to the known martsDB reference domains (per-domain-type best TM-score/lddt; n_detected_domains)."},
+    "substrate_class":      {"default": True,  "branch": "structure", "description": "Substrate-class combiner: fuses the SUBSTRATE k-NN vote (3 spaces) with the pocket-volume size band + EnzymeExplorer per-substrate signal -> predicted substrate (GPP/FPP/GGPP/...) + agreement (needs --train_path + --structs_dir + --known_structs_dir)."},
     "plots":                {"default": True,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless excluded."},
 }
 
@@ -407,7 +419,7 @@ def build_steps(args, enabled: set) -> List[Step]:
     # topk_args is appended to the three gen-vs-{train,known} feeder Steps below.
     # max_sequence_identity is NO LONGER a feeder — it stays as the plain GLOBAL novelty
     # metric (no --top_k); the fast local search supplies the sequence-space top-k.
-    topk_consumers = {"knn", "sdr_divergence"}
+    topk_consumers = {"knn", "sdr_divergence", "substrate_class"}
     want_topk = bool(topk_consumers & enabled)
     topk_args = ["--top_k", str(args.top_k)] if want_topk else []
 
@@ -500,6 +512,13 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("domain_composition_gen", "domain_composition.sh",
                           ["--structs_dir", structs], out_domain_composition(structs),
                           tool="domain_composition"))
+        # Domain-level structural identity: detect each design's TPS domains (EE) and
+        # foldseek-align them to the known martsDB reference domains. Reference domain
+        # root defaults inside run_domain_structural_identity.sh to EE's curated set, so
+        # the Step needs only --structs_dir (gen-only; no --known_structs_dir).
+        steps.append(Step("domain_structural_identity_gen", "domain_structural_identity.sh",
+                          ["--structs_dir", structs], out_domain_structural_identity(structs),
+                          tool="domain_structural_identity"))
         # Aggrescan3D structure-based aggregation propensity (expressibility signal).
         steps.append(Step("aggregation_gen", "aggregation.sh",
                           ["--structs_dir", structs], out_aggregation(structs), tool="aggregation"))
@@ -610,6 +629,54 @@ def build_steps(args, enabled: set) -> List[Step]:
             steps.append(Step("sdr_divergence_gen", "sdr_divergence.sh", sdr_args,
                               out_sdr_divergence(structs), tool="sdr_divergence", deps=sdr_deps))
 
+    # Substrate-class combiner: same three feeders as k-NN (run with the SUBSTRATE label
+    # file + calibration), cross-checked against pocket_descriptors volume + the EE
+    # per-substrate sequence signal. Gated like k-NN (needs all three spaces -> train +
+    # structs + known_structs). Forwards only the spaces the substrate calibration covers.
+    if "substrate_class" in enabled:
+        sc_ok = bool(train and structs and known_structs)
+        if not sc_ok:
+            print("[note] substrate_class: skipping (needs --train_path AND --structs_dir "
+                  "AND --known_structs_dir for the three feeders).")
+        elif not os.path.isfile(args.substrate_label_file):
+            print(f"[note] substrate_class: skipping (label file not found: "
+                  f"{args.substrate_label_file}).")
+        elif not os.path.isfile(args.substrate_calibration):
+            print(f"[note] substrate_class: skipping (calibration not found: "
+                  f"{args.substrate_calibration}).")
+        else:
+            cal_spaces = knn_calibrated_spaces(args.substrate_calibration)
+            sc_space_specs = {
+                "sequence":   ("--sequence_topk",   out_local_search_topk(gen),
+                               "local_search_gen_vs_train"),
+                "embedding":  ("--embedding_topk",  out_mindist_topk(out_esm(gen)),
+                               "mindist_gen_vs_train"),
+                "structural": ("--structural_topk", out_structural_identity_topk(structs),
+                               "structural_identity_gen"),
+            }
+            sc_args: List[str] = []
+            sc_deps: List[str] = []
+            for space in ("sequence", "embedding", "structural"):
+                if space not in cal_spaces:
+                    continue
+                flag, topk_path, feeder = sc_space_specs[space]
+                sc_args += [flag, topk_path]
+                sc_deps.append(feeder)
+            if not sc_deps:
+                print(f"[note] substrate_class: skipping (calibration covers no known "
+                      f"space: {sorted(cal_spaces)}).")
+            else:
+                # pocket-volume cross-check (structs) + EE per-substrate signal (gen fasta).
+                sc_args += ["--pocket_csv", out_pocket_descriptors(structs),
+                            "--ee_csv", out_ee_seq(gen)]
+                sc_deps += ["pocket_descriptors_gen", "ee_seq_gen"]
+                sc_args += ["--top_k", str(args.top_k),
+                            "--label_file", args.substrate_label_file,
+                            "--calibration", args.substrate_calibration,
+                            "--out", out_substrate_class(gen)]
+                steps.append(Step("substrate_class_gen", "substrate_class.sh", sc_args,
+                                  out_substrate_class(gen), tool="substrate_class", deps=sc_deps))
+
     # Filter to enabled tools BEFORE wiring plots, so plots only soft-depends on the
     # metric steps that actually survived (it never waits on a disabled tool).
     steps = [s for s in steps if s.tool in enabled]
@@ -673,6 +740,13 @@ def main() -> None:
                    help="k-NN calibration JSON from `calibrate` "
                         f"(default {os.path.relpath(DEFAULT_KNN_CALIBRATION, REPO)}; "
                         "sequence+embedding+structural spaces).")
+    p.add_argument("--substrate_label_file", default=DEFAULT_SUBSTRATE_LABEL_FILE,
+                   help="CSV mapping reference_id,label (SUBSTRATE classes) for the "
+                        "substrate_class combiner "
+                        f"(default {os.path.relpath(DEFAULT_SUBSTRATE_LABEL_FILE, REPO)}).")
+    p.add_argument("--substrate_calibration", default=DEFAULT_SUBSTRATE_CALIBRATION,
+                   help="Substrate k-NN calibration JSON for substrate_class "
+                        f"(default {os.path.relpath(DEFAULT_SUBSTRATE_CALIBRATION, REPO)}).")
     # Config-driven tool selection (precedence: config defaults -> only -> include -> exclude).
     p.add_argument("--only", default=None, metavar="A,B,...",
                    help="Run ONLY these tool keys (comma-separated); plots is kept on unless "
@@ -699,7 +773,8 @@ def main() -> None:
 
     args.fasta_path = os.path.abspath(args.fasta_path)
     for opt in ("train_path", "structs_dir", "known_structs_dir", "pae_dir", "train_structs_dir",
-                "train_embeddings_path", "knn_label_file", "knn_calibration"):
+                "train_embeddings_path", "knn_label_file", "knn_calibration",
+                "substrate_label_file", "substrate_calibration"):
         if getattr(args, opt):
             setattr(args, opt, os.path.abspath(getattr(args, opt)))
 

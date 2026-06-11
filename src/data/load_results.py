@@ -322,6 +322,22 @@ def load_results(
         )
         frames.append(df)
 
+    # k-NN coarse-label transfer (gen-only). `confidence` (numeric) + `predicted_label`
+    # (categorical) are the plottable columns; the rest (per-space votes) are diagnostics.
+    if "knn_label_transfer" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_knn_label_transfer.csv")
+        df = _strip_column_names(df)
+        frames.append(df)
+
+    # Substrate-class combiner (gen-only). Rename the final `confidence` to
+    # `substrate_confidence` so it doesn't collide with the k-NN `confidence` target.
+    if "substrate_class" in load_set:
+        df = pd.read_csv(_fasta_partial(fasta_path) + "_substrate_class.csv")
+        df = _strip_column_names(df)
+        if "confidence" in df.columns:
+            df = df.rename(columns={"confidence": "substrate_confidence"})
+        frames.append(df)
+
     frames = [_strip_id_column(f) for f in frames]
 
     return _outer_join_on_id(frames)
