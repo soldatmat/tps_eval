@@ -76,15 +76,8 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from structure_metrics.active_site_geometry import (  # noqa: E402
-    _coordinating_oxygens,
+    metal_point as _cage_metal_point,
     structure_sequence_residues_atoms,
-)
-from sequence_metrics.motif_localization import (  # noqa: E402
-    DDXXD_COORDINATING_OFFSETS,
-    NSE_DTE_COORDINATING_OFFSETS,
-    coordinating_indices,
-    locate_ddxxd,
-    locate_nse_dte,
 )
 
 _PDB_PARSER = PDBParser(QUIET=True)
@@ -155,23 +148,15 @@ def _nan_result(n_residues: int = 0) -> Dict[str, float]:
 # Metal point                                                                 #
 # --------------------------------------------------------------------------- #
 def metal_point(structure_path: str) -> Tuple[Optional[np.ndarray], int]:
-    """Active-site metal point for one structure: the centroid of the DDXXD +
-    NSE/DTE coordinating side-chain oxygens (the same centroid that
-    ``active_site_geometry`` uses). Returns ``(point, n_residues)``; ``point`` is
-    None when either motif is absent or no coordinating oxygen is found."""
+    """Active-site metal point for one structure, via the CANONICAL relaxed definition
+    in ``active_site_geometry.metal_point``: the centroid of the DDXXD (+ NSE/DTE when
+    that motif is also matched) coordinating side-chain oxygens. Returns
+    ``(point, n_residues)``; ``point`` is None when DDXXD is absent or no coordinating
+    oxygen is found. For a both-motif structure this is identical to the prior
+    both-motif centroid (the relaxation is a strict superset); it ADDS coverage for
+    DDXXD-only real TPS (e.g. TEAS/5EAT) that the both-motif version left NaN."""
     sequence, residues, _ = structure_sequence_residues_atoms(structure_path)
-    n_residues = len(sequence)
-    ddxxd = locate_ddxxd(sequence)
-    nse = locate_nse_dte(sequence)
-    if ddxxd is None or nse is None:
-        return None, n_residues
-    idx = coordinating_indices(ddxxd, DDXXD_COORDINATING_OFFSETS) + coordinating_indices(
-        nse, NSE_DTE_COORDINATING_OFFSETS
-    )
-    oxygens = _coordinating_oxygens(idx, residues)
-    if len(oxygens) == 0:
-        return None, n_residues
-    return oxygens.mean(axis=0), n_residues
+    return _cage_metal_point(sequence, residues), len(sequence)
 
 
 def _ensure_pdb(structure_path: str, workdir: str) -> str:

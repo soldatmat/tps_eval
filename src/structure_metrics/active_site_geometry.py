@@ -170,9 +170,55 @@ def _coordinating_oxygens(indices: List[int], residues: list) -> np.ndarray:
     return np.vstack(pts) if pts else np.empty((0, 3))
 
 
+def coordinating_indices_relaxed(sequence: str) -> Optional[List[int]]:
+    """0-based sequence indices of the metal-coordinating residues — the CANONICAL,
+    single-source-of-truth relaxed definition shared across the active-site tools.
+
+    Requires the DDXXD-family motif only, and ADDS the NSE/DTE coordinating residues
+    when (and only when) that second motif is also matched. This is a strict SUPERSET
+    of the both-motif set: for a structure where BOTH motifs match, the returned set is
+    IDENTICAL to ``_coordinating_indices_both`` (DDXXD coords + NSE/DTE coords). It only
+    ADDS coverage for DDXXD-only structures.
+
+    Why relaxed: ``active_site_geometry``'s cage measures the inter-motif site, but the
+    shared NSE/DTE regex (tuned to ``run_motif_search``) does NOT match many real class-I
+    TPS (e.g. TEAS / 5EAT, whose second triad has a non-[LIV] third residue). Requiring
+    BOTH motifs therefore returned all-NaN cage/pocket metrics on those references. The
+    DDXXD coordinating oxygens alone localize the catalytic centre well, so we anchor on
+    them and treat NSE/DTE as an optional refinement.
+
+    Returns None only when DDXXD is absent."""
+    ddxxd = locate_ddxxd(sequence)
+    if ddxxd is None:
+        return None
+    idx = coordinating_indices(ddxxd, DDXXD_COORDINATING_OFFSETS)
+    nse = locate_nse_dte(sequence)
+    if nse is not None:
+        idx = idx + coordinating_indices(nse, NSE_DTE_COORDINATING_OFFSETS)
+    return idx
+
+
+def metal_point(sequence: str, residues: list) -> Optional[np.ndarray]:
+    """CANONICAL carboxylate-cage metal point: the centroid of the relaxed
+    coordinating-residue side-chain oxygens (DDXXD + NSE/DTE-when-matched). Single
+    source of truth reused by ``pocket_descriptors``, ``aromatic_lining``,
+    ``diphosphate_sensor`` and ``sdr_divergence``.
+
+    None when DDXXD is absent or no coordinating oxygen is found. For a both-motif
+    structure this is identical to the centroid of the strict both-motif oxygens."""
+    idx = coordinating_indices_relaxed(sequence)
+    if idx is None:
+        return None
+    oxygens = _coordinating_oxygens(idx, residues)
+    if len(oxygens) == 0:
+        return None
+    return oxygens.mean(axis=0)
+
+
 def _coordinating_indices_both(sequence: str) -> Optional[List[int]]:
     """0-based sequence indices of the metal-coordinating residues of BOTH motifs
-    (DDXXD then NSE/DTE), or None if either motif is absent."""
+    (DDXXD then NSE/DTE), or None if either motif is absent. STRICT — used only by the
+    catalytic-constellation template/RMSD path, which matches a both-motif template."""
     ddxxd = locate_ddxxd(sequence)
     nse = locate_nse_dte(sequence)
     if ddxxd is None or nse is None:
@@ -269,14 +315,15 @@ def active_site_geometry(
         "n_residues": len(sequence),
     }
 
-    ddxxd = locate_ddxxd(sequence)
-    nse = locate_nse_dte(sequence)
-    if ddxxd is None or nse is None:
-        return result
+    # CAGE metrics use the relaxed coordinating set (DDXXD required, NSE/DTE added when
+    # matched) — the canonical single source of truth. Requiring BOTH motifs here made
+    # the cage all-NaN on real DDXXD-only TPS (e.g. TEAS/5EAT). For a both-motif
+    # structure this set is identical to the strict one, so both-motif metrics are
+    # unchanged (the relaxation is a strict superset).
+    idx = coordinating_indices_relaxed(sequence)
+    if idx is None:
+        return result  # DDXXD absent -> nothing to anchor on
 
-    idx = coordinating_indices(ddxxd, DDXXD_COORDINATING_OFFSETS) + coordinating_indices(
-        nse, NSE_DTE_COORDINATING_OFFSETS
-    )
     oxygens = _coordinating_oxygens(idx, residues)
     result["n_coordinating_oxygens"] = int(len(oxygens))
     if len(oxygens) == 0:
