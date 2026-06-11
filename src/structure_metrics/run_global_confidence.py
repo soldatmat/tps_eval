@@ -10,7 +10,7 @@ def main() -> None:
         description="Global fold confidence: the AlphaFold/ESMFold pTM (predicted "
         "TM-score; 0-1, higher=better) WHOLE-FOLD confidence scalar, complementing "
         "the per-residue pLDDT. Reads the ptm (and iptm when present) saved at fold "
-        "time into the <ID>_pae.npz files (esmfold.py / scripts/alphafold/"
+        "time into the <ID>_pae.npz files (esmfold.py / src/alphafold/"
         "extract_pae.py) from --pae_dir and writes a CSV keyed by ID. The iptm column "
         "appears only for multi-chain inputs; single-chain TPS get pTM only. NaN when "
         "the npz is missing or carries no ptm. Reads numpy npz only (TPS_EVAL_ENV; "

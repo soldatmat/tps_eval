@@ -13,7 +13,7 @@ is emitted as a column only when at least one npz carries a non-NaN ipTM.
 
 This tool does NOT re-fold and does NOT parse structures: the scalars are saved at
 fold time into the SAME ``<ID>_pae.npz`` that interdomain_pae consumes (written by
-esmfold.py / scripts/alphafold/extract_pae.py). So it just reads ``--pae_dir`` and
+esmfold.py / src/alphafold/extract_pae.py). So it just reads ``--pae_dir`` and
 reduces to one row per ID. Output is the dir-keyed CSV ``<structs_dir>_global_confidence.csv``
 (mirroring plddt's naming) keyed by ``ID`` (= the npz filename stem, == structure
 stem), with columns ``ptm`` (always) and ``iptm`` (only if present anywhere). NaN
@@ -107,7 +107,7 @@ def extract_global_confidence_dir(
     if not ids:
         raise ValueError(
             f"No <ID>_pae.npz files found in {pae_dir} "
-            "(written at fold time by esmfold.py / scripts/alphafold/extract_pae.py)."
+            "(written at fold time by esmfold.py / src/alphafold/extract_pae.py)."
         )
     print(f"{len(ids)} design(s); reading global confidence from {pae_dir}")
 

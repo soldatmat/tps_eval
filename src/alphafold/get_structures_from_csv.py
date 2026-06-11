@@ -1,9 +1,12 @@
+import os
 import pandas as pd
 import argparse
 
 import sys
 import importlib.util
 
+_HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, _HERE)
 from run_alphafold_jobs import run_alphafold_jobs
 
 def main():
@@ -29,7 +32,10 @@ def main():
     working_directory = str(args.working_directory)
 
     # Run alphafold_struct_downloader to download structures for sequences with UniProt IDs
-    spec = importlib.util.spec_from_file_location("alphafold_struct_downloader", "./alphafold_struct_downloader.py")
+    spec = importlib.util.spec_from_file_location(
+        "alphafold_struct_downloader",
+        os.path.join(_HERE, "alphafold_struct_downloader.py"),
+    )
     alphafold_struct_downloader = importlib.util.module_from_spec(spec)
     sys.modules["alphafold_struct_downloader"] = alphafold_struct_downloader
     spec.loader.exec_module(alphafold_struct_downloader)

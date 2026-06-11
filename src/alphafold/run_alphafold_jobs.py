@@ -126,7 +126,8 @@ def run_alphafold_jobs(
         job_submit_args = prepare_submit_args(submit_args, cluster=cluster, default_job_name=combined_protein_ids, working_directory=working_directory)
         cmd = [
             'bash',
-            f"{script_dir}/../submit_job.sh",
+            # submit_job.sh lives under scripts/; this module is src/alphafold/.
+            os.path.join(script_dir, "..", "..", "scripts", "submit_job.sh"),
             '--cluster', cluster,
             '--job_name', "alphafold",
             '--job_args', job_args,

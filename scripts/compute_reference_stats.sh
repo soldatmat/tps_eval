@@ -157,7 +157,7 @@ else
     echo "=== STRUCTURE metrics SKIPPED (no --structs_dir) ==="
     echo "    Sequence-metric stats only. To add structure stats, supply a dir"
     echo "    of MARTS-DB structures via --structs_dir (see Step-1 report:"
-    echo "    download via scripts/alphafold/alphafold_struct_downloader.py keyed"
+    echo "    download via src/alphafold/alphafold_struct_downloader.py keyed"
     echo "    by src/homology_search/tps_uniprot_accessions.txt)."
 fi
 
