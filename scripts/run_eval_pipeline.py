@@ -187,6 +187,7 @@ def out_interdomain_pae(d): return d.rstrip(os.sep) + "_interdomain_pae.csv"
 def out_global_confidence(d): return d.rstrip(os.sep) + "_global_confidence.csv"
 def out_aromatic_lining(d): return d.rstrip(os.sep) + "_aromatic_lining.csv"
 def out_diphosphate_sensor(d): return d.rstrip(os.sep) + "_diphosphate_sensor.csv"
+def out_ion_site_check(d): return d.rstrip(os.sep) + "_ion_site_check.csv"
 def out_domain_structural_identity(d): return d.rstrip(os.sep) + "_domain_structural_identity.csv"
 # substrate_class is keyed off the gen FASTA (it fuses sequence + structure signals).
 def out_substrate_class(f): return _base(f) + "_substrate_class.csv"
@@ -220,6 +221,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
     "aromatic_lining":      {"default": True,  "branch": "structure", "description": "Aromatic / cation-pi pocket lining (carbocation-stabilization proxy)."},
     "diphosphate_sensor":   {"default": True,  "branch": "structure", "description": "Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site."},
+    "ion_site":             {"default": True,  "branch": "structure", "description": "Ion-placement check: do AF3 co-folded Mg/Mn ions land in the carboxylate cage? Only carries signal for AF3 holo folds (--af3_cofold mg|mg_ppi); apo/ESMFold report n_ions_modelled=0."},
     "radius_of_gyration":   {"default": True,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms."},
     "pocket_descriptors":   {"default": True,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)."},
     "domain_composition":   {"default": True,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)."},
@@ -603,6 +605,13 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("diphosphate_sensor_gen", "diphosphate_sensor.sh",
                           ["--structs_dir", structs], out_diphosphate_sensor(structs),
                           tool="diphosphate_sensor"))
+        # Ion-placement check: do the AF3 co-folded Mg/Mn ions (--af3_cofold mg|mg_ppi)
+        # actually land in the carboxylate cage? Only carries signal for AF3 holo folds;
+        # apo / ESMFold structures have no ions and report n_ions_modelled=0 (a graceful
+        # not-applicable row). Default-on so the column always exists when ions are present.
+        steps.append(Step("ion_site_check_gen", "ion_site_check.sh",
+                          ["--structs_dir", structs], out_ion_site_check(structs),
+                          tool="ion_site"))
         # Radius of gyration / compactness: raw geometric shape numbers (Rg, asphericity,
         # principal radii) over the Cα atoms; no expected-Rg band (compared downstream).
         steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",

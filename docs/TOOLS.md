@@ -223,6 +223,14 @@ All structure tools accept either an AlphaFold3 `af_output` tree (reads the top-
 - **External dependency** — Biopython.
 - **Env + source** — `tps_eval`; [`src/structure_metrics/diphosphate_sensor.py`](../src/structure_metrics/diphosphate_sensor.py).
 
+### ion_site_check
+- **Purpose** — Geometric validation that the Mg²⁺/Mn²⁺ ions **AlphaFold3 co-folded** (`--af3_cofold mg|mg_ppi`) actually land in the catalytic carboxylate cage. AF3 free-ion placement is a *hypothesis*; every other active-site tool is apo-robust and anchors on the protein-derived cage point only. This is the one tool that READS the ion HETATMs (which the shared parser otherwise skips) and checks them against that expected cage. **Only carries signal for AF3 holo folds** — apo / ESMFold structures have no ions and report a graceful not-applicable row (`n_ions_modelled=0`, distances NaN, bools False).
+- **Inputs** — structures dir; `--site_radius` (default 5.0 Å, in-site distance from the cage centroid), `--coord_cutoff` (default 2.8 Å, Mg–O coordination; real bonds ~2.0–2.5 Å), `--min_coord_contacts` (default 2), `--ion_resnames` (default `MG MN`), `--diphosphate_resnames` (default `POP PPV PPK`).
+- **Output** — `<structs_dir>_ion_site_check.csv`: `ID`, `metal_point_found`, `n_ions_modelled`, `min_ion_to_cage_dist`, `n_ions_in_site`, `ion_in_site`, `max_coordinating_contacts`, `n_ions_coordinated`, `well_placed`, `n_diphosphate_atoms`, `diphosphate_to_cage_dist`, `n_residues`. Distance columns are NaN and bool columns False when there are no ions or no metal point.
+- **Method** — Computes the expected apo cage point via the canonical relaxed `active_site_geometry.metal_point` (centroid of the DDXXD + NSE/DTE coordinating side-chain oxygens), reads the ion HETATMs, and measures: nearest ion → cage distance, ions inside the site sphere, and per-ion coordinating-oxygen contacts at Mg–O bonding distance (`well_placed` = ≥1 ion coordinated by ≥`min_coord_contacts` cage oxygens — the strict validation). For `mg_ppi`, also the diphosphate-centroid → cage distance.
+- **External dependency** — Biopython.
+- **Env + source** — `tps_eval`; [`src/structure_metrics/ion_site_check.py`](../src/structure_metrics/ion_site_check.py). For the trinuclear Mg²⁺ cluster geometry see Christianson, D. W. *Chem. Rev.* **2017**, *117*, 11570–11648.
+
 ### global_confidence
 - **Purpose** — Whole-fold confidence (pTM / iPTM), complementing per-residue pLDDT.
 - **Inputs** — `--pae_dir` (per-structure `<ID>_pae.npz` carrying `ptm`/`iptm`, saved at fold time by ESMFold or the AF3 extract_pae step); optional `--structs_dir` for output naming.

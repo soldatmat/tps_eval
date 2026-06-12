@@ -235,6 +235,13 @@ STRUCTURE_NUMERIC = {
         "n_diphosphate_basic_residues",
         "n_RY_pairs",
     ],
+    # Ion-placement check (AF3 holo folds): how well the co-folded Mg/Mn ions land in
+    # the carboxylate cage. NaN / 0 for apo/ESMFold (no ions) -> a not-applicable row.
+    "_ion_site_check.csv": [
+        "min_ion_to_cage_dist",
+        "n_ions_in_site",
+        "max_coordinating_contacts",
+    ],
     "_radius_of_gyration.csv": [
         "radius_of_gyration",
         "asphericity",
@@ -306,6 +313,7 @@ STRUCTURE_CATEGORICAL = {
     "_domain_composition.csv": ["domain_architecture"],
     "_foldseek_swissprot_search.csv": ["foldseek_sprot_top_is_tps"],
     "_diphosphate_sensor.csv": ["has_RY_pair"],
+    "_ion_site_check.csv": ["ion_in_site", "well_placed"],
     "_sdr_divergence.csv": ["specificity_divergence"],
 }
 

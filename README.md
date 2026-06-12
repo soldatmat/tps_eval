@@ -43,6 +43,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [self_consistency](docs/TOOLS.md#self_consistency) | struct | HEAVY scRMSD self-consistency (ProteinMPNN → ESMFold refold → RMSD). Opt-in. | `<structs_dir>_self_consistency.csv` |
 | [aromatic_lining](docs/TOOLS.md#aromatic_lining) | struct | Aromatic / cation-π pocket lining (Trp/Tyr/Phe count + ring orientation; carbocation-stabilization proxy). | `<structs_dir>_aromatic_lining.csv` |
 | [diphosphate_sensor](docs/TOOLS.md#diphosphate_sensor) | struct | Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site. | `<structs_dir>_diphosphate_sensor.csv` |
+| [ion_site_check](docs/TOOLS.md#ion_site_check) | struct | Ion-placement check: do AF3 co-folded Mg/Mn ions land in the carboxylate cage? Only carries signal for AF3 holo folds (`--af3_cofold mg\|mg_ppi`); apo/ESMFold report `n_ions_modelled=0`. | `<structs_dir>_ion_site_check.csv` |
 | [global_confidence](docs/TOOLS.md#global_confidence) | struct | Global fold confidence (pTM/iPTM) from the saved PAE npz (needs `--pae_dir`). | `<structs_dir>_global_confidence.csv` |
 | [interdomain_pae](docs/TOOLS.md#interdomain_pae) | struct | Mean/max inter-domain PAE between TPS domains (needs `--pae_dir`; EE domain ranges). | `<structs_dir>_interdomain_pae.csv` |
 
