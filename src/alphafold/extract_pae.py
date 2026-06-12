@@ -103,10 +103,12 @@ def _load_ptm_iptm(confidences_json: str, job_id: str):
 def confidences_to_npz(confidences_json: str, out_npz: str, *, job_id: str) -> int:
     """Read one AF3 ``<job>_confidences.json`` and write the shared ``<ID>_pae.npz``.
 
-    Returns L (the matrix dimension). For multi-chain complexes ``token_res_ids``
-    can repeat across chains; we keep the raw per-token residue ids as the axis
-    (the consumer maps EE per-structure PDB resi onto them) and warn — TPS designs
-    here are single-chain, where token_res_ids is the residue axis 1..L."""
+    Returns L (the matrix dimension after any protein-chain restriction). For a
+    multi-chain holo co-fold (protein + ion/ligand chains) ``token_res_ids`` can
+    repeat across chains, which would collide in the consumer's residue->index map;
+    we therefore restrict the stored PAE to the PROTEIN chain (the largest chain),
+    dropping ion/ligand tokens, so ``residue_ids`` is a clean single-chain axis.
+    Single-chain folds (the common TPS case, and every ESMFold npz) are unaffected."""
     with open(confidences_json) as fh:
         payload = json.load(fh)
     if "pae" not in payload:
@@ -121,15 +123,46 @@ def confidences_to_npz(confidences_json: str, out_npz: str, *, job_id: str) -> i
         residue_ids = np.arange(1, pae.shape[0] + 1, dtype=np.int32)
     else:
         residue_ids = np.asarray(res_ids, dtype=np.int32)
-    if chain_ids is not None and len(set(chain_ids)) > 1:
-        print(
-            f"  [warn] {job_id}: multi-chain ({sorted(set(chain_ids))}); token_res_ids "
-            "may repeat across chains. interdomain_pae assumes single-chain TPS designs."
-        )
     if residue_ids.shape[0] != pae.shape[0]:
         raise ValueError(
             f"token_res_ids length {residue_ids.shape[0]} != PAE dim {pae.shape[0]} "
             f"in {confidences_json}"
+        )
+
+    # Multi-chain: an AF3 holo co-fold (--af3_cofold mg|mg_ppi) puts the protein in
+    # one chain and EACH ion / ligand in its own chain, so the token axis carries
+    # ligand tokens whose token_res_ids COLLIDE with protein residue numbers (a Mg
+    # at res 1 in chain B vs protein residue 1 in chain A). interdomain_pae maps EE
+    # protein residue numbers onto this axis via a {res_id: index} dict, so a
+    # collision silently mis-maps protein residues onto ligand columns. Restrict the
+    # stored PAE to the PROTEIN chain -- the chain with the most tokens (ions/ligands
+    # are 1-few atoms) -- so residue_ids is a clean, collision-free single-chain axis
+    # (the "one token per residue" contract the consumers rely on). Single-chain
+    # folds (the common TPS case, and every ESMFold npz) are untouched.
+    if (
+        chain_ids is not None
+        and len(chain_ids) == pae.shape[0]
+        and len(set(chain_ids)) > 1
+    ):
+        chain_arr = np.asarray(chain_ids)
+        uniq, counts = np.unique(chain_arr, return_counts=True)
+        protein_chain = uniq[int(counts.argmax())]
+        ordered = np.sort(counts)[::-1]
+        if len(ordered) > 1 and ordered[1] >= 20:
+            print(
+                f"  [warn] {job_id}: more than one large chain "
+                f"({dict(zip(uniq.tolist(), counts.tolist()))}); keeping only the largest "
+                f"('{protein_chain}') -- multi-protein complexes are not supported "
+                "(single-chain TPS assumed)."
+            )
+        mask = chain_arr == protein_chain
+        n_drop = int((~mask).sum())
+        pae = pae[np.ix_(mask, mask)]
+        residue_ids = residue_ids[mask]
+        print(
+            f"  [info] {job_id}: multi-chain ({sorted(set(chain_ids))}); restricted PAE to "
+            f"protein chain '{protein_chain}' ({int(mask.sum())} tokens), dropped {n_drop} "
+            "ligand/ion token(s)."
         )
 
     ptm, iptm = _load_ptm_iptm(confidences_json, job_id)

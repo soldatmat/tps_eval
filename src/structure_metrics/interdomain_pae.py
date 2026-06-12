@@ -35,6 +35,8 @@ separately by the reference-stats pipeline.
 The PAE npz schema (one schema, both folders — see esmfold.py / the AF3 extractor):
   * ``pae``         : float32 (L, L), Angstrom; PAE[i, j] aligned-on-i error of j.
   * ``residue_ids`` : int32 (L,), the PDB author residue number of each PAE row/col.
+    Single protein chain only -- the AF3 extractor restricts a multi-chain holo
+    co-fold to the protein chain, so these are unique (a duplicate triggers a warn).
   * ``n_residues``  : int scalar (== L).
   * ``source``      : str, 'esmfold' | 'alphafold3'.
 """
@@ -96,6 +98,18 @@ def load_pae(pae_path: str):
         raise ValueError(
             f"residue_ids length {residue_ids.shape[0]} != PAE dimension {pae.shape[0]} "
             f"in {pae_path}"
+        )
+    # Defensive: duplicate residue_ids mean the PAE axis is multi-chain-polluted
+    # (ligand/ion tokens whose numbers collide with protein residues). The AF3
+    # extractor now restricts the PAE to the protein chain, so this only fires for a
+    # stale/foreign npz -- the {res_id: index} map below would silently mis-map
+    # otherwise, so make it loud and point at re-extraction.
+    if np.unique(residue_ids).shape[0] != residue_ids.shape[0]:
+        print(
+            f"  [warn] {os.path.basename(pae_path)}: PAE residue_ids are not unique "
+            f"({residue_ids.shape[0] - np.unique(residue_ids).shape[0]} duplicate(s)); the axis "
+            "looks multi-chain-polluted -- re-extract with the protein-chain-restricted "
+            "extract_pae (mapping is unreliable otherwise)."
         )
     return pae, residue_ids
 
