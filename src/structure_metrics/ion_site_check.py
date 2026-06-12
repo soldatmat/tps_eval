@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Ion-placement (catalytic-site) check for AF3 holo-folded class-I TPS designs.
 
 Class-I terpene synthases bind a trinuclear Mg2+ (or Mn2+) cluster chelated by the
@@ -61,6 +59,8 @@ folds (``--af3_cofold mg|mg_ppi``).
 Citation: Christianson, D. W. "Structural and Chemical Biology of Terpenoid
 Cyclases." Chem. Rev. 2017, 117, 11570-11648 (the trinuclear Mg2+ cluster geometry).
 """
+
+from __future__ import annotations
 
 import argparse
 import os
