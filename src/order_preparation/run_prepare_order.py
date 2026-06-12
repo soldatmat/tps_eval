@@ -16,7 +16,15 @@ from __future__ import annotations
 import argparse
 import sys
 
-from codon_optimization import DEFAULT_ORGANISM
+from codon_optimization import (
+    DEFAULT_GC_MAX,
+    DEFAULT_GC_MIN,
+    DEFAULT_GC_WINDOW,
+    DEFAULT_MAX_HOMOPOLYMER,
+    DEFAULT_METHOD,
+    DEFAULT_ORGANISM,
+    DEFAULT_SEED,
+)
 from overhangs import DEFAULT_OVERHANG, OVERHANGS
 from prepare_order import prepare_one, prepare_order
 
@@ -38,13 +46,33 @@ def main() -> int:
     p.add_argument("--id-column", dest="id_column", help="ID column name (CSV input).")
     p.add_argument("--seq-column", dest="seq_column", help="Amino-acid column name (CSV input).")
     p.add_argument(
-        "--method", default="use_best_codon",
-        help="DNAChisel CodonOptimize method (use_best_codon | match_codon_usage | harmonize_rca).",
+        "--method", default=DEFAULT_METHOD,
+        help="DNAChisel CodonOptimize method (match_codon_usage | use_best_codon | harmonize_rca).",
+    )
+    p.add_argument(
+        "--max_homopolymer", type=int, default=DEFAULT_MAX_HOMOPOLYMER,
+        help="Longest allowed single-nucleotide run (0 disables the cap).",
+    )
+    p.add_argument("--gc_min", type=float, default=DEFAULT_GC_MIN, help="GC-window lower bound (fraction).")
+    p.add_argument("--gc_max", type=float, default=DEFAULT_GC_MAX, help="GC-window upper bound (fraction).")
+    p.add_argument(
+        "--gc_window", type=int, default=DEFAULT_GC_WINDOW,
+        help="GC sliding-window size in bp (0 disables the GC window).",
+    )
+    p.add_argument(
+        "--seed", type=int, default=DEFAULT_SEED,
+        help="RNG seed for reproducible codon sampling (use -1 for nondeterministic).",
     )
     args = p.parse_args()
+    seed = None if args.seed is not None and args.seed < 0 else args.seed
+
+    quality = dict(
+        method=args.method, max_homopolymer=args.max_homopolymer,
+        gc_min=args.gc_min, gc_max=args.gc_max, gc_window=args.gc_window, seed=seed,
+    )
 
     if args.sequence:
-        row = prepare_one(args.sequence, args.organism, args.overhang_type, method=args.method)
+        row = prepare_one(args.sequence, args.organism, args.overhang_type, **quality)
         if row["warnings"]:
             print(f"[WARN] {args.id}: {row['warnings']}", file=sys.stderr)
         print(f"{args.id},{row['ordered_sequence']}")
@@ -60,7 +88,7 @@ def main() -> int:
         overhang_type=args.overhang_type,
         id_column=args.id_column,
         seq_column=args.seq_column,
-        method=args.method,
+        **quality,
     )
     return 0
 

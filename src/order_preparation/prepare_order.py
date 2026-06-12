@@ -24,7 +24,17 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-from codon_optimization import DEFAULT_ORGANISM, GOLDEN_GATE_ENZYMES, codon_optimize
+from codon_optimization import (
+    DEFAULT_GC_MAX,
+    DEFAULT_GC_MIN,
+    DEFAULT_GC_WINDOW,
+    DEFAULT_MAX_HOMOPOLYMER,
+    DEFAULT_METHOD,
+    DEFAULT_ORGANISM,
+    DEFAULT_SEED,
+    GOLDEN_GATE_ENZYMES,
+    codon_optimize,
+)
 from overhangs import DEFAULT_OVERHANG, add_overhangs, get_overhangs
 
 _FASTA_EXTS = {".fasta", ".fa", ".faa", ".fas", ".fna"}
@@ -43,6 +53,29 @@ _SEQ_COLUMNS = (
 
 def _revcomp(s: str) -> str:
     return s.translate(str.maketrans("ACGTacgt", "TGCAtgca"))[::-1]
+
+
+def _max_homopolymer_run(s: str) -> int:
+    """Length of the longest single-nucleotide run in ``s`` (0 for empty)."""
+    return max((len(m.group(0)) for m in re.finditer(r"(.)\1*", s)), default=0)
+
+
+def _gc_window_extremes(s: str, window: int) -> tuple[float, float]:
+    """Min and max GC fraction over every ``window``-bp sliding window of ``s``. If ``s``
+    is shorter than the window, returns its overall GC for both."""
+    s = s.upper()
+    n = len(s)
+    prefix = [0] * (n + 1)
+    for i, ch in enumerate(s):
+        prefix[i + 1] = prefix[i] + (1 if ch in "GC" else 0)
+    if n <= window:
+        gc = prefix[n] / n if n else 0.0
+        return gc, gc
+    lo, hi = 1.0, 0.0
+    for i in range(0, n - window + 1):
+        gc = (prefix[i + window] - prefix[i]) / window
+        lo, hi = min(lo, gc), max(hi, gc)
+    return lo, hi
 
 
 # ---------------------------------------------------------------------------
@@ -99,14 +132,21 @@ def validate_construct(
     protein: str,
     overhang_type: str = DEFAULT_OVERHANG,
     avoid_enzymes: tuple[str, ...] = GOLDEN_GATE_ENZYMES,
+    max_homopolymer: int = DEFAULT_MAX_HOMOPOLYMER,
+    gc_min: float | None = DEFAULT_GC_MIN,
+    gc_max: float | None = DEFAULT_GC_MAX,
+    gc_window: int = DEFAULT_GC_WINDOW,
 ) -> list[str]:
     """Independently re-check an assembled construct. Returns a list of human-readable
     warnings (empty == all checks passed).
 
     Checks: starts with the expected prefix; CDS starts with ATG; CDS length is a
     multiple of 3; CDS translates back to ``protein`` and ends in a stop codon; ends with
-    the expected suffix; and no BsaI/BsmBI site lies inside the CDS or across a junction
-    (only the deliberate sites in the flanks are allowed).
+    the expected suffix; no BsaI/BsmBI site lies inside the CDS or across a junction (only
+    the deliberate sites in the flanks are allowed); no homopolymer run in the full
+    construct exceeds ``max_homopolymer``; and the CDS GC stays within ``[gc_min, gc_max]``
+    over every ``gc_window``-bp window. The homopolymer/GC checks mirror the optimization
+    targets, so a relaxed sequence will (intentionally) flag here too.
     """
     warnings: list[str] = []
     prefix, suffix = get_overhangs(overhang_type)
@@ -143,6 +183,21 @@ def validate_construct(
                 inside_suffix = s >= cds_end
                 if not (inside_prefix or inside_suffix):
                     warnings.append(f"{enz} site at nt {s} overlaps the CDS/junction")
+
+    # Homopolymer cap — checked on the full construct (junctions included).
+    if max_homopolymer:
+        run = _max_homopolymer_run(up)
+        if run > max_homopolymer:
+            warnings.append(f"homopolymer run of {run} nt exceeds cap of {max_homopolymer}")
+
+    # GC window — checked on the CDS (the region we control; flanks are fixed).
+    if gc_window and gc_min is not None and gc_max is not None:
+        lo, hi = _gc_window_extremes(cds, min(int(gc_window), len(cds)))
+        if lo < gc_min - 1e-9 or hi > gc_max + 1e-9:
+            warnings.append(
+                f"CDS GC over {gc_window}-bp windows is {lo*100:.0f}-{hi*100:.0f}%, "
+                f"outside [{gc_min*100:.0f}, {gc_max*100:.0f}]%"
+            )
     return warnings
 
 
@@ -154,14 +209,25 @@ def prepare_one(
     organism: str = DEFAULT_ORGANISM,
     overhang_type: str = DEFAULT_OVERHANG,
     avoid_enzymes: tuple[str, ...] = GOLDEN_GATE_ENZYMES,
-    method: str = "use_best_codon",
+    method: str = DEFAULT_METHOD,
+    max_homopolymer: int = DEFAULT_MAX_HOMOPOLYMER,
+    gc_min: float | None = DEFAULT_GC_MIN,
+    gc_max: float | None = DEFAULT_GC_MAX,
+    gc_window: int = DEFAULT_GC_WINDOW,
+    seed: int | None = DEFAULT_SEED,
 ) -> dict:
     """Run the full pipeline for a single protein and return a result row."""
+    warnings: list[str] = []  # collects codon-optimization relaxation notes
     cds = codon_optimize(
-        protein, organism=organism, avoid_enzymes=avoid_enzymes, method=method
+        protein, organism=organism, avoid_enzymes=avoid_enzymes, method=method,
+        max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
+        gc_window=gc_window, seed=seed, warnings=warnings,
     )
     full = add_overhangs(cds, overhang_type)
-    warnings = validate_construct(full, protein, overhang_type, avoid_enzymes)
+    warnings += validate_construct(
+        full, protein, overhang_type, avoid_enzymes,
+        max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max, gc_window=gc_window,
+    )
     return {
         "protein": protein.strip().upper().rstrip("*"),
         "cds": cds,
@@ -178,7 +244,12 @@ def prepare_order(
     overhang_type: str = DEFAULT_OVERHANG,
     id_column: str | None = None,
     seq_column: str | None = None,
-    method: str = "use_best_codon",
+    method: str = DEFAULT_METHOD,
+    max_homopolymer: int = DEFAULT_MAX_HOMOPOLYMER,
+    gc_min: float | None = DEFAULT_GC_MIN,
+    gc_max: float | None = DEFAULT_GC_MAX,
+    gc_window: int = DEFAULT_GC_WINDOW,
+    seed: int | None = DEFAULT_SEED,
     save: bool = True,
 ) -> pd.DataFrame:
     """Prepare an ordering table from a file of protein designs.
@@ -193,7 +264,11 @@ def prepare_order(
 
     rows = []
     for design_id, protein in designs:
-        row = prepare_one(protein, organism, overhang_type, method=method)
+        row = prepare_one(
+            protein, organism, overhang_type, method=method,
+            max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
+            gc_window=gc_window, seed=seed,
+        )
         row = {"id": design_id, **row}
         rows.append(row)
         if row["warnings"]:

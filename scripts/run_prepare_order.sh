@@ -10,9 +10,9 @@ Help()
     echo "Usage: $0 $USAGE"
     echo
     echo "Codon-optimizes each amino-acid design (default organism: yeast / S. cerevisiae),"
-    echo "removes internal BsaI/BsmBI sites, then adds the fixed Golden Gate overhangs"
-    echo "(default: Type 3, heterologous protein expression). Writes <prefix>_order.csv"
-    echo "and <prefix>_order.txt (id,sequence per line)."
+    echo "removes internal BsaI/BsmBI sites, caps homopolymers + holds a GC window, then adds"
+    echo "the fixed Golden Gate overhangs (default: Type 3, heterologous protein expression)."
+    echo "Writes <prefix>_order.csv and <prefix>_order.txt (id,sequence per line)."
     echo
     echo "Arguments:"
     echo "  input_path        FASTA or CSV/TSV of protein designs (required unless --sequence)"
@@ -23,7 +23,11 @@ Help()
     echo "  --overhang_type   Golden Gate overhang type (default: 'Type 3')"
     echo "  --seq-column      Amino-acid column name (CSV input)"
     echo "  --id-column       ID column name (CSV input)"
-    echo "  --method          DNAChisel CodonOptimize method (default: use_best_codon)"
+    echo "  --method          CodonOptimize method (default: match_codon_usage; or use_best_codon)"
+    echo "  --max_homopolymer Longest allowed single-nucleotide run (default: 6; 0 disables)"
+    echo "  --gc_min/--gc_max GC-window bounds as fractions (default: 0.30 / 0.65)"
+    echo "  --gc_window       GC sliding-window size in bp (default: 50; 0 disables)"
+    echo "  --seed            RNG seed for reproducible sampling (default: 0; -1 = random)"
     echo "  -h, --help        Show this help and exit"
 }
 

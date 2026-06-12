@@ -40,7 +40,11 @@ bash scripts/run_prepare_order.sh --sequence MGRSY...PIPL --id design1
 | `--overhang_type` | `Type 3` | Golden Gate overhang type (see below) |
 | `--seq-column` | auto-detect | Amino-acid column name (CSV input) |
 | `--id-column` | auto-detect | ID column name (CSV input) |
-| `--method` | `use_best_codon` | DNAChisel CodonOptimize method |
+| `--method` | `match_codon_usage` | DNAChisel CodonOptimize method (`match_codon_usage` \| `use_best_codon` \| `harmonize_rca`) |
+| `--max_homopolymer` | `6` | Longest allowed single-nucleotide run (0 disables) |
+| `--gc_min` / `--gc_max` | `0.30` / `0.65` | GC-window bounds (fraction) |
+| `--gc_window` | `50` | GC sliding-window size in bp (0 disables) |
+| `--seed` | `0` | RNG seed for reproducible sampling (`-1` = nondeterministic) |
 
 ## Input
 
@@ -65,11 +69,33 @@ to the console during the run.
 Backend: **[DNAChisel](https://edinburgh-genome-foundry.github.io/DnaChisel/)** + codon
 tables from `python_codon_tables` (both pinned in
 [`requirements.txt`](../src/order_preparation/requirements.txt)). For each protein it
-reverse-translates, enforces the translation, optimizes synonymous codons for the target
-organism, and **avoids the BsaI (`GGTCTC`) and BsmBI (`CGTCTC`) recognition sites on both
-strands** — those Type IIS sites are introduced *only* by the overhangs, and any copy
-inside the CDS would fragment the part during assembly.
+reverse-translates, enforces the translation, and optimizes synonymous codons for the
+target organism subject to three **hard constraints** (codon usage is a soft objective
+optimized within them):
 
+1. **No internal BsaI (`GGTCTC`) / BsmBI (`CGTCTC`) sites** (both strands) — those Type IIS
+   sites are introduced *only* by the overhangs; a copy inside the CDS would fragment the
+   part during assembly.
+2. **Homopolymer cap** (`--max_homopolymer`, default 6) — no single-nucleotide run longer
+   than 6; long runs cause synthesis slippage/indels and can mimic cryptic yeast termination.
+3. **GC window** (`--gc_min/--gc_max/--gc_window`, default 30–65 % over 50 bp) — keeps
+   *local* GC in range, what synthesis vendors actually check.
+
+Constraints 2–3 apply to **both** codon methods, so the output is synthesis-clean either
+way. On the 32-design previous batch, defaults give mean GC 40 % and max homopolymer 6 —
+matching the cad-sge web tool's profile while *also* guaranteeing the Type-IIS cleanliness
+the web tool lacked.
+
+- **Method** — `--method` default `match_codon_usage` samples codons to match the
+  organism's natural distribution (like the web tool: natural GC + codon diversity).
+  `use_best_codon` maximizes CAI but is lower-GC and repetitive (still synthesis-clean here
+  thanks to the constraints, just less diverse). Sampling is seeded (`--seed`, default 0)
+  so a design reproducibly yields the same sequence; pass `--seed -1` for fresh draws.
+- **Graceful relaxation** — if the homopolymer/GC constraints make a particular protein
+  infeasible (an amino-acid stretch with only AT-rich synonymous codons can fight a GC
+  floor), they are loosened step by step (widen GC window → drop it → raise/drop the
+  homopolymer cap) until a solution is found, and a note is added to that design's
+  `warnings`. **Translation and enzyme-site avoidance are never relaxed.**
 - **Organism** — default `yeast` → *Saccharomyces cerevisiae* (`s_cerevisiae_4932`). A
   small alias map (`yeast`, `s_cerevisiae`, `e_coli`, `human`, …) resolves friendly names;
   any `python_codon_tables` identifier/taxid also works directly, so adding organisms is a
@@ -80,8 +106,9 @@ inside the CDS would fragment the part during assembly.
 
 > Why not the cad-sge.com web tool you may have used before? It is the open-source iDOG
 > toolkit — bacterially oriented (RBS/terminator design, heavy ViennaRNA/TranstermHP deps),
-> has no API, and does **not** remove Type IIS sites. DNAChisel installs locally, tracks the
-> web tool's yeast output closely, and additionally guarantees Type-IIS-clean CDSs.
+> has no API, and does **not** remove Type IIS sites. DNAChisel installs locally, matches
+> the web tool's yeast GC/codon profile, and additionally guarantees Type-IIS-clean CDSs
+> and the homopolymer/GC limits above.
 
 ## Overhangs
 
@@ -112,10 +139,13 @@ comes from codon optimization.
 `validate_construct` independently re-checks each assembled sequence (`EnforceTranslation`
 already guarantees the protein, but this is a cheap safety net): starts with `ATG` after
 the prefix, ends in a stop codon before the suffix, CDS length is a multiple of 3, the CDS
-translates back to the input protein, and **no BsaI/BsmBI site lies inside the CDS or across
-a junction** (only the deliberate flank sites are allowed). Failures populate the
-`warnings` column. *(The previous manual web workflow let 2 of 32 sequences keep internal
-BsaI sites — this step catches that class of defect.)*
+translates back to the input protein, **no BsaI/BsmBI site lies inside the CDS or across a
+junction** (only the deliberate flank sites are allowed), **no homopolymer run exceeds the
+cap**, and **the CDS GC stays within the window**. Failures populate the `warnings` column.
+Because these checks mirror the optimization targets, a sequence whose constraints had to be
+relaxed will (intentionally) flag here too — so the relaxation note and the residual GC/
+homopolymer reality both reach the user. *(The previous manual web workflow let 2 of 32
+sequences keep internal BsaI sites — this step catches that class of defect.)*
 
 ## Dependencies
 
