@@ -104,9 +104,15 @@ if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
 else
     python run_max_sequence_identity.py "$fasta_path" "${topk_args[@]}"
 fi
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."
 
 if $train_mode; then
     cp "${fasta_path%.fasta}_max_sequence_identity_self.csv" "${fasta_path%.fasta}_max_sequence_identity.csv"
     echo "Copied self results to non-self results: ${fasta_path%.fasta}_max_sequence_identity_self.csv -> ${fasta_path%.fasta}_max_sequence_identity.csv"
 fi
+
+# Propagate python's exit code so a failed computation FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- the trailing echo/cp
+# would otherwise mask the failure with exit 0).
+exit $rc

@@ -78,4 +78,9 @@ cd src/knn
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting knn_label_transfer ($cmd)..."
 python run_knn_label_transfer.py "$cmd" "${passthru[@]}"
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished knn_label_transfer ($cmd)."
+# Propagate python's exit code so a failed run FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- a trailing echo would
+# otherwise mask the failure with exit 0).
+exit $rc

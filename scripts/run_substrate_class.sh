@@ -70,4 +70,9 @@ cd src/knn
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting substrate_class..."
 python run_substrate_class.py "${passthru[@]}"
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished substrate_class."
+# Propagate python's exit code so a failed run FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- a trailing echo would
+# otherwise mask the failure with exit 0).
+exit $rc

@@ -81,4 +81,9 @@ args=("$fasta_path" "$SWISSPROT_DIAMOND_DB" "$TPS_ACCESSIONS" --threads "$thread
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting swissprot_search (DIAMOND blastp)..."
 python run_swissprot_search.py "${args[@]}"
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished swissprot_search."
+# Propagate python's exit code so a failed search FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- a trailing echo would
+# otherwise mask the failure with exit 0).
+exit $rc

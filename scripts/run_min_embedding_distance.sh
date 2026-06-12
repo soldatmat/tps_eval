@@ -103,9 +103,15 @@ if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != "" ]]; th
 else
     python run_min_embedding_distance.py "$embeddings_path" "${topk_args[@]}"
 fi
+rc=$?
 
 if $train_mode; then
     # Copy self results to non-self results
     cp "${embeddings_path%.csv}_min_embedding_distance_self.csv" "${embeddings_path%.csv}_min_embedding_distance.csv"
     echo "Copied self results to non-self results: ${embeddings_path%.csv}_min_embedding_distance_self.csv -> ${embeddings_path%.csv}_min_embedding_distance.csv"
 fi
+
+# Propagate python's exit code so a failed run FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- the trailing cp/echo
+# would otherwise mask the failure with exit 0).
+exit $rc
