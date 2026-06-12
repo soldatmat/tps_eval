@@ -69,8 +69,18 @@ def density_comparison(
 
     if dfs is None:
         dfs = [load_results(fp, load=LOAD[target]) for fp in fasta_paths]
+
+    # No surviving input CSVs → no `target` column anywhere; skip cleanly
+    # (mirrors the per-target "[skip] missing input" path).
+    if not any(target in df.columns for df in dfs):
+        print(f"  [skip] target {target}: no input data")
+        return
+
     all_data: List[List[float]] = [
-        [float(v) for v in df[target].dropna().tolist()] for df in dfs
+        [float(v) for v in df[target].dropna().tolist()]
+        if target in df.columns
+        else []
+        for df in dfs
     ]
 
     min_val, max_val = resolve_range(target, MIN_VAL, MAX_VAL, all_data)

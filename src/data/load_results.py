@@ -156,6 +156,12 @@ def _strip_id_column(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _outer_join_on_id(frames: List[pd.DataFrame]) -> pd.DataFrame:
+    if not frames:
+        # No input CSVs survived selection (e.g. a structure-only run with no
+        # sequence-branch outputs). Return an empty frame that still carries the
+        # "ID" key so downstream merge/column access degrades gracefully instead
+        # of crashing reduce() with an empty iterable.
+        return pd.DataFrame(columns=["ID"])
     if len(frames) == 1:
         return frames[0]
     return reduce(lambda left, right: left.merge(right, on="ID", how="outer"), frames)
