@@ -52,4 +52,27 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # EnzymeExplorer's in-process domain detection (PyMOL + a spawn-based
+    # multiprocessing Pool) can leave helper threads / pool workers that
+    # deadlock the interpreter's multiprocessing atexit teardown AFTER our
+    # output CSV is already written and flushed -- observed as a ~20h hang of an
+    # otherwise-finished run on a login node (under SLURM it would silently burn
+    # walltime to TIMEOUT). main() writes and closes the CSV before returning,
+    # so the result is safely on disk; bypass the hanging teardown with a hard
+    # exit. A failure still surfaces a traceback + non-zero exit code first.
+    import os
+    import sys
+
+    exit_code = 0
+    try:
+        main()
+    except SystemExit as exc:
+        exit_code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+    except BaseException:
+        import traceback
+
+        traceback.print_exc()
+        exit_code = 1
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(exit_code)
