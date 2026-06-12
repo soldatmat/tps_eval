@@ -126,4 +126,8 @@ python -m src.pymol.plot_domains \
     --domains_pkl "$domains_pkl" \
     --output_root "$output_root" \
     "${extra_args[@]}"
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished plot_domains."
+# Propagate python's exit code so a failed render FAILS the SLURM job (a trailing
+# echo would otherwise mask the failure with exit 0).
+exit $rc

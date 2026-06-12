@@ -126,4 +126,8 @@ python -m src.pymol.plot_residue_similarity \
     --known_structures_root "$known_structures_root" \
     --output_root "$output_root" \
     "${extra_args[@]}"
+rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished plot_residue_similarity."
+# Propagate python's exit code so a failed render FAILS the SLURM job (a trailing
+# echo would otherwise mask the failure with exit 0).
+exit $rc
