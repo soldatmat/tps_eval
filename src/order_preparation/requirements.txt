@@ -1,0 +1,5 @@
+# Extra dependencies for the order-preparation tool (src/order_preparation).
+# Install into the tps_eval conda env:  pip install -r src/order_preparation/requirements.txt
+dnachisel>=3.2
+python_codon_tables>=0.1
+# biopython and pandas are already provided by the tps_eval env.
