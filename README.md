@@ -89,6 +89,16 @@ These emit a per-`id` feature CSV (first column `id`, then feature dims) for a w
 | [pipeline_tools.json](docs/TOOLS.md#pipeline_tools) | config | Per-tool default on/off + branch + one-liner driving `--list-tools`. | — |
 | [compute_reference_stats](docs/TOOLS.md#compute_reference_stats) | reference | MARTS-DB natural-TPS bands → reference-stats JSON. Standalone. | `src/reference_stats/marts_db_metric_stats.json` |
 
+# Order preparation
+A standalone utility (**not** part of the evaluation pipeline) that turns amino-acid
+designs into synthesis-ready DNA for Golden Gate / MoClo construction: codon-optimize for
+the target organism (default *S. cerevisiae*, internal BsaI/BsmBI removed) + add the fixed
+overhangs. Runs on a login node:
+```sh
+bash scripts/run_prepare_order.sh designs.fasta        # → designs_order.csv + designs_order.txt
+```
+Full documentation in [`docs/ORDER_PREPARATION.md`](docs/ORDER_PREPARATION.md).
+
 # Installation
 You will need to [install Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) first if you don't have it on your system.
 
