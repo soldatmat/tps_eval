@@ -26,7 +26,7 @@ from codon_optimization import (
     DEFAULT_SEED,
 )
 from overhangs import DEFAULT_OVERHANG, OVERHANGS
-from prepare_order import prepare_one, prepare_order
+from prepare_order import DEFAULT_TYPEIIS_RETRIES, prepare_one, prepare_order
 
 
 def main() -> int:
@@ -63,16 +63,26 @@ def main() -> int:
         "--seed", type=int, default=DEFAULT_SEED,
         help="RNG seed for reproducible codon sampling (use -1 for nondeterministic).",
     )
+    p.add_argument(
+        "--max_attempts", type=int, default=DEFAULT_TYPEIIS_RETRIES,
+        help="Re-optimization attempts to clear an unintended Type IIS site before a design "
+             "is marked FAILED and excluded from the order .txt.",
+    )
     args = p.parse_args()
     seed = None if args.seed is not None and args.seed < 0 else args.seed
 
     quality = dict(
         method=args.method, max_homopolymer=args.max_homopolymer,
         gc_min=args.gc_min, gc_max=args.gc_max, gc_window=args.gc_window, seed=seed,
+        max_attempts=args.max_attempts,
     )
 
     if args.sequence:
         row = prepare_one(args.sequence, args.organism, args.overhang_type, **quality)
+        if row["status"] != "ok":
+            # Fatal: do NOT emit an unorderable sequence to stdout.
+            print(f"[FAIL] {args.id}: {row['warnings']}", file=sys.stderr)
+            return 1
         if row["warnings"]:
             print(f"[WARN] {args.id}: {row['warnings']}", file=sys.stderr)
         print(f"{args.id},{row['ordered_sequence']}")
@@ -81,7 +91,7 @@ def main() -> int:
     if not args.input_path:
         p.error("provide an input_path or --sequence")
 
-    prepare_order(
+    df = prepare_order(
         args.input_path,
         output_prefix=args.output_prefix,
         organism=args.organism,
@@ -90,7 +100,8 @@ def main() -> int:
         seq_column=args.seq_column,
         **quality,
     )
-    return 0
+    # Non-zero exit if any design failed, so callers/CI notice excluded constructs.
+    return 1 if (df["status"] != "ok").any() else 0
 
 
 if __name__ == "__main__":

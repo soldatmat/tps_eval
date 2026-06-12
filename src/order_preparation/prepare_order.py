@@ -44,6 +44,9 @@ _STOP_CODONS = ("TAA", "TAG", "TGA")
 # Recognition sequences (5'->3') of the Golden Gate enzymes, for validation.
 _ENZYME_SITES = {"BsaI": "GGTCTC", "BsmBI": "CGTCTC"}
 
+# Re-optimization attempts to clear an unintended Type IIS site before failing a design.
+DEFAULT_TYPEIIS_RETRIES = 5
+
 _ID_COLUMNS = ("id", "name", "identifier", "seq_id", "sequence_id", "design_id")
 _SEQ_COLUMNS = (
     "sequence", "aa", "aa_sequence", "amino_acid_sequence", "aa_seq",
@@ -76,6 +79,27 @@ def _gc_window_extremes(s: str, window: int) -> tuple[float, float]:
         gc = (prefix[i + window] - prefix[i]) / window
         lo, hi = min(lo, gc), max(hi, gc)
     return lo, hi
+
+
+def _typeiis_violations(
+    full: str, prefix: str, suffix: str, avoid_enzymes: tuple[str, ...]
+) -> list[str]:
+    """Type IIS recognition sites that are NOT fully inside a flank — i.e. inside the CDS
+    or spanning a CDS<->flank junction. Empty list == only the deliberate flank sites are
+    present. These are FATAL for Golden Gate assembly (the part would be cut)."""
+    violations: list[str] = []
+    cds_start, cds_end = len(prefix), len(full) - len(suffix)
+    up = full.upper()
+    for enz in avoid_enzymes:
+        site = _ENZYME_SITES.get(enz)
+        if site is None:
+            continue
+        for pattern in (site, _revcomp(site)):
+            for m in re.finditer(pattern, up):
+                s, e = m.start(), m.end()
+                if not (e <= cds_start or s >= cds_end):  # not wholly inside a flank
+                    violations.append(f"{enz} site at nt {s} overlaps the CDS/junction")
+    return violations
 
 
 # ---------------------------------------------------------------------------
@@ -170,21 +194,10 @@ def validate_construct(
             warnings.append("translated CDS does not match the input protein")
 
     # No Type IIS site may overlap the CDS region (allowed only fully inside a flank).
-    cds_start, cds_end = len(prefix), len(full) - len(suffix)
-    up = full.upper()
-    for enz in avoid_enzymes:
-        site = _ENZYME_SITES.get(enz)
-        if site is None:
-            continue
-        for pat in (site, _revcomp(site)):
-            for m in re.finditer(pat, up):
-                s, e = m.start(), m.end()
-                inside_prefix = e <= cds_start
-                inside_suffix = s >= cds_end
-                if not (inside_prefix or inside_suffix):
-                    warnings.append(f"{enz} site at nt {s} overlaps the CDS/junction")
+    warnings += _typeiis_violations(full, prefix, suffix, avoid_enzymes)
 
     # Homopolymer cap — checked on the full construct (junctions included).
+    up = full.upper()
     if max_homopolymer:
         run = _max_homopolymer_run(up)
         if run > max_homopolymer:
@@ -215,25 +228,64 @@ def prepare_one(
     gc_max: float | None = DEFAULT_GC_MAX,
     gc_window: int = DEFAULT_GC_WINDOW,
     seed: int | None = DEFAULT_SEED,
+    max_attempts: int = DEFAULT_TYPEIIS_RETRIES,
 ) -> dict:
-    """Run the full pipeline for a single protein and return a result row."""
-    warnings: list[str] = []  # collects codon-optimization relaxation notes
-    cds = codon_optimize(
-        protein, organism=organism, avoid_enzymes=avoid_enzymes, method=method,
-        max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
-        gc_window=gc_window, seed=seed, warnings=warnings,
-    )
-    full = add_overhangs(cds, overhang_type)
-    warnings += validate_construct(
-        full, protein, overhang_type, avoid_enzymes,
-        max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max, gc_window=gc_window,
-    )
+    """Run the full pipeline for a single protein and return a result row.
+
+    An unintended Type IIS (BsaI/BsmBI) site inside the CDS or across a junction is FATAL
+    for Golden Gate assembly. Because a junction site depends on the sampled codons, we
+    re-optimize with a fresh seed up to ``max_attempts`` times to clear it; if it still
+    persists the design is returned with ``status="FAILED"`` (the caller excludes it from
+    the order .txt and exits non-zero). Homopolymer/GC issues are SOFT — they remain
+    warnings and never fail a design.
+
+    Returns a dict with ``status`` ("ok" | "FAILED"), ``protein``, ``cds``,
+    ``ordered_sequence``, ``length_nt``, ``warnings``.
+    """
+    prefix, suffix = get_overhangs(overhang_type)
+    protein_clean = protein.strip().upper().rstrip("*")
+    attempts = max(1, max_attempts)
+    full = cds = ""
+    violations: list[str] = []
+    for attempt in range(attempts):
+        opt_warnings: list[str] = []  # codon-optimization relaxation notes
+        # Vary the seed per attempt so a fresh draw clears a junction site (None stays
+        # nondeterministic, advancing the global RNG each call).
+        attempt_seed = None if seed is None else seed + attempt
+        cds = codon_optimize(
+            protein, organism=organism, avoid_enzymes=avoid_enzymes, method=method,
+            max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
+            gc_window=gc_window, seed=attempt_seed, warnings=opt_warnings,
+        )
+        full = add_overhangs(cds, overhang_type)
+        violations = _typeiis_violations(full, prefix, suffix, avoid_enzymes)
+        if violations:
+            continue  # fatal site present — re-optimize with a new seed
+
+        warnings = opt_warnings + validate_construct(
+            full, protein, overhang_type, avoid_enzymes,
+            max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max, gc_window=gc_window,
+        )
+        if attempt:
+            warnings.insert(0, f"cleared a Type IIS site by re-optimizing (attempt {attempt + 1})")
+        return {
+            "status": "ok",
+            "protein": protein_clean,
+            "cds": cds,
+            "ordered_sequence": full,
+            "length_nt": len(full),
+            "warnings": "; ".join(warnings),
+        }
+
+    # Exhausted all attempts — keep the last sequence for inspection but mark it FAILED.
     return {
-        "protein": protein.strip().upper().rstrip("*"),
+        "status": "FAILED",
+        "protein": protein_clean,
         "cds": cds,
         "ordered_sequence": full,
         "length_nt": len(full),
-        "warnings": "; ".join(warnings),
+        "warnings": f"FATAL: unresolved Type IIS site after {attempts} re-optimization "
+                    f"attempt(s) ({'; '.join(violations)})",
     }
 
 
@@ -250,13 +302,16 @@ def prepare_order(
     gc_max: float | None = DEFAULT_GC_MAX,
     gc_window: int = DEFAULT_GC_WINDOW,
     seed: int | None = DEFAULT_SEED,
+    max_attempts: int = DEFAULT_TYPEIIS_RETRIES,
     save: bool = True,
 ) -> pd.DataFrame:
     """Prepare an ordering table from a file of protein designs.
 
-    Writes ``<output_prefix>_order.csv`` and ``<output_prefix>_order.txt`` when
-    ``save`` is True. ``output_prefix`` defaults to the input path without its suffix.
-    Returns the result DataFrame.
+    Writes ``<output_prefix>_order.csv`` (all designs, with a ``status`` column) and
+    ``<output_prefix>_order.txt`` (only the ``status == "ok"`` designs) when ``save`` is
+    True. Designs with an unresolved Type IIS site are marked ``FAILED`` and EXCLUDED from
+    the .txt. ``output_prefix`` defaults to the input path without its suffix. Returns the
+    result DataFrame (inspect ``df["status"]`` to detect failures).
     """
     designs = load_designs(input_path, id_column, seq_column)
     if not designs:
@@ -267,28 +322,40 @@ def prepare_order(
         row = prepare_one(
             protein, organism, overhang_type, method=method,
             max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
-            gc_window=gc_window, seed=seed,
+            gc_window=gc_window, seed=seed, max_attempts=max_attempts,
         )
         row = {"id": design_id, **row}
         rows.append(row)
-        if row["warnings"]:
+        if row["status"] != "ok":
+            print(f"  [FAIL] {design_id}: {row['warnings']}")
+        elif row["warnings"]:
             print(f"  [WARN] {design_id}: {row['warnings']}")
-    df = pd.DataFrame(rows, columns=["id", "protein", "cds", "ordered_sequence", "length_nt", "warnings"])
+    df = pd.DataFrame(
+        rows,
+        columns=["id", "status", "protein", "cds", "ordered_sequence", "length_nt", "warnings"],
+    )
 
-    n_warn = int((df["warnings"] != "").sum())
+    n_failed = int((df["status"] != "ok").sum())
+    n_warn = int(((df["status"] == "ok") & (df["warnings"] != "")).sum())
     print(
-        f"Prepared {len(df)} construct(s) for organism={organism!r}, "
-        f"overhang={overhang_type!r}. {n_warn} with warnings."
+        f"Prepared {len(df)} construct(s) for organism={organism!r}, overhang={overhang_type!r}. "
+        f"{n_failed} FAILED, {n_warn} with warnings."
     )
 
     if save:
         prefix = Path(output_prefix) if output_prefix else Path(input_path).with_suffix("")
         csv_path = prefix.with_name(prefix.name + "_order.csv")
         txt_path = prefix.with_name(prefix.name + "_order.txt")
-        df.to_csv(csv_path, index=False)
+        df.to_csv(csv_path, index=False)  # all designs, incl. FAILED, with status
+        ok = df[df["status"] == "ok"]
         with open(txt_path, "w") as fh:
-            for _, r in df.iterrows():
+            for _, r in ok.iterrows():
                 fh.write(f"{r['id']},{r['ordered_sequence']}\n")
-        print(f"Wrote {csv_path}")
-        print(f"Wrote {txt_path}")
+        print(f"Wrote {csv_path} ({len(df)} rows incl. status)")
+        print(f"Wrote {txt_path} ({len(ok)} order-ready sequence(s))")
+        if n_failed:
+            print(
+                f"  !! {n_failed} design(s) FAILED (unresolved Type IIS site) and were "
+                f"EXCLUDED from {txt_path.name}; see the status/warnings columns in {csv_path.name}."
+            )
     return df

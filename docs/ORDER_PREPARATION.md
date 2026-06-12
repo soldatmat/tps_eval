@@ -45,6 +45,7 @@ bash scripts/run_prepare_order.sh --sequence MGRSY...PIPL --id design1
 | `--gc_min` / `--gc_max` | `0.30` / `0.65` | GC-window bounds (fraction) |
 | `--gc_window` | `50` | GC sliding-window size in bp (0 disables) |
 | `--seed` | `0` | RNG seed for reproducible sampling (`-1` = nondeterministic) |
+| `--max_attempts` | `5` | Re-optimization tries to clear a Type IIS site before failing a design |
 
 ## Input
 
@@ -56,13 +57,16 @@ Auto-detected by extension:
 
 ## Output
 
-- `<prefix>_order.csv` — one row per design: `id, protein, cds, ordered_sequence,
-  length_nt, warnings`.
+- `<prefix>_order.csv` — one row per design: `id, status, protein, cds, ordered_sequence,
+  length_nt, warnings`. Includes **every** design, even `FAILED` ones (for inspection).
 - `<prefix>_order.txt` — `id,ordered_sequence` per line, matching the format of the
-  previous order file (`all_candidates_dna_fixed.txt`) for direct submission.
+  previous order file (`all_candidates_dna_fixed.txt`) for direct submission. Contains
+  **only `status == "ok"` designs** — any `FAILED` design is excluded.
 
-`warnings` is empty when all validation checks pass; any non-empty value is also printed
-to the console during the run.
+`status` is `ok` or `FAILED` (a Type IIS site that could not be cleared — see below).
+`warnings` is empty when all soft checks pass; any non-empty value is also printed to the
+console (`[WARN]` / `[FAIL]`). The run **exits non-zero if any design FAILED**, so a broken
+construct is never silently submitted.
 
 ## Codon optimization
 
@@ -141,11 +145,21 @@ already guarantees the protein, but this is a cheap safety net): starts with `AT
 the prefix, ends in a stop codon before the suffix, CDS length is a multiple of 3, the CDS
 translates back to the input protein, **no BsaI/BsmBI site lies inside the CDS or across a
 junction** (only the deliberate flank sites are allowed), **no homopolymer run exceeds the
-cap**, and **the CDS GC stays within the window**. Failures populate the `warnings` column.
-Because these checks mirror the optimization targets, a sequence whose constraints had to be
-relaxed will (intentionally) flag here too — so the relaxation note and the residual GC/
-homopolymer reality both reach the user. *(The previous manual web workflow let 2 of 32
-sequences keep internal BsaI sites — this step catches that class of defect.)*
+cap**, and **the CDS GC stays within the window**.
+
+Findings are split by severity:
+
+- **Type IIS site (FATAL)** — a BsaI/BsmBI site inside the CDS or spanning a junction would
+  be cut during Golden Gate, so it is *never* shipped. The optimizer's hard constraint keeps
+  the CDS clean; a junction site (rare, depends on the sampled codons) triggers **automatic
+  re-optimization with a fresh seed**, up to `--max_attempts` (default 5). If it still
+  persists, the design is marked `status = FAILED`, **excluded from the order `.txt`**, kept
+  in the CSV for inspection, and the run **exits non-zero**. *(The previous manual web
+  workflow let 2 of 32 sequences keep internal BsaI sites — this prevents that class of
+  defect from ever reaching an order.)*
+- **Homopolymer / GC (SOFT)** — recorded in `warnings` but never fail a design. Because these
+  checks mirror the optimization targets, a sequence whose constraints had to be relaxed
+  flags here too, so the relaxation note and the residual reality both reach the user.
 
 ## Dependencies
 

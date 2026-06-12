@@ -28,6 +28,8 @@ Help()
     echo "  --gc_min/--gc_max GC-window bounds as fractions (default: 0.30 / 0.65)"
     echo "  --gc_window       GC sliding-window size in bp (default: 50; 0 disables)"
     echo "  --seed            RNG seed for reproducible sampling (default: 0; -1 = random)"
+    echo "  --max_attempts    Re-optimization tries to clear a Type IIS site before a design"
+    echo "                    is marked FAILED + excluded from the .txt (default: 5)"
     echo "  -h, --help        Show this help and exit"
 }
 
