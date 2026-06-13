@@ -53,6 +53,14 @@ def main(args: argparse.Namespace):
     df_foldseek = pd.read_csv(tsv_path, sep='\t', header=None,
                               names=['query', 'target', 'fident', 'alnlen', 'mismatch', 'gapopen', 'qstart', 'qend',
                                      'tstart', 'tend', 'evalue', 'bits', 'alntmscore', 'qtmscore', 'ttmscore', 'lddt'])
+    # Foldseek's score columns can be read back as object dtype (e.g. an lddt cell
+    # with a stray non-numeric token), which makes the groupby idxmax below raise
+    # "'>' not supported between instances of 'str' and 'float'". Coerce the numeric
+    # columns so idxmax works (non-numeric -> NaN, skipped by idxmax).
+    for _num_col in ['fident', 'alnlen', 'mismatch', 'gapopen', 'qstart', 'qend',
+                     'tstart', 'tend', 'evalue', 'bits', 'alntmscore', 'qtmscore',
+                     'ttmscore', 'lddt']:
+        df_foldseek[_num_col] = pd.to_numeric(df_foldseek[_num_col], errors='coerce')
     df_foldseek.to_csv(tsv_path.with_suffix('.csv'), index=False)
     dfg = df_foldseek.groupby('query')
     dfg.groups.keys(), dfg['alntmscore'].max(), dfg['alntmscore'].idxmax()
