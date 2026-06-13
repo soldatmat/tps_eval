@@ -65,4 +65,7 @@ echo "[$(date '+%H:%M:%S')] pip install -e $TPS_EVAL_REPO"
 cd "$TPS_EVAL_REPO"
 pip install -e .
 
+echo "[$(date '+%H:%M:%S')] pip install order-preparation extra deps (dnachisel + codon tables)"
+pip install -r src/order_preparation/requirements.txt
+
 echo "[$(date '+%H:%M:%S')] DONE — env installed at $PROJECT_ENV"
