@@ -117,6 +117,12 @@ METRIC_SUFFIXES: Dict[str, str] = {
     "pocket_descriptors": "pocket_descriptors",
     "aromatic_lining": "aromatic_lining",
     "diphosphate_sensor": "diphosphate_sensor",
+    # PAE-derived fold-confidence (intrinsic; needs a saved PAE npz)
+    "global_confidence": "global_confidence",
+    "interdomain_pae": "interdomain_pae",
+    # active-site ion placement (only carries signal for AF3 holo folds; apo/ESMFold
+    # rows are not-applicable but harmless to band)
+    "ion_site_check": "ion_site_check",
 }
 
 
