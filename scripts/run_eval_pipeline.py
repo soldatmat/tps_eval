@@ -75,18 +75,27 @@ TOOLS_CONFIG = os.path.join(REPO, "scripts", "pipeline_tools.json")
 # the JSON config "_settings.top_k" and then by the --top_k CLI flag.
 DEFAULT_TOP_K = 15
 
-# Default k-NN reference artifacts (committed under src/, see CLAUDE.md "/data/ is
-# gitignored" -> committable reference artifacts live under src/).
+# Default k-NN / substrate reference artifacts (committed under src/, see CLAUDE.md
+# "/data/ is gitignored" -> committable reference artifacts live under src/).
+#
+# REFERENCE = MARTS-DB 2026-06-12, STRUCTURE SOURCE = ESMFold. The structural-space
+# calibration consumes structural top-k neighbours, so a default must commit to one
+# fold source; we default to ESMFold (full PAE coverage, one consistent fold source on
+# both clusters). The AF3-space variants live alongside as knn_calibration_*_af3.json --
+# point the calibration args at them for an AF3 reference (note: ion_site_check only
+# carries signal on AF3 holo folds, not ESMFold/apo). Labels are structure-independent
+# (no _esmfold/_af3 split). Release + structure are also recorded inside the band JSONs
+# (marts_db_{esmfold,af3}_metric_stats.json -> structure_source / marts_db_release).
 DEFAULT_KNN_LABEL_FILE = os.path.join(REPO, "src", "knn", "first_cyclization_labels.csv")
 DEFAULT_KNN_CALIBRATION = os.path.join(
-    REPO, "src", "reference_stats", "knn_calibration_first_cyclization.json")
+    REPO, "src", "reference_stats", "knn_calibration_first_cyclization_esmfold.json")
 
 # Default substrate-class combiner reference artifacts (the substrate label file is the
 # MARTS `Type`-derived GPP/FPP/GGPP/... map; its own calibration mirrors the k-NN one but
 # over the substrate label vocabulary).
 DEFAULT_SUBSTRATE_LABEL_FILE = os.path.join(REPO, "src", "knn", "substrate_labels.csv")
 DEFAULT_SUBSTRATE_CALIBRATION = os.path.join(
-    REPO, "src", "reference_stats", "knn_calibration_substrate.json")
+    REPO, "src", "reference_stats", "knn_calibration_substrate_esmfold.json")
 
 
 # --------------------------------------------------------------------------- #

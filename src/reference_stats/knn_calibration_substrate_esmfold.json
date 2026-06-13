@@ -1,0 +1,537 @@
+{
+  "labeling": "substrate",
+  "classes": [
+    "2xGGPP",
+    "EDSQ",
+    "FPP",
+    "GFPP",
+    "GGPP",
+    "GPP"
+  ],
+  "n_classes": 6,
+  "spaces": {
+    "sequence": {
+      "tau": 0.4,
+      "prior_tau": 0.4,
+      "larger_is_closer": true,
+      "n_predicted": 1105,
+      "n_abstained": 137,
+      "n_queries": 1242,
+      "accuracy": 0.8705882352941177,
+      "calibration_curve": [
+        {
+          "lo": 0.0,
+          "hi": 0.05,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.05,
+          "hi": 0.1,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.1,
+          "hi": 0.15,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.15,
+          "hi": 0.2,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.2,
+          "hi": 0.25,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.25,
+          "hi": 0.3,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.3,
+          "hi": 0.35,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.35,
+          "hi": 0.4,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.4,
+          "hi": 0.45,
+          "n": 48,
+          "accuracy": 0.6666666666666666
+        },
+        {
+          "lo": 0.45,
+          "hi": 0.5,
+          "n": 56,
+          "accuracy": 0.7857142857142857
+        },
+        {
+          "lo": 0.5,
+          "hi": 0.55,
+          "n": 55,
+          "accuracy": 0.7454545454545455
+        },
+        {
+          "lo": 0.55,
+          "hi": 0.6,
+          "n": 84,
+          "accuracy": 0.8095238095238095
+        },
+        {
+          "lo": 0.6,
+          "hi": 0.65,
+          "n": 93,
+          "accuracy": 0.8064516129032258
+        },
+        {
+          "lo": 0.65,
+          "hi": 0.7,
+          "n": 101,
+          "accuracy": 0.8910891089108911
+        },
+        {
+          "lo": 0.7,
+          "hi": 0.75,
+          "n": 75,
+          "accuracy": 0.92
+        },
+        {
+          "lo": 0.75,
+          "hi": 0.8,
+          "n": 80,
+          "accuracy": 0.9375
+        },
+        {
+          "lo": 0.8,
+          "hi": 0.85,
+          "n": 74,
+          "accuracy": 0.9054054054054054
+        },
+        {
+          "lo": 0.85,
+          "hi": 0.9,
+          "n": 74,
+          "accuracy": 0.918918918918919
+        },
+        {
+          "lo": 0.9,
+          "hi": 0.95,
+          "n": 96,
+          "accuracy": 0.9270833333333334
+        },
+        {
+          "lo": 0.95,
+          "hi": 1.0,
+          "n": 266,
+          "accuracy": 0.9060150375939849
+        }
+      ]
+    },
+    "embedding": {
+      "tau": 0.0,
+      "prior_tau": 0.0,
+      "larger_is_closer": false,
+      "n_predicted": 1240,
+      "n_abstained": 2,
+      "n_queries": 1242,
+      "accuracy": 0.7983870967741935,
+      "calibration_curve": [
+        {
+          "lo": 0.0,
+          "hi": 0.05,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.05,
+          "hi": 0.1,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.1,
+          "hi": 0.15,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.15,
+          "hi": 0.2,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.2,
+          "hi": 0.25,
+          "n": 2,
+          "accuracy": 0.0
+        },
+        {
+          "lo": 0.25,
+          "hi": 0.3,
+          "n": 6,
+          "accuracy": 0.0
+        },
+        {
+          "lo": 0.3,
+          "hi": 0.35,
+          "n": 5,
+          "accuracy": 0.6
+        },
+        {
+          "lo": 0.35,
+          "hi": 0.4,
+          "n": 14,
+          "accuracy": 0.6428571428571429
+        },
+        {
+          "lo": 0.4,
+          "hi": 0.45,
+          "n": 19,
+          "accuracy": 0.5789473684210527
+        },
+        {
+          "lo": 0.45,
+          "hi": 0.5,
+          "n": 59,
+          "accuracy": 0.5423728813559322
+        },
+        {
+          "lo": 0.5,
+          "hi": 0.55,
+          "n": 119,
+          "accuracy": 0.6050420168067226
+        },
+        {
+          "lo": 0.55,
+          "hi": 0.6,
+          "n": 141,
+          "accuracy": 0.6808510638297872
+        },
+        {
+          "lo": 0.6,
+          "hi": 0.65,
+          "n": 209,
+          "accuracy": 0.8373205741626795
+        },
+        {
+          "lo": 0.65,
+          "hi": 0.7,
+          "n": 171,
+          "accuracy": 0.8771929824561403
+        },
+        {
+          "lo": 0.7,
+          "hi": 0.75,
+          "n": 129,
+          "accuracy": 0.8837209302325582
+        },
+        {
+          "lo": 0.75,
+          "hi": 0.8,
+          "n": 95,
+          "accuracy": 0.9157894736842105
+        },
+        {
+          "lo": 0.8,
+          "hi": 0.85,
+          "n": 63,
+          "accuracy": 0.7142857142857143
+        },
+        {
+          "lo": 0.85,
+          "hi": 0.9,
+          "n": 84,
+          "accuracy": 0.9404761904761905
+        },
+        {
+          "lo": 0.9,
+          "hi": 0.95,
+          "n": 99,
+          "accuracy": 0.9393939393939394
+        },
+        {
+          "lo": 0.95,
+          "hi": 1.0,
+          "n": 25,
+          "accuracy": 0.96
+        }
+      ]
+    },
+    "structural": {
+      "tau": 0.5,
+      "prior_tau": 0.5,
+      "larger_is_closer": true,
+      "n_predicted": 1240,
+      "n_abstained": 2,
+      "n_queries": 1242,
+      "accuracy": 0.7056451612903226,
+      "calibration_curve": [
+        {
+          "lo": 0.0,
+          "hi": 0.05,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.05,
+          "hi": 0.1,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.1,
+          "hi": 0.15,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.15,
+          "hi": 0.2,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.2,
+          "hi": 0.25,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.25,
+          "hi": 0.3,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.3,
+          "hi": 0.35,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.35,
+          "hi": 0.4,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.4,
+          "hi": 0.45,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.45,
+          "hi": 0.5,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.5,
+          "hi": 0.55,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.55,
+          "hi": 0.6,
+          "n": 1,
+          "accuracy": 0.0
+        },
+        {
+          "lo": 0.6,
+          "hi": 0.65,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.65,
+          "hi": 0.7,
+          "n": 0,
+          "accuracy": NaN
+        },
+        {
+          "lo": 0.7,
+          "hi": 0.75,
+          "n": 4,
+          "accuracy": 0.5
+        },
+        {
+          "lo": 0.75,
+          "hi": 0.8,
+          "n": 1,
+          "accuracy": 0.0
+        },
+        {
+          "lo": 0.8,
+          "hi": 0.85,
+          "n": 2,
+          "accuracy": 0.5
+        },
+        {
+          "lo": 0.85,
+          "hi": 0.9,
+          "n": 22,
+          "accuracy": 0.7727272727272727
+        },
+        {
+          "lo": 0.9,
+          "hi": 0.95,
+          "n": 173,
+          "accuracy": 0.37572254335260113
+        },
+        {
+          "lo": 0.95,
+          "hi": 1.0,
+          "n": 944,
+          "accuracy": 0.746822033898305
+        }
+      ]
+    }
+  },
+  "ensemble": {
+    "n_predicted": 1242,
+    "n_abstained": 0,
+    "n_queries": 1242,
+    "accuracy": 0.8244766505636071,
+    "calibration_curve": [
+      {
+        "lo": 0.0,
+        "hi": 0.05,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.05,
+        "hi": 0.1,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.1,
+        "hi": 0.15,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.15,
+        "hi": 0.2,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.2,
+        "hi": 0.25,
+        "n": 2,
+        "accuracy": 0.0
+      },
+      {
+        "lo": 0.25,
+        "hi": 0.3,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.3,
+        "hi": 0.35,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.35,
+        "hi": 0.4,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.4,
+        "hi": 0.45,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.45,
+        "hi": 0.5,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.5,
+        "hi": 0.55,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.55,
+        "hi": 0.6,
+        "n": 1,
+        "accuracy": 0.0
+      },
+      {
+        "lo": 0.6,
+        "hi": 0.65,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.65,
+        "hi": 0.7,
+        "n": 0,
+        "accuracy": NaN
+      },
+      {
+        "lo": 0.7,
+        "hi": 0.75,
+        "n": 4,
+        "accuracy": 0.5
+      },
+      {
+        "lo": 0.75,
+        "hi": 0.8,
+        "n": 1,
+        "accuracy": 0.0
+      },
+      {
+        "lo": 0.8,
+        "hi": 0.85,
+        "n": 2,
+        "accuracy": 0.5
+      },
+      {
+        "lo": 0.85,
+        "hi": 0.9,
+        "n": 22,
+        "accuracy": 0.7272727272727273
+      },
+      {
+        "lo": 0.9,
+        "hi": 0.95,
+        "n": 173,
+        "accuracy": 0.6647398843930635
+      },
+      {
+        "lo": 0.95,
+        "hi": 1.0,
+        "n": 941,
+        "accuracy": 0.8501594048884166
+      }
+    ]
+  },
+  "top_k": 15,
+  "target_accuracy": 0.5
+}
