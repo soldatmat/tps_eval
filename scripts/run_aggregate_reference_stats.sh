@@ -44,6 +44,8 @@ while [[ $# -gt 0 ]]; do
             passthrough+=(--group_by "$2"); shift 2 ;;
         --group_by_column)
             passthrough+=(--group_by_column "$2"); shift 2 ;;
+        --structure_source|--release_date)
+            passthrough+=("$1" "$2"); shift 2 ;;
         -h|--help)
             Help; exit 0 ;;
         *)

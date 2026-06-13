@@ -374,7 +374,21 @@ def main() -> None:
     parser.add_argument(
         "--reference_name",
         default="marts_db",
-        help="Reference set label embedded in the JSON metadata (default: marts_db).",
+        help="Reference set label embedded in the JSON metadata (default: marts_db). "
+        "Keep this version-free; record the version via --release_date / --structure_source.",
+    )
+    parser.add_argument(
+        "--structure_source",
+        default=None,
+        help="Structure-prediction source backing the structure metrics (e.g. 'esmfold', "
+        "'af3'). Recorded in the JSON metadata. Sequence metrics are source-independent.",
+    )
+    parser.add_argument(
+        "--release_date",
+        default=None,
+        help="MARTS-DB release/version (e.g. '2026-06-12') this reference was built from. "
+        "Recorded in the JSON metadata so the version travels WITH the data and the "
+        "filename can stay version-free (stable across releases).",
     )
     parser.add_argument(
         "--group_by",
@@ -433,6 +447,8 @@ def main() -> None:
     stats = build_reference_stats(args.input_dir, labelings=labelings or None)
     document = {
         "reference_set": args.reference_name,
+        "structure_source": args.structure_source,
+        "marts_db_release": args.release_date,
         "input_dir": os.path.abspath(args.input_dir),
         "labelings": sorted(labelings) if labelings else [],
         "metrics": _json_safe(stats),
