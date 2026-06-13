@@ -1,0 +1,12 @@
+# Per-install local overrides for the Karolina cluster.
+# COPY this to config.local.sh (which is gitignored) and edit:
+#
+#     cp config.local.sh.example config.local.sh
+#
+# Do NOT commit config.local.sh — the IT4I project grant id is install-specific and
+# changes when the allocation is renewed, so it must stay out of git.
+
+# Your IT4I project account for SLURM (qcpu/qgpu). The cluster's default account
+# ('defac') has no qcpu/qgpu association, so jobs need a real project here. The
+# ${VAR:-default} form lets a session-level `export SBATCH_ACCOUNT=...` still win.
+export SBATCH_ACCOUNT="${SBATCH_ACCOUNT:-your_project_id}"   # e.g. fta-26-15

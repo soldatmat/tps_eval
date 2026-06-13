@@ -62,6 +62,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -140,6 +141,36 @@ CLUSTERS: Dict[str, dict] = {
 # --------------------------------------------------------------------------- #
 # Output-path conventions (must match the tools' own _get_save_path naming)   #
 # --------------------------------------------------------------------------- #
+def resolve_sbatch_account(cluster: str, explicit: Optional[str] = None) -> str:
+    """Resolve the SLURM account and export it as $SBATCH_ACCOUNT so every submitted
+    job inherits it (this orchestrator builds `sbatch` directly and runs it via
+    subprocess, which inherits os.environ -- sbatch reads $SBATCH_ACCOUNT natively).
+
+    Precedence: --account > an SBATCH_ACCOUNT already in the environment >
+    scripts/<cluster>/config.sh (which sources the uncommitted, per-install
+    config.local.sh where the project grant id lives -- kept out of git because it is
+    install-specific and changes on allocation renewal). Returns "" if none resolved;
+    the caller warns, since a cluster's default account often lacks a partition
+    association and would get jobs rejected.
+    """
+    if explicit:
+        os.environ["SBATCH_ACCOUNT"] = explicit
+        return explicit
+    acct = os.environ.get("SBATCH_ACCOUNT", "").strip()
+    cfg = os.path.join(REPO, "scripts", cluster, "config.sh")
+    if not acct and os.path.isfile(cfg):
+        try:
+            acct = subprocess.run(
+                ["bash", "-c", f'. "{cfg}" >/dev/null 2>&1; printf %s "${{SBATCH_ACCOUNT:-}}"'],
+                capture_output=True, text=True, check=False,
+            ).stdout.strip()
+        except Exception:  # noqa: BLE001 - best-effort; caller warns if still empty
+            acct = ""
+    if acct:
+        os.environ["SBATCH_ACCOUNT"] = acct
+    return acct
+
+
 def _base(fasta: str) -> str:
     for ext in (".fasta", ".fa"):
         if fasta.endswith(ext):
@@ -845,6 +876,10 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--cluster", required=True, choices=sorted(CLUSTERS))
+    p.add_argument("--account", default=None,
+                   help="SLURM account for sbatch (exported as $SBATCH_ACCOUNT). Default: an "
+                        "existing $SBATCH_ACCOUNT, else scripts/<cluster>/config.sh (which sources "
+                        "the per-install scripts/<cluster>/config.local.sh).")
     p.add_argument("--fasta_path", required=True, help="Generated sequences FASTA.")
     p.add_argument("--train_path", default=None, help="Reference/train FASTA (enables comparisons).")
     p.add_argument("--structs_dir", default=None,
@@ -945,6 +980,15 @@ def main() -> None:
         raise SystemExit(
             f"[FAIL] --fold alphafold3 is not available on '{args.cluster}' (AlphaFold3 is "
             "Aurum-only). Use --fold esmfold (both clusters), or pre-fold and pass --structs_dir.")
+
+    # Resolve + export the SLURM account so every submitted sbatch inherits it via
+    # $SBATCH_ACCOUNT. The per-install grant id lives in scripts/<cluster>/config.local.sh.
+    account = resolve_sbatch_account(args.cluster, args.account)
+    if not account and not args.dry_run:
+        print(f"[warn] No SLURM account resolved for '{args.cluster}' — jobs will use your default "
+              f"SLURM account, which may lack a partition association and be rejected. Set it in "
+              f"scripts/{args.cluster}/config.local.sh (see config.local.sh.example), or pass "
+              f"--account / export SBATCH_ACCOUNT.", file=sys.stderr)
 
     # Resolve the single pipeline top-k: CLI --top_k wins, else JSON _settings/DEFAULT.
     if args.top_k is None:
