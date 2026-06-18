@@ -253,6 +253,7 @@ STRUCTURE_NUMERIC = {
         "pocket_enclosure",
         "pocket_n_alpha_spheres",
         "pocket_depth",
+        "pocket_sasa_per_volume",
         "p2rank_catalytic_site_score",
         "p2rank_catalytic_pocket_rank",
     ],

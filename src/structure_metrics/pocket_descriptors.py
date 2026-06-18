@@ -32,6 +32,13 @@ Two engines, run per structure:
     - ``pocket_depth``                 — pocket "max dist between apolar..." proxy;
       we surface fpocket's mean alpha-sphere radius as a depth proxy when no
       explicit depth field exists.
+    - ``pocket_sasa_per_volume``       — DERIVED specific surface area =
+      ``pocket_total_sasa / catalytic_pocket_volume`` (A^-1): a standard
+      shape/compactness descriptor (higher = more surface per unit volume). NOTE it
+      is size-dependent (~1/radius), so it co-varies with cavity size rather than
+      isolating shape; a size-free shape factor (sphericity) would need a matched
+      cavity surface+volume, which fpocket's SASA (lining-atom) and volume
+      (alpha-sphere) are NOT. NaN when either input is missing / volume <= 0.
 * **P2Rank** (machine-learned ligandability cross-check). We take the P2Rank
   predicted pocket nearest the metal point and report:
     - ``p2rank_catalytic_site_score``  — its ligandability ``score``.
@@ -93,6 +100,7 @@ COLUMNS = [
     "pocket_n_alpha_spheres",
     "pocket_total_sasa",
     "pocket_depth",
+    "pocket_sasa_per_volume",
     "fpocket_catalytic_pocket_found",
     # P2Rank (ML cross-check)
     "p2rank_catalytic_site_score",
@@ -136,6 +144,7 @@ def _nan_result(n_residues: int = 0) -> Dict[str, float]:
         "pocket_n_alpha_spheres": np.nan,
         "pocket_total_sasa": np.nan,
         "pocket_depth": np.nan,
+        "pocket_sasa_per_volume": np.nan,
         "fpocket_catalytic_pocket_found": False,
         "p2rank_catalytic_site_score": np.nan,
         "p2rank_catalytic_pocket_rank": np.nan,
@@ -441,6 +450,15 @@ def pocket_descriptors(
             result.update(p2rank_catalytic(pdb_path, point, workdir, p2rank_bin))
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
+
+    # Derived size-relative descriptor: specific surface area = Total SASA / Volume
+    # (A^-1). Size-dependent (∝1/radius), but a standard pocket shape/compactness
+    # descriptor. NaN when either fpocket quantity is missing or volume is non-positive.
+    v = result.get("catalytic_pocket_volume", np.nan)
+    a = result.get("pocket_total_sasa", np.nan)
+    result["pocket_sasa_per_volume"] = (
+        float(a / v) if (np.isfinite(v) and np.isfinite(a) and v > 0) else np.nan
+    )
     return result
 
 
