@@ -521,11 +521,25 @@ def build_steps(args, enabled: set) -> List[Step]:
         if pae_dir is None and not args.no_fold_pae:
             pae_dir = os.path.join(af3_work, "pae")
 
+    # --af3_cofold mg_ee needs the EnzymeExplorer seq-only CSV BEFORE the AF3 fan-out runs.
+    # Three cases: (a) caller passed --enzymeexplorer_csv -> use it inline; (b) the EE output
+    # already exists on disk -> use it inline; (c) neither, but we fold AF3 in-pipeline ->
+    # AUTO-CHAIN: submit the sequence branch now and DEFER the fold + structure branch to a
+    # continuation job (afterok on the sequence branch) that re-invokes this pipeline once the
+    # EE CSV exists. The login-node fold driver can't wait on the in-pipeline ee_seq job, so the
+    # continuation (which only SUBMITS jobs) is what waits.
+    autochain_ee = False
     if args.af3_cofold == "mg_ee" and not args.enzymeexplorer_csv:
-        raise SystemExit(
-            "[FAIL] --af3_cofold mg_ee needs --enzymeexplorer_csv (the EnzymeExplorer seq-only CSV): the "
-            "AF3 fan-out runs on the login node and cannot wait on the in-pipeline ee_seq job. "
-            "Run enzyme_explorer_sequence_only first, then pass its CSV via --enzymeexplorer_csv.")
+        ee_out = out_ee_seq(gen)
+        if os.path.exists(ee_out):
+            args.enzymeexplorer_csv = ee_out
+        elif do_fold and fold_mode == "alphafold3":
+            autochain_ee = True
+        else:
+            raise SystemExit(
+                "[FAIL] --af3_cofold mg_ee needs in-pipeline AlphaFold3 folding (--fold "
+                "alphafold3) so EE can be auto-chained, OR a precomputed --enzymeexplorer_csv "
+                "(run enzyme_explorer_sequence_only first).")
     # Holo (co-fold-dependent) tools run iff we co-folded a holo active site (--af3_cofold !=
     # none) OR structures were supplied externally (which may be holo) -- and never when
     # --no_holo_tools is set. So --af3_cofold none (default) cleanly turns co-folding AND the
@@ -605,7 +619,7 @@ def build_steps(args, enabled: set) -> List[Step]:
     # given OR --fold produced one. With --fold the structures don't exist out-of-band, so
     # every structure step waits on the producer (attached by the fixup at the end of the
     # block); without --fold they have no SLURM dep and plots picks them up via the snapshot.
-    if structs:
+    if structs and not autochain_ee:
         struct_block_start = len(steps)
         fold_producer = None          # step name the structure branch waits on
         pae_producer = None           # step name the PAE-consumers wait on (AF3: a later step)
@@ -874,14 +888,27 @@ def build_steps(args, enabled: set) -> List[Step]:
                 steps.append(Step("substrate_class_gen", "substrate_class.sh", sc_args,
                                   out_substrate_class(gen), tool="substrate_class", deps=sc_deps))
 
+    # mg_ee auto-chain: the structure branch was deferred above; submit a continuation job
+    # that re-invokes this pipeline (with --enzymeexplorer_csv now pointing at the completed EE
+    # output) AFTER the whole sequence branch finishes. It cd's back to the original launch dir
+    # so relative paths in the forwarded argv resolve identically. tool="alphafold3" so it
+    # survives the filter when --fold alphafold3; requires_cap gates it to AF3-capable clusters.
+    if autochain_ee:
+        seq_step_names = [s.name for s in steps]
+        cont_args = [args._orig_cwd] + list(args._orig_argv) + ["--enzymeexplorer_csv", out_ee_seq(gen)]
+        steps.append(Step("af3_ee_continuation", "eval_pipeline_continuation.sh", cont_args,
+                          os.path.join(af3_work, ".__ee_continuation__"),
+                          tool="alphafold3", deps=seq_step_names, requires_cap="alphafold"))
+
     # Filter to enabled tools BEFORE wiring plots, so plots only soft-depends on the
     # metric steps that actually survived (it never waits on a disabled tool).
     steps = [s for s in steps if s.tool in enabled]
 
     # plots: depend SOFTLY on every (enabled) metric (wait on whatever was submitted;
     # still run if some metrics were skipped/absent — the plots tool skips
-    # missing-input targets). Only added if 'plots' itself is enabled.
-    if "plots" in enabled:
+    # missing-input targets). Only added if 'plots' itself is enabled. Skipped in the mg_ee
+    # auto-chain first pass (the continuation re-run produces the full plots).
+    if "plots" in enabled and not autochain_ee:
         metric_steps = [s.name for s in steps]
         plot_dir = os.path.join(os.path.dirname(os.path.abspath(gen)), "plots")
         if train:
@@ -927,16 +954,17 @@ def main() -> None:
                         "trinuclear Mg2+ cluster; 'mg_ppi' = Mg2+ cluster + a bare diphosphate "
                         "head group; 'mg_gpp|mg_fpp|mg_ggpp|mg_gfpp' = Mg2+ cluster + ONE forced "
                         "prenyl-PP substrate (SMILES) for EVERY design; 'mg_ee' = Mg2+ cluster + "
-                        "each design's EnzymeExplorer-predicted substrate (needs --enzymeexplorer_csv; "
+                        "each design's EnzymeExplorer-predicted substrate (auto-chained from the "
+                        "in-pipeline ee_seq when --fold alphafold3, else pass --enzymeexplorer_csv; "
                         "non-co-foldable EE calls fall back to Mg-only). Any non-'none' mode "
                         "ENABLES the holo tools (ion_site_check, substrate_positioning); 'none' "
                         "(or --no_holo_tools) turns co-folding AND those downstream tools off. "
                         "Filenames stay <ID>.pdb regardless.")
     p.add_argument("--enzymeexplorer_csv", default=None,
-                   help="EnzymeExplorer seq-only CSV for --af3_cofold mg_ee (per-design substrate). "
-                        "REQUIRED with mg_ee: the AF3 fan-out runs on the login node and cannot "
-                        "afterok-wait on the in-pipeline ee_seq SLURM job, so the EE predictions "
-                        "must already exist (run enzyme_explorer_sequence_only first).")
+                   help="Precomputed EnzymeExplorer seq-only CSV for --af3_cofold mg_ee (per-design "
+                        "substrate). OPTIONAL: with --fold alphafold3 the pipeline auto-chains EE -> "
+                        "cofold via a continuation job, so you only need this when folding is NOT "
+                        "in-pipeline (e.g. you pre-ran EE) or to override the in-pipeline EE output.")
     p.add_argument("--no_holo_tools", action="store_true",
                    help="Force-skip the co-fold-dependent structure tools (ion_site_check, "
                         "substrate_positioning) even when holo structures are present (e.g. an "
@@ -1040,6 +1068,11 @@ def main() -> None:
     log_dir = os.path.join(REPO, "logs", f"run_eval_pipeline-{ts}")
     if not args.dry_run:
         os.makedirs(log_dir, exist_ok=True)
+
+    # Captured verbatim so the mg_ee auto-chain continuation can re-invoke this exact command
+    # (+ --enzymeexplorer_csv) from the original launch dir.
+    args._orig_argv = sys.argv[1:]
+    args._orig_cwd = os.getcwd()
 
     enabled = resolve_enabled_tools(catalog, args)
     steps = build_steps(args, enabled)
