@@ -33,11 +33,19 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   existing `src/alphafold/run_alphafold_jobs.py` to submit one AF3 job per sequence and
   prints the N job ids; the Engine captures them (`fanout_ids`) so every structure Step
   `afterok`-waits on all N, then an `extract_pae` step populates the PAE dir (PAE-consumers
-  wait on it). AF3 holo co-folding of the trinuclear Mg2+ cluster (+ diphosphate) is
-  available via `--af3_cofold {none,mg,mg_ppi}` (CCD `MG`/`POP`; AF3 ion placement is a
-  hypothesis — verify Mg lands at DDXXD/NSE). NOT yet ported (v2):
-  EnzymeExplorer-with-structures. Sequence + structure-consuming branches verified
-  end-to-end on Aurum; the AF3 fan-out wiring is dry-run-verified (a live fold is expensive).
+  wait on it). AF3 holo co-folding via `--af3_cofold {none,mg,mg_ppi,mg_gpp,mg_fpp,mg_ggpp,
+  mg_gfpp,mg_ee}`: `mg`/`mg_ppi` place CCD `MG`/`POP`; `mg_<sub>` co-folds one forced prenyl-PP
+  substrate (SMILES in `src/alphafold/cofold_substrates.py`) for all designs; `mg_ee` co-folds
+  each design's EnzymeExplorer-predicted substrate (the fan-out groups by substrate + a Mg-only
+  fallback, and REQUIRES `--ee_csv` — the login-node fold driver can't afterok-wait on the
+  in-pipeline `ee_seq` job). `scripts/run_alphafold_fanout.sh` builds the input via
+  `src/alphafold/build_cofold_input.py` (one CSV per group + manifest) and prints ONE combined
+  job-id line. Any non-`none` mode enables the holo tools `ion_site_check` + `substrate_positioning`
+  (gated on `run_holo` = cofold!=none OR external structs; `--no_holo_tools` force-skips).
+  AF3 ion/ligand placement is a hypothesis — verify at DDXXD/NSE downstream. NOT yet ported (v2):
+  EnzymeExplorer-with-structures. Sequence + structure-consuming branches verified end-to-end on
+  Aurum; the AF3 fan-out wiring (incl. co-fold modes + holo tools) is dry-run-verified (a live
+  fold is expensive); `build_cofold_input` + `substrate_positioning` unit-tested locally.
 
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
