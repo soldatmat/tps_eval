@@ -228,6 +228,7 @@ def out_global_confidence(d): return d.rstrip(os.sep) + "_global_confidence.csv"
 def out_aromatic_lining(d): return d.rstrip(os.sep) + "_aromatic_lining.csv"
 def out_diphosphate_sensor(d): return d.rstrip(os.sep) + "_diphosphate_sensor.csv"
 def out_ion_site_check(d): return d.rstrip(os.sep) + "_ion_site_check.csv"
+def out_substrate_positioning(d): return d.rstrip(os.sep) + "_substrate_positioning.csv"
 def out_domain_structural_identity(d): return d.rstrip(os.sep) + "_domain_structural_identity.csv"
 # substrate_class is keyed off the gen FASTA (it fuses sequence + structure signals).
 def out_substrate_class(f): return _base(f) + "_substrate_class.csv"
@@ -261,7 +262,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "active_site_geom":     {"default": True,  "branch": "structure", "description": "Active-site carboxylate-cage geometry (apo-robust)."},
     "aromatic_lining":      {"default": True,  "branch": "structure", "description": "Aromatic / cation-pi pocket lining (carbocation-stabilization proxy)."},
     "diphosphate_sensor":   {"default": True,  "branch": "structure", "description": "Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site."},
-    "ion_site":             {"default": True,  "branch": "structure", "description": "Ion-placement check: do AF3 co-folded Mg/Mn ions land in the carboxylate cage? Only carries signal for AF3 holo folds (--af3_cofold mg|mg_ppi); apo/ESMFold report n_ions_modelled=0."},
+    "ion_site":             {"default": True,  "branch": "structure", "description": "Ion-placement check: do AF3 co-folded Mg/Mn ions land in the carboxylate cage? Only carries signal for AF3 holo folds (--af3_cofold mg*); apo/ESMFold report n_ions_modelled=0. Gated on a holo co-fold / --no_holo_tools."},
+    "substrate_positioning":{"default": True,  "branch": "structure", "description": "Substrate positioning: is the AF3 co-folded prenyl-PP substrate poised in the catalytic cage (diphosphate->FARM/Mg, reactive C1->cage)? Auto-detects the ligand per design (--af3_cofold mg_<sub>|mg_ee); apo / no substrate -> NaN. Gated on a holo co-fold / --no_holo_tools."},
     "radius_of_gyration":   {"default": True,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms."},
     "pocket_descriptors":   {"default": True,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)."},
     "domain_composition":   {"default": True,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)."},
@@ -519,6 +521,17 @@ def build_steps(args, enabled: set) -> List[Step]:
         if pae_dir is None and not args.no_fold_pae:
             pae_dir = os.path.join(af3_work, "pae")
 
+    if args.af3_cofold == "mg_ee" and not args.ee_csv:
+        raise SystemExit(
+            "[FAIL] --af3_cofold mg_ee needs --ee_csv (the EnzymeExplorer seq-only CSV): the "
+            "AF3 fan-out runs on the login node and cannot wait on the in-pipeline ee_seq job. "
+            "Run enzyme_explorer_sequence_only first, then pass its CSV via --ee_csv.")
+    # Holo (co-fold-dependent) tools run iff we co-folded a holo active site (--af3_cofold !=
+    # none) OR structures were supplied externally (which may be holo) -- and never when
+    # --no_holo_tools is set. So --af3_cofold none (default) cleanly turns co-folding AND the
+    # downstream holo tools (ion_site_check, substrate_positioning) off.
+    run_holo = (not args.no_holo_tools) and (args.af3_cofold != "none" or bool(args.structs_dir))
+
     if args.train_structs_dir:
         print("[warn] --train_structs_dir is not used by the orchestrator yet "
               "(EnzymeExplorer-with-structures is not ported).")
@@ -614,8 +627,12 @@ def build_steps(args, enabled: set) -> List[Step]:
             fanout_cmd = ["bash", os.path.join(REPO, "scripts", "run_alphafold_fanout.sh"),
                           "--cluster", args.cluster, "--fasta_path", gen,
                           "--working_directory", af3_work,
-                          "--cofold", args.af3_cofold,
-                          "--model_seeds"] + [str(s) for s in args.af3_model_seeds]
+                          "--cofold", args.af3_cofold]
+            if args.af3_cofold == "mg_ee":
+                # Per-design EE substrate: the login-node driver needs the EE CSV up front
+                # (it cannot afterok-wait on the in-pipeline ee_seq SLURM job).
+                fanout_cmd += ["--ee_csv", args.ee_csv]
+            fanout_cmd += ["--model_seeds"] + [str(s) for s in args.af3_model_seeds]
             steps.append(Step("af3_fold_gen", "", fanout_cmd,
                               os.path.join(af3_work, ".__never__"),
                               tool="alphafold3", driver=True, requires_cap="alphafold"))
@@ -645,13 +662,21 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("diphosphate_sensor_gen", "diphosphate_sensor.sh",
                           ["--structs_dir", structs], out_diphosphate_sensor(structs),
                           tool="diphosphate_sensor"))
-        # Ion-placement check: do the AF3 co-folded Mg/Mn ions (--af3_cofold mg|mg_ppi)
-        # actually land in the carboxylate cage? Only carries signal for AF3 holo folds;
-        # apo / ESMFold structures have no ions and report n_ions_modelled=0 (a graceful
-        # not-applicable row). Default-on so the column always exists when ions are present.
-        steps.append(Step("ion_site_check_gen", "ion_site_check.sh",
-                          ["--structs_dir", structs], out_ion_site_check(structs),
-                          tool="ion_site"))
+        # Holo (co-fold-dependent) tools -- only meaningful when ions/substrate are modelled.
+        # Gated on run_holo (--af3_cofold != none, or external structs; off via --no_holo_tools)
+        # so that apo runs don't queue no-op jobs.
+        if run_holo:
+            # Ion-placement check: do the AF3 co-folded Mg/Mn ions (--af3_cofold mg*) actually
+            # land in the carboxylate cage? apo/ESMFold structures report n_ions_modelled=0.
+            steps.append(Step("ion_site_check_gen", "ion_site_check.sh",
+                              ["--structs_dir", structs], out_ion_site_check(structs),
+                              tool="ion_site"))
+            # Substrate positioning: is the co-folded prenyl-PP substrate poised in the cage?
+            # Auto-detects the ligand per design (works for forced mg_<sub> and per-design
+            # mg_ee alike); reports NaN when no substrate ligand is present.
+            steps.append(Step("substrate_positioning_gen", "substrate_positioning.sh",
+                              ["--structs_dir", structs], out_substrate_positioning(structs),
+                              tool="substrate_positioning"))
         # Radius of gyration / compactness: raw geometric shape numbers (Rg, asphericity,
         # principal radii) over the Cα atoms; no expected-Rg band (compared downstream).
         steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",
@@ -895,11 +920,28 @@ def main() -> None:
                         "interdomain_pae. Ignored if --structs_dir is given.")
     p.add_argument("--af3_model_seeds", type=int, nargs="+", default=[42],
                    help="With --fold alphafold3: AF3 model seeds per sequence (default 42).")
-    p.add_argument("--af3_cofold", default="none", choices=["none", "mg", "mg_ppi"],
+    p.add_argument("--af3_cofold", default="none",
+                   choices=["none", "mg", "mg_ppi", "mg_gpp", "mg_fpp", "mg_ggpp", "mg_gfpp", "mg_ee"],
                    help="With --fold alphafold3: co-fold the class-I TPS active site for a "
                         "HOLO prediction. 'none' (default) = apo protein only; 'mg' = the "
-                        "trinuclear Mg2+ cluster; 'mg_ppi' = Mg2+ cluster + a diphosphate "
-                        "head group (substrate-agnostic). Filenames stay <ID>.pdb regardless.")
+                        "trinuclear Mg2+ cluster; 'mg_ppi' = Mg2+ cluster + a bare diphosphate "
+                        "head group; 'mg_gpp|mg_fpp|mg_ggpp|mg_gfpp' = Mg2+ cluster + ONE forced "
+                        "prenyl-PP substrate (SMILES) for EVERY design; 'mg_ee' = Mg2+ cluster + "
+                        "each design's EnzymeExplorer-predicted substrate (needs --ee_csv; "
+                        "non-co-foldable EE calls fall back to Mg-only). Any non-'none' mode "
+                        "ENABLES the holo tools (ion_site_check, substrate_positioning); 'none' "
+                        "(or --no_holo_tools) turns co-folding AND those downstream tools off. "
+                        "Filenames stay <ID>.pdb regardless.")
+    p.add_argument("--ee_csv", default=None,
+                   help="EnzymeExplorer seq-only CSV for --af3_cofold mg_ee (per-design substrate). "
+                        "REQUIRED with mg_ee: the AF3 fan-out runs on the login node and cannot "
+                        "afterok-wait on the in-pipeline ee_seq SLURM job, so the EE predictions "
+                        "must already exist (run enzyme_explorer_sequence_only first).")
+    p.add_argument("--no_holo_tools", action="store_true",
+                   help="Force-skip the co-fold-dependent structure tools (ion_site_check, "
+                        "substrate_positioning) even when holo structures are present (e.g. an "
+                        "externally co-folded --structs_dir). By default these run iff "
+                        "--af3_cofold is not 'none'.")
     p.add_argument("--no_fold_pae", action="store_true",
                    help="With --fold: do NOT save/extract the PAE matrices (skips "
                         "global_confidence + interdomain_pae). Default: save them.")
