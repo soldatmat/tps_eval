@@ -92,6 +92,11 @@ from plddt import _collect_structures
 # cluster; MN covers the Mn2+-using class-I TPS. Configurable.
 DEFAULT_ION_RESNAMES = ("MG", "MN")
 
+# Metal-ion ELEMENTS. Ion detection is element-based (not just resname) so it works across
+# structure sources: AF3 names ions by resname 'MG'; Boltz2 names them 'LIG2' (element still
+# MG). A monatomic residue whose atoms are all these elements is an ion regardless of resname.
+ION_ELEMENTS = {"MG", "MN"}
+
 # Diphosphate / pyrophosphate HETATM residue names (the mg_ppi case). CCD POP is the
 # pyrophosphate AF3 places; PPV/PPK are alternative diphosphate ligand codes.
 DEFAULT_DIPHOSPHATE_RESNAMES = ("POP", "PPV", "PPK")
@@ -161,8 +166,9 @@ def read_ion_hetatms(
             if residue.id[0] == " ":
                 continue
             resname = residue.get_resname().strip().upper()
-            if resname in ion_set:
-                for atom in residue:
+            atom_els = [(a.element or "").strip().upper() for a in residue]
+            if (resname in ion_set) or (atom_els and all(el in ION_ELEMENTS for el in atom_els)):
+                for atom in residue:                      # element-based: AF3 'MG' & Boltz2 'LIG2'
                     ions.append(np.asarray(atom.get_coord(), dtype=float))
             elif resname in diphos_set:
                 for atom in residue:

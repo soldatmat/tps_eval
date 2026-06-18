@@ -65,6 +65,11 @@ from plddt import _collect_structures
 # Ions to exclude when auto-detecting the substrate, and to measure the diphosphate->ion
 # distance against.
 DEFAULT_ION_RESNAMES = ("MG", "MN")
+# Metal-ion ELEMENTS. Ion detection is element-based (not just resname) so it is robust to
+# naming across structure sources: AF3 names the ions by resname 'MG', Boltz2 names them
+# 'LIG2' (but the element column is still MG). A monatomic residue whose atoms are all these
+# elements is treated as an ion regardless of its resname.
+ION_ELEMENTS = {"MG", "MN"}
 # A HETATM residue is a candidate prenyl-PP substrate if it has >=1 P and >= this many C.
 DEFAULT_MIN_SUBSTRATE_CARBONS = 5
 # Diphosphate centroid within this distance (A) of the cage centroid -> reported as
@@ -133,8 +138,8 @@ def read_substrate_ligand(
             resname = residue.get_resname().strip().upper()
             atoms = [(_element(a), np.asarray(a.get_coord(), float), float(a.get_bfactor()))
                      for a in residue]
-            if resname in ion_set:
-                ions.extend(c for (_el, c, _b) in atoms)
+            if (resname in ion_set) or (atoms and all(el in ION_ELEMENTS for (el, _c, _b) in atoms)):
+                ions.extend(c for (_el, c, _b) in atoms)  # element-based: AF3 'MG' & Boltz2 'LIG2'
                 continue
             if resname in _IGNORE_RESNAMES:
                 continue
