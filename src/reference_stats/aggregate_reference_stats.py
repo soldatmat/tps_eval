@@ -120,9 +120,13 @@ METRIC_SUFFIXES: Dict[str, str] = {
     # PAE-derived fold-confidence (intrinsic; needs a saved PAE npz)
     "global_confidence": "global_confidence",
     "interdomain_pae": "interdomain_pae",
-    # active-site ion placement (only carries signal for AF3 holo folds; apo/ESMFold
-    # rows are not-applicable but harmless to band)
+    # active-site ion placement (only carries signal on holo folds with modelled
+    # ions -- AF3 holo / Boltz2 holo; apo/ESMFold rows are not-applicable but
+    # harmless to band)
     "ion_site_check": "ion_site_check",
+    # prenyl-PP substrate positioning (holo-only: requires a co-folded substrate,
+    # e.g. AF3 co-fold or Boltz2 holo; apo folds yield all-NaN, not-applicable)
+    "substrate_positioning": "substrate_positioning",
 }
 
 
