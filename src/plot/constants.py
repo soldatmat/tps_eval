@@ -242,6 +242,13 @@ STRUCTURE_NUMERIC = {
         "n_ions_in_site",
         "max_coordinating_contacts",
     ],
+    "_substrate_positioning.csv": [
+        "diphosphate_to_cage_dist",
+        "min_diphosphate_to_cage_oxygen",
+        "diphosphate_to_nearest_ion",
+        "reactive_carbon_to_cage_dist",
+        "substrate_plddt",
+    ],
     "_radius_of_gyration.csv": [
         "radius_of_gyration",
         "asphericity",
@@ -315,6 +322,7 @@ STRUCTURE_CATEGORICAL = {
     "_foldseek_swissprot_search.csv": ["foldseek_sprot_top_is_tps"],
     "_diphosphate_sensor.csv": ["has_RY_pair"],
     "_ion_site_check.csv": ["ion_in_site", "well_placed"],
+    "_substrate_positioning.csv": ["substrate_present", "substrate_in_site"],
     "_sdr_divergence.csv": ["specificity_divergence"],
 }
 
