@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="<calibrate|predict> [--sequence_topk <csv>] [--embedding_topk <csv>] [--structural_topk <csv>] --label_file <csv> --out <path> [--calibration <json>] [--labeling <name>] [--top_k <N>] [--target_accuracy <a>]"
+USAGE="<calibrate|predict> [--sequence_topk <csv>] [--embedding_topk <csv>] [--structural_topk <csv>] --label_file <csv> --output <path> [--calibration <json>] [--labeling <name>] [--top_k <N>] [--target_accuracy <a>]"
 
 Help()
 {
@@ -11,7 +11,7 @@ Help()
     echo "spaces, with leave-one-out calibration on MARTS-DB."
     echo
     echo "Subcommands:"
-    echo "  calibrate   LOO calibration on MARTS-DB SELF top-k CSVs -> --out JSON artifact."
+    echo "  calibrate   LOO calibration on MARTS-DB SELF top-k CSVs -> --output JSON artifact."
     echo "  predict     Transfer labels to designs from their top-k CSVs + --calibration JSON."
     echo
     echo "Arguments:"
@@ -19,7 +19,7 @@ Help()
     echo "  --embedding_topk    <input>_min_embedding_distance_topk.csv (score = L2 distance)"
     echo "  --structural_topk   <structs_dir>_structural_identity_topk.csv (score = TM-score)"
     echo "  --label_file        CSV mapping reference_id,label (the labeling is the INPUT)"
-    echo "  --out               Output path (calibration JSON, or predictions CSV)"
+    echo "  --output               Output path (calibration JSON, or predictions CSV)"
     echo "  --calibration       Calibration JSON (predict mode only)"
     echo "  --labeling          Name recorded in the artifact (calibrate mode; e.g. first_cyclization)"
     echo "  --top_k             Cap neighbours per query (default: all present)"
@@ -51,7 +51,7 @@ abspath() {
 }
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sequence_topk|--embedding_topk|--structural_topk|--label_file|--out|--calibration)
+        --sequence_topk|--embedding_topk|--structural_topk|--label_file|--output|--calibration)
             passthru+=("$1" "$(abspath "$2")"); shift 2 ;;
         --labeling|--top_k|--target_accuracy)
             passthru+=("$1" "$2"); shift 2 ;;

@@ -5,7 +5,7 @@ label file + the substrate calibration JSON) with the pocket-volume band and the
 EnzymeExplorer sequence-only substrate signal into one <input>_substrate_class.csv.
 
 At least one of the three --*_topk CSVs is required (the k-NN call is the primary signal);
---pocket_csv and --ee_csv are optional corroborating signals.
+--pocket_csv and --enzymeexplorer_csv are optional corroborating signals.
 
 Example:
     python run_substrate_class.py \
@@ -15,7 +15,7 @@ Example:
         --label_file substrate_labels.csv \
         --calibration knn_calibration_substrate.json \
         --pocket_csv structs_pocket_descriptors.csv \
-        --ee_csv gen_enzyme_explorer_sequence_only.csv \
+        --enzymeexplorer_csv gen_enzyme_explorer_sequence_only.csv \
         --out gen_substrate_class.csv
 """
 from __future__ import annotations
@@ -47,11 +47,11 @@ def main() -> None:
                     help="Substrate calibration JSON (knn_calibration_substrate.json).")
     ap.add_argument("--pocket_csv", default=None,
                     help="<structs_dir>_pocket_descriptors.csv (catalytic_pocket_volume).")
-    ap.add_argument("--ee_csv", default=None,
+    ap.add_argument("--enzymeexplorer_csv", default=None,
                     help="<input>_enzyme_explorer_sequence_only.csv (per-substrate scores).")
     ap.add_argument("--top_k", type=int, default=None,
                     help="Cap neighbours per query (default: all present).")
-    ap.add_argument("--out", required=True, help="Output predictions CSV (keyed by ID).")
+    ap.add_argument("--output", required=True, help="Output predictions CSV (keyed by ID).")
     args = ap.parse_args()
 
     spaces = {}
@@ -72,15 +72,15 @@ def main() -> None:
         args.label_file,
         calibration,
         pocket_csv=args.pocket_csv,
-        ee_csv=args.ee_csv,
+        ee_csv=args.enzymeexplorer_csv,
         top_k=args.top_k,
     )
-    df.to_csv(args.out, index=False)
+    df.to_csv(args.output, index=False)
 
     n_unknown = int((df["predicted_substrate"] == "unknown").sum())
     n_pocket = int(df["substrate_agreement"].astype(str).eq("True").sum())
     n_ee = int(df["ee_agreement"].astype(str).eq("True").sum())
-    print(f"Wrote {len(df)} substrate-class predictions to {args.out} "
+    print(f"Wrote {len(df)} substrate-class predictions to {args.output} "
           f"({n_unknown} unknown).")
     print(f"  pocket-volume band agrees with k-NN: {n_pocket}/{len(df)}")
     print(f"  EnzymeExplorer argmax agrees with k-NN: {n_ee}/{len(df)}")

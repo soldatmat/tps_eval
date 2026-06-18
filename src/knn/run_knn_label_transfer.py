@@ -61,7 +61,7 @@ def main() -> None:
 
     pc = sub.add_parser("calibrate", help="LOO calibration on MARTS-DB self top-k CSVs.")
     _add_space_args(pc)
-    pc.add_argument("--out", required=True, help="Output calibration JSON path.")
+    pc.add_argument("--output", required=True, help="Output calibration JSON path.")
     pc.add_argument("--labeling", default="labeling",
                     help="Name recorded in the artifact (e.g. first_cyclization).")
     pc.add_argument("--target_accuracy", type=float, default=0.5,
@@ -70,7 +70,7 @@ def main() -> None:
     pp = sub.add_parser("predict", help="Transfer labels to designs.")
     _add_space_args(pp)
     pp.add_argument("--calibration", required=True, help="Calibration JSON from `calibrate`.")
-    pp.add_argument("--out", required=True, help="Output predictions CSV (keyed by ID).")
+    pp.add_argument("--output", required=True, help="Output predictions CSV (keyed by ID).")
 
     args = parser.parse_args()
     spaces = _collect_spaces(args)
@@ -83,8 +83,8 @@ def main() -> None:
             target_accuracy=args.target_accuracy,
             labeling=args.labeling,
         )
-        save_calibration(cal, args.out)
-        print(f"Wrote calibration to {args.out}")
+        save_calibration(cal, args.output)
+        print(f"Wrote calibration to {args.output}")
         print(f"  labeling={cal['labeling']}  n_classes={cal['n_classes']}")
         for space, s in cal["spaces"].items():
             print(
@@ -99,9 +99,9 @@ def main() -> None:
     elif args.cmd == "predict":
         cal = load_calibration(args.calibration)
         df = transfer_labels(spaces, args.label_file, cal, top_k=args.top_k)
-        df.to_csv(args.out, index=False)
+        df.to_csv(args.output, index=False)
         n_abstain = int((df["predicted_label"] == "unknown").sum())
-        print(f"Wrote {len(df)} predictions to {args.out} ({n_abstain} abstained).")
+        print(f"Wrote {len(df)} predictions to {args.output} ({n_abstain} abstained).")
 
 
 if __name__ == "__main__":

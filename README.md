@@ -72,7 +72,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
 | [plot_domains](docs/TOOLS.md#plot_domains) | visualization | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
 | [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | visualization | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
-| [run_visualization](docs/TOOLS.md#run_visualization) | visualization | Dataset-level class-coloured 2D landscape map of a protein set from any representation (PCA / t-SNE / UMAP / PaCMAP / PCoA; vectors or precomputed distances). Standalone. | PNG figure(s) at `--out` |
+| [run_visualization](docs/TOOLS.md#run_visualization) | visualization | Dataset-level class-coloured 2D landscape map of a protein set from any representation (PCA / t-SNE / UMAP / PaCMAP / PCoA; vectors or precomputed distances). Standalone. | PNG figure(s) at `--output` |
 
 ### Representation / embedding producers
 These emit a per-`id` feature CSV (first column `id`, then feature dims) for a whole protein set; **standalone, NOT orchestrator Steps** — run them directly, then feed into [run_visualization](docs/TOOLS.md#run_visualization).

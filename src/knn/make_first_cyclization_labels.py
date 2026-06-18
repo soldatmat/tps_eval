@@ -32,25 +32,25 @@ import pandas as pd
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--source", required=True, help="TPS_first_cyclization.csv path.")
-    ap.add_argument("--out", required=True, help="Output reference_id,label CSV.")
-    ap.add_argument("--id_col", default="Enzyme_marts_ID")
-    ap.add_argument("--label_col", default="First_cyclization_product_id")
+    ap.add_argument("--output", required=True, help="Output reference_id,label CSV.")
+    ap.add_argument("--id_column", default="Enzyme_marts_ID")
+    ap.add_argument("--label_column", default="First_cyclization_product_id")
     args = ap.parse_args()
 
     df = pd.read_csv(args.source)
-    df = df[[args.id_col, args.label_col]].dropna()
-    df[args.label_col] = df[args.label_col].astype(int)
+    df = df[[args.id_column, args.label_column]].dropna()
+    df[args.label_column] = df[args.label_column].astype(int)
 
     rows = []
-    for rid, grp in df.groupby(args.id_col):
+    for rid, grp in df.groupby(args.id_column):
         # most frequent class; tie -> smallest class id
-        counts = grp[args.label_col].value_counts()
+        counts = grp[args.label_column].value_counts()
         top = counts[counts == counts.max()].index.min()
         rows.append({"reference_id": rid, "label": int(top)})
 
     out = pd.DataFrame(rows).sort_values("reference_id")
-    out.to_csv(args.out, index=False)
-    print(f"Wrote {len(out)} reference labels to {args.out} "
+    out.to_csv(args.output, index=False)
+    print(f"Wrote {len(out)} reference labels to {args.output} "
           f"({out['label'].nunique()} distinct classes).")
 
 

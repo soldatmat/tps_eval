@@ -10,7 +10,7 @@
 # for the afterok dependencies of the structure branch (it matches the FIRST such line, so
 # we suppress the per-group lines and print one combined line at the end).
 
-USAGE="--cluster <c> --fasta_path <fasta> --working_directory <dir> [--cofold MODE] [--ee_csv <csv>] [--model_seeds S1 S2 ...]"
+USAGE="--cluster <c> --fasta_path <fasta> --working_directory <dir> [--cofold MODE] [--enzymeexplorer_csv <csv>] [--model_seeds S1 S2 ...]"
 
 Help() {
     echo "Usage: $0 $USAGE"
@@ -24,8 +24,8 @@ Help() {
     echo "                         mg      trinuclear Mg2+ cluster (3x CCD MG)"
     echo "                         mg_ppi  Mg cluster + bare diphosphate head group (CCD POP)"
     echo "                         mg_gpp|mg_fpp|mg_ggpp|mg_gfpp  Mg + ONE forced prenyl-PP substrate (SMILES), all designs"
-    echo "                         mg_ee   Mg + each design's EnzymeExplorer-predicted substrate (needs --ee_csv)"
-    echo "  --ee_csv             EnzymeExplorer seq-only CSV (REQUIRED for --cofold mg_ee)"
+    echo "                         mg_ee   Mg + each design's EnzymeExplorer-predicted substrate (needs --enzymeexplorer_csv)"
+    echo "  --enzymeexplorer_csv             EnzymeExplorer seq-only CSV (REQUIRED for --cofold mg_ee)"
     echo "  --model_seeds        AF3 model seeds (all remaining tokens; default 42)"
     echo "  -h, --help           Show this help message and exit"
 }
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
         --fasta_path) fasta_path="$2"; shift 2 ;;
         --working_directory) working_directory="$2"; shift 2 ;;
         --cofold) cofold="$2"; shift 2 ;;
-        --ee_csv) ee_csv="$2"; shift 2 ;;
+        --enzymeexplorer_csv) ee_csv="$2"; shift 2 ;;
         --model_seeds)
             shift
             while [[ $# -gt 0 && "$1" != --* ]]; do model_seeds+=("$1"); shift; done ;;
@@ -77,8 +77,8 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 # AF3 free-ion/ligand placement is a HYPOTHESIS -- verify the Mg/diphosphate land at the
 # DDXXD/NSE cage downstream (ion_site_check / substrate_positioning).
 build_out=$(python src/alphafold/build_cofold_input.py \
-    --fasta "$fasta_path" --cofold "$cofold" --out_dir "$working_directory" \
-    ${ee_csv:+--ee_csv "$ee_csv"} 2>&1)
+    --fasta "$fasta_path" --cofold "$cofold" --output_dir "$working_directory" \
+    ${ee_csv:+--enzymeexplorer_csv "$ee_csv"} 2>&1)
 build_rc=$?
 echo "$build_out"
 if [[ $build_rc -ne 0 ]]; then echo "[fanout] input build failed (cofold=$cofold)"; exit $build_rc; fi

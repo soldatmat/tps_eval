@@ -37,7 +37,7 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   mg_gfpp,mg_ee}`: `mg`/`mg_ppi` place CCD `MG`/`POP`; `mg_<sub>` co-folds one forced prenyl-PP
   substrate (SMILES in `src/alphafold/cofold_substrates.py`) for all designs; `mg_ee` co-folds
   each design's EnzymeExplorer-predicted substrate (the fan-out groups by substrate + a Mg-only
-  fallback, and REQUIRES `--ee_csv` — the login-node fold driver can't afterok-wait on the
+  fallback, and REQUIRES `--enzymeexplorer_csv` — the login-node fold driver can't afterok-wait on the
   in-pipeline `ee_seq` job). `scripts/run_alphafold_fanout.sh` builds the input via
   `src/alphafold/build_cofold_input.py` (one CSV per group + manifest) and prints ONE combined
   job-id line. Any non-`none` mode enables the holo tools `ion_site_check` + `substrate_positioning`

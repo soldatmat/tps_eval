@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="[--sequence_topk <csv>] [--embedding_topk <csv>] [--structural_topk <csv>] --label_file <csv> --calibration <json> [--pocket_csv <csv>] [--ee_csv <csv>] [--top_k <N>] --out <path>"
+USAGE="[--sequence_topk <csv>] [--embedding_topk <csv>] [--structural_topk <csv>] --label_file <csv> --calibration <json> [--pocket_csv <csv>] [--enzymeexplorer_csv <csv>] [--top_k <N>] --output <path>"
 
 Help()
 {
@@ -18,9 +18,9 @@ Help()
     echo "  --label_file        SUBSTRATE reference_id,label CSV (substrate_labels.csv)"
     echo "  --calibration       Substrate calibration JSON (knn_calibration_substrate.json)"
     echo "  --pocket_csv        <structs_dir>_pocket_descriptors.csv (optional)"
-    echo "  --ee_csv            <input>_enzyme_explorer_sequence_only.csv (optional)"
+    echo "  --enzymeexplorer_csv            <input>_enzyme_explorer_sequence_only.csv (optional)"
     echo "  --top_k             Cap neighbours per query (default: all present)"
-    echo "  --out               Output predictions CSV (keyed by ID)"
+    echo "  --output               Output predictions CSV (keyed by ID)"
     echo "  -h, --help          Show this help message and exit"
     echo
     echo "At least one of the three --*_topk CSVs is required."
@@ -43,7 +43,7 @@ abspath() {
 }
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sequence_topk|--embedding_topk|--structural_topk|--label_file|--calibration|--pocket_csv|--ee_csv|--out)
+        --sequence_topk|--embedding_topk|--structural_topk|--label_file|--calibration|--pocket_csv|--enzymeexplorer_csv|--output)
             passthru+=("$1" "$(abspath "$2")"); shift 2 ;;
         --top_k)
             passthru+=("$1" "$2"); shift 2 ;;

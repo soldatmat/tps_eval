@@ -76,7 +76,7 @@ def main():
     ap.add_argument("--exclude-cols", default="", help="comma list of extra (non-feature) numeric columns to drop")
     ap.add_argument("--methods", default="umap")
     ap.add_argument("--title", required=True)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--output", required=True)
     ap.add_argument("--footnote", default="")
     args = ap.parse_args()
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
@@ -125,9 +125,9 @@ def main():
     else:
         raise SystemExit("provide --features or --pairs")
 
-    landscape_map.render_panels(panels, y, args.title, args.out,
+    landscape_map.render_panels(panels, y, args.title, args.output,
                                 footnote=args.footnote or None)
-    print(f"saved {args.out}")
+    print(f"saved {args.output}")
 
 
 def _labels_for_features(df, ids, args):

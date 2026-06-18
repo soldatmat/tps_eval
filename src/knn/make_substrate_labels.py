@@ -89,22 +89,22 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--source", required=True,
                     help="martsDB_reactions_*.csv path (must have Enzyme_marts_ID + Type).")
-    ap.add_argument("--out", required=True, help="Output reference_id,label CSV.")
-    ap.add_argument("--id_col", default="Enzyme_marts_ID")
-    ap.add_argument("--type_col", default="Type")
+    ap.add_argument("--output", required=True, help="Output reference_id,label CSV.")
+    ap.add_argument("--id_column", default="Enzyme_marts_ID")
+    ap.add_argument("--type_column", default="Type")
     args = ap.parse_args()
 
     df = pd.read_csv(args.source)
-    df = df[[args.id_col, args.type_col]].dropna()
-    df["substrate"] = df[args.type_col].astype(str).str.strip().str.lower().map(TYPE_TO_SUBSTRATE)
+    df = df[[args.id_column, args.type_column]].dropna()
+    df["substrate"] = df[args.type_column].astype(str).str.strip().str.lower().map(TYPE_TO_SUBSTRATE)
     n_unmapped = int(df["substrate"].isna().sum())
     if n_unmapped:
-        bad = sorted(df.loc[df["substrate"].isna(), args.type_col].astype(str).unique())
+        bad = sorted(df.loc[df["substrate"].isna(), args.type_column].astype(str).unique())
         print(f"[warn] {n_unmapped} rows with un-mapped Type value(s): {bad} -> dropped.")
     df = df.dropna(subset=["substrate"])
 
     rows = []
-    for rid, grp in df.groupby(args.id_col):
+    for rid, grp in df.groupby(args.id_column):
         counts = grp["substrate"].value_counts()
         # most frequent class; tie -> smallest carbon count (then alphabetical)
         top = sorted(
@@ -114,9 +114,9 @@ def main() -> None:
         rows.append({"reference_id": rid, "label": top})
 
     out = pd.DataFrame(rows).sort_values("reference_id")
-    out.to_csv(args.out, index=False)
+    out.to_csv(args.output, index=False)
     dist = out["label"].value_counts().to_dict()
-    print(f"Wrote {len(out)} reference labels to {args.out} "
+    print(f"Wrote {len(out)} reference labels to {args.output} "
           f"({out['label'].nunique()} distinct substrate classes).")
     print("  class distribution:", dist)
 

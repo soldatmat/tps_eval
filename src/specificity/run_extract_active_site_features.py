@@ -95,7 +95,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--structs_dir", required=True, help="Dir of marts_E*.pdb ESMFold structures.")
     p.add_argument("--marts_csv", required=True, help="TPS_first_cyclization.csv path.")
-    p.add_argument("--out", required=True, help="Output CSV path.")
+    p.add_argument("--output", required=True, help="Output CSV path.")
     p.add_argument("--radius", type=float, default=DEFAULT_RADIUS, help="Active-site shell radius (A).")
     p.add_argument(
         "--exclude_class",
@@ -142,12 +142,12 @@ def main(argv=None) -> int:
     feat_cols = [c for c in feat.columns if c != "id"]
     merged = merged[meta_cols + feat_cols].sort_values("id").reset_index(drop=True)
 
-    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    merged.to_csv(args.out, index=False)
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+    merged.to_csv(args.output, index=False)
 
     n_with = int(merged["metal_point_found"].sum())
     n_without = len(merged) - n_with
-    print(f"\nWrote {len(merged)} enzyme rows to {args.out}")
+    print(f"\nWrote {len(merged)} enzyme rows to {args.output}")
     print(f"  with metal point (class-I cage): {n_with}")
     print(f"  without (OSC class-12 / no cage): {n_without}")
     if "product_class_id" in merged:

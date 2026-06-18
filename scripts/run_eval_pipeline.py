@@ -521,11 +521,11 @@ def build_steps(args, enabled: set) -> List[Step]:
         if pae_dir is None and not args.no_fold_pae:
             pae_dir = os.path.join(af3_work, "pae")
 
-    if args.af3_cofold == "mg_ee" and not args.ee_csv:
+    if args.af3_cofold == "mg_ee" and not args.enzymeexplorer_csv:
         raise SystemExit(
-            "[FAIL] --af3_cofold mg_ee needs --ee_csv (the EnzymeExplorer seq-only CSV): the "
+            "[FAIL] --af3_cofold mg_ee needs --enzymeexplorer_csv (the EnzymeExplorer seq-only CSV): the "
             "AF3 fan-out runs on the login node and cannot wait on the in-pipeline ee_seq job. "
-            "Run enzyme_explorer_sequence_only first, then pass its CSV via --ee_csv.")
+            "Run enzyme_explorer_sequence_only first, then pass its CSV via --enzymeexplorer_csv.")
     # Holo (co-fold-dependent) tools run iff we co-folded a holo active site (--af3_cofold !=
     # none) OR structures were supplied externally (which may be holo) -- and never when
     # --no_holo_tools is set. So --af3_cofold none (default) cleanly turns co-folding AND the
@@ -631,7 +631,7 @@ def build_steps(args, enabled: set) -> List[Step]:
             if args.af3_cofold == "mg_ee":
                 # Per-design EE substrate: the login-node driver needs the EE CSV up front
                 # (it cannot afterok-wait on the in-pipeline ee_seq SLURM job).
-                fanout_cmd += ["--ee_csv", args.ee_csv]
+                fanout_cmd += ["--enzymeexplorer_csv", args.enzymeexplorer_csv]
             fanout_cmd += ["--model_seeds"] + [str(s) for s in args.af3_model_seeds]
             steps.append(Step("af3_fold_gen", "", fanout_cmd,
                               os.path.join(af3_work, ".__never__"),
@@ -713,7 +713,7 @@ def build_steps(args, enabled: set) -> List[Step]:
         # (~1-2.5 min/structure x num_seqs GPU), so opt-in (config default off;
         # enable via --include self_consistency or the --self_consistency alias).
         steps.append(Step("self_consistency_gen", "self_consistency.sh",
-                          ["--structs_dir", structs, "--num_seqs", str(args.sc_num_seqs)],
+                          ["--structs_dir", structs, "--num_seqs", str(args.self_consistency_num_seqs)],
                           out_self_consistency(structs), tool="self_consistency"))
         if known_structs:
             steps.append(Step("structural_identity_gen", "structural_identity.sh",
@@ -805,7 +805,7 @@ def build_steps(args, enabled: set) -> List[Step]:
                           f"{sorted(s for s in cal_spaces if s in space_specs)} only.")
                 knn_args += ["--label_file", args.knn_label_file,
                              "--calibration", args.knn_calibration,
-                             "--out", out_knn(gen)]
+                             "--output", out_knn(gen)]
                 steps.append(Step("knn_gen", "knn_label_transfer.sh", knn_args,
                                   out_knn(gen), tool="knn", deps=knn_deps))
 
@@ -865,12 +865,12 @@ def build_steps(args, enabled: set) -> List[Step]:
             else:
                 # pocket-volume cross-check (structs) + EE per-substrate signal (gen fasta).
                 sc_args += ["--pocket_csv", out_pocket_descriptors(structs),
-                            "--ee_csv", out_ee_seq(gen)]
+                            "--enzymeexplorer_csv", out_ee_seq(gen)]
                 sc_deps += ["pocket_descriptors_gen", "ee_seq_gen"]
                 sc_args += ["--top_k", str(args.top_k),
                             "--label_file", args.substrate_label_file,
                             "--calibration", args.substrate_calibration,
-                            "--out", out_substrate_class(gen)]
+                            "--output", out_substrate_class(gen)]
                 steps.append(Step("substrate_class_gen", "substrate_class.sh", sc_args,
                                   out_substrate_class(gen), tool="substrate_class", deps=sc_deps))
 
@@ -927,12 +927,12 @@ def main() -> None:
                         "trinuclear Mg2+ cluster; 'mg_ppi' = Mg2+ cluster + a bare diphosphate "
                         "head group; 'mg_gpp|mg_fpp|mg_ggpp|mg_gfpp' = Mg2+ cluster + ONE forced "
                         "prenyl-PP substrate (SMILES) for EVERY design; 'mg_ee' = Mg2+ cluster + "
-                        "each design's EnzymeExplorer-predicted substrate (needs --ee_csv; "
+                        "each design's EnzymeExplorer-predicted substrate (needs --enzymeexplorer_csv; "
                         "non-co-foldable EE calls fall back to Mg-only). Any non-'none' mode "
                         "ENABLES the holo tools (ion_site_check, substrate_positioning); 'none' "
                         "(or --no_holo_tools) turns co-folding AND those downstream tools off. "
                         "Filenames stay <ID>.pdb regardless.")
-    p.add_argument("--ee_csv", default=None,
+    p.add_argument("--enzymeexplorer_csv", default=None,
                    help="EnzymeExplorer seq-only CSV for --af3_cofold mg_ee (per-design substrate). "
                         "REQUIRED with mg_ee: the AF3 fan-out runs on the login node and cannot "
                         "afterok-wait on the in-pipeline ee_seq SLURM job, so the EE predictions "
@@ -960,7 +960,7 @@ def main() -> None:
                    help="Back-compat alias for '--include self_consistency': add the heavy "
                         "scRMSD self-consistency step (ProteinMPNN -> ESMFold refold -> RMSD; "
                         "~1-2.5 min/structure x num_seqs on GPU). Off by default.")
-    p.add_argument("--sc_num_seqs", type=int, default=8,
+    p.add_argument("--self_consistency_num_seqs", type=int, default=8,
                    help="ProteinMPNN sequences per structure for self_consistency (default 8).")
     # Single pipeline-wide top-k for the three feeders that emit *_topk.csv for the
     # knn + sdr_divergence consumers. Default comes from pipeline_tools.json

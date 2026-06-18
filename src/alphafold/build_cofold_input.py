@@ -9,7 +9,7 @@ Used by ``scripts/run_alphafold_fanout.sh``. Turns a generated FASTA into one or
   mg_<substrate>  + Mg cluster + ONE forced prenyl-PP substrate (SMILES) for EVERY design
                   (<substrate> in gpp|fpp|ggpp|gfpp)
   mg_ee           + Mg cluster + each design's OWN EnzymeExplorer-predicted substrate
-                  (requires --ee_csv; designs whose EE argmax is not co-foldable fall back
+                  (requires --enzymeexplorer_csv; designs whose EE argmax is not co-foldable fall back
                   to Mg-only)
 
 Ions are CCD-coded (passed to run_alphafold_jobs as ``--ion_*``); substrates are SMILES
@@ -118,7 +118,7 @@ def build(fasta: str, cofold: str, out_dir: str, ee_csv: Optional[str] = None) -
 
     elif cofold == "mg_ee":
         if not ee_csv:
-            raise SystemExit("--cofold mg_ee requires --ee_csv (the EnzymeExplorer seq-only "
+            raise SystemExit("--cofold mg_ee requires --enzymeexplorer_csv (the EnzymeExplorer seq-only "
                              "CSV); run enzyme_explorer_sequence_only first.")
         codes = _ee_substrate_per_design(ee_csv)
         groups: Dict[str, List[Tuple[str, str]]] = {}
@@ -149,10 +149,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Build AF3 fan-out input CSV(s) for a co-fold mode.")
     ap.add_argument("--fasta", required=True)
     ap.add_argument("--cofold", required=True, choices=VALID_MODES)
-    ap.add_argument("--out_dir", required=True)
-    ap.add_argument("--ee_csv", default=None, help="EE seq-only CSV (required for mg_ee).")
+    ap.add_argument("--output_dir", required=True)
+    ap.add_argument("--enzymeexplorer_csv", default=None, help="EE seq-only CSV (required for mg_ee).")
     args = ap.parse_args()
-    manifest = build(args.fasta, args.cofold, args.out_dir, ee_csv=args.ee_csv)
+    manifest = build(args.fasta, args.cofold, args.output_dir, ee_csv=args.enzymeexplorer_csv)
     n_ion = len(ions_for(args.cofold))
     # Quoted so the caller can `eval` these lines safely (values are space-separated lists).
     print(f'ION_ID_COLS="{" ".join(ION_ID_COLS[:n_ion])}"')
