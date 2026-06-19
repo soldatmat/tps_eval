@@ -14,6 +14,7 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
+  html { overflow-x: clip; }   /* no useless sideways scroll; `clip` keeps position:sticky working */
   body {
     background: radial-gradient(1200px 600px at 78% -8%, #143034 0%, rgba(20,48,52,0) 55%), var(--ink);
     color: var(--bone); font-family: var(--sans); -webkit-font-smoothing: antialiased; line-height: 1.45;
@@ -25,7 +26,7 @@
   header.top { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px);
     background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82));
     border-bottom: 2px solid var(--line-2); box-shadow: 0 10px 26px -12px rgba(0,0,0,0.7); }
-  .top-inner { max-width: 1480px; margin: 0 auto; padding: 16px 26px 0; }
+  .top-inner { max-width: 1540px; margin: 0 auto; padding: 16px 26px 0; }
   .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
   .brand h1 { font-size: clamp(24px, 3vw, 38px); font-weight: 760; letter-spacing: -0.022em; margin: 4px 0 2px; line-height: 1.02; }
   .brand h1 { margin-left: 0; }
@@ -205,7 +206,7 @@
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
 
   /* tooltip */
-  #tip { position: fixed; z-index: 60; pointer-events: none; opacity: 0; transform: translate(-50%, -100%) translateY(-10px);
+  #tip { position: fixed; left: 50%; top: 0; z-index: 60; pointer-events: none; opacity: 0; transform: translate(-50%, -100%) translateY(-10px);
     background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; font-family: var(--mono);
     font-size: 11px; color: var(--bone); box-shadow: 0 14px 38px rgba(0,0,0,0.55); max-width: 340px; transition: opacity .1s; line-height: 1.5; }
   #tip .t-title { color: var(--design); margin-bottom: 6px; letter-spacing: 0.02em; }
@@ -554,7 +555,12 @@
     h += "</table>"; if (extra) h += `<div class="sep"></div>${extra}`; return h;
   }
   const tip = $("#tip");
-  function showTip(html, ev) { tip.innerHTML = html; tip.style.left = ev.clientX + "px"; tip.style.top = ev.clientY + "px"; tip.style.opacity = "1"; }
+  function showTip(html, ev) {
+    tip.innerHTML = html; tip.style.opacity = "1";
+    const vw = document.documentElement.clientWidth, half = tip.offsetWidth / 2;
+    tip.style.left = Math.max(half + 6, Math.min(ev.clientX, vw - half - 6)) + "px";   // keep fully on-screen
+    tip.style.top = ev.clientY + "px";
+  }
   function hideTip() { tip.style.opacity = "0"; }
   function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
