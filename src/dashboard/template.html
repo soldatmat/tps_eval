@@ -66,7 +66,7 @@
   .legend .med { width: 2px; height: 15px; background: var(--median); border-radius: 1px; }
 
   /* ---------- layout ---------- */
-  .shell { max-width: 1480px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 196px minmax(0,1fr) 232px; gap: 26px; align-items: start; }
+  .shell { max-width: 1520px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 184px minmax(0,1fr) 296px; gap: 26px; align-items: start; }
   nav.side, aside.overview { position: sticky; top: 184px; align-self: start; max-height: calc(100vh - 200px); overflow-y: auto; }
   nav.side .eyebrow, aside.overview .eyebrow { padding: 0 0 10px 2px; }
   nav.side ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -143,21 +143,27 @@
   .ov-swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px currentColor; }
   .ov-pass { font-family: var(--mono); font-size: 11px; color: var(--mist); margin: 4px 0 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); }
   .ov-pass b { color: var(--design); }
-  .ov-cat { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--nature); padding: 11px 0 3px; }
-  .ov-row { display: flex; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--mist);
-    padding: 3px 6px; border-radius: 5px; cursor: pointer; }
-  .ov-row:hover { background: var(--panel); color: var(--bone); }
-  .ov-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ov-row .keep { flex: none; min-width: 46px; text-align: right; color: var(--mist-dim); font-variant-numeric: tabular-nums; }
-  .ov-row .keep b { color: var(--design); font-weight: 600; }
-  .ov-row .cum { flex: none; min-width: 26px; text-align: right; color: var(--mist-dim); font-variant-numeric: tabular-nums; }
-  .ov-row .cum.hit { color: var(--design-out); }
+  /* funnel: NAME | PASS | KEPT(pipe+num) | CUT — rows are flush so the pipe is continuous */
+  .ov-headrow, .ov-row, .ov-catrow, .ov-total { display: grid; grid-template-columns: 1fr 34px 56px 22px; gap: 6px; line-height: 21px; }
+  .ov-headrow { padding: 7px 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); line-height: 1.3; }
+  .ov-headrow .pass, .ov-headrow .kept, .ov-headrow .cut { text-align: right; }
+  .ov-row { padding: 0 6px; font-family: var(--mono); font-size: 11px; color: var(--mist); cursor: pointer; }
+  .ov-row:hover { background: rgba(255,255,255,0.03); }
+  .ov-catrow { padding: 0 6px; }
+  .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ov-row.thr .name { color: var(--design); }
-  .ov-headrow { display: flex; gap: 8px; padding: 6px 6px 2px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); }
-  .ov-headrow .name { flex: 1; } .ov-headrow .keep { flex: none; min-width: 46px; text-align: right; } .ov-headrow .cum { flex: none; min-width: 26px; text-align: right; }
-  .ov-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 12px; padding: 9px 11px;
-    border: 1px solid var(--line-2); border-radius: 8px; background: var(--ink-2); font-family: var(--mono); font-size: 11.5px; color: var(--mist); }
-  .ov-total b { color: var(--design); font-weight: 700; }
+  .ov-row .pass, .ov-row .cut { text-align: right; color: var(--mist-dim); font-variant-numeric: tabular-nums; }
+  .ov-row .pass b { color: var(--design); font-weight: 600; }
+  .ov-row .cut.hit { color: var(--design-out); font-weight: 600; }
+  .ov-kept { position: relative; text-align: right; font-variant-numeric: tabular-nums; }
+  .ov-kept .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    background: var(--design-soft); border-left: 1px solid #f0a83a77; border-right: 1px solid #f0a83a77; box-sizing: border-box; }
+  .ov-kept .num { position: relative; z-index: 1; color: var(--mist-dim); text-shadow: 0 0 3px var(--ink), 0 0 2px var(--ink); }
+  .ov-kept .num b { color: var(--design); font-weight: 600; }
+  .ov-total { margin-top: 0; padding: 0 6px; border-top: 1px solid var(--line-2); line-height: 30px; }
+  .ov-total .name { color: var(--bone); font-weight: 600; }
+  .ov-total .ov-kept .num b { font-weight: 700; }
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
 
   /* tooltip */
@@ -666,10 +672,12 @@
     });
     if (!rows.length) { ov.append(el("div", "ov-hint", "No numeric design values for the current source.")); return; }
 
-    // yellow = designs in this metric's band (standalone); amber = cumulative removed
-    // applying every filter top→bottom (a design key is "setIndex:rowIndex").
+    // For each row compute: PASS = in this metric's band alone (inb/evaluable);
+    // KEPT = cumulative survivors applying every filter top→bottom; CUT = removed at THIS
+    // step only (survivors_before − survivors_after). Design key = "setIndex:rowIndex".
     const total = SETS.reduce((a, s) => a + s.n, 0);
     const unionFailed = new Set();
+    let prevCum = 0;
     rows.forEach((r) => {
       const eff = effBand(r.mname, r.cname, r.col);
       let evaluable = 0, inb = 0;
@@ -679,31 +687,57 @@
           const v = vals[ri];
           if (v == null || !isFinite(v)) continue;
           evaluable++;
-          if (v < eff.min || v > eff.max) unionFailed.add(si + ":" + ri); else inb++;
+          const out = v < eff.min || v > eff.max;
+          if (!out) inb++;
+          // PASS counts the natural-band (p1/p99) fit; the cumulative funnel only applies
+          // the thresholds you've actually SET, so the default view keeps everything.
+          if (out && eff.custom) unionFailed.add(si + ":" + ri);
         }
       });
-      r.inb = inb; r.evaluable = evaluable; r.custom = eff.custom; r.cum = unionFailed.size;
+      r.inb = inb; r.evaluable = evaluable; r.custom = eff.custom;
+      r.survBefore = total - prevCum;
+      r.cum = unionFailed.size;
+      r.survivors = total - r.cum;
+      r.stepCut = r.cum - prevCum;        // designs cut at THIS step only
+      prevCum = r.cum;
     });
     const keptTotal = total - unionFailed.size;
 
-    const hd = el("div", "ov-headrow"); hd.append(el("span", "name"));
-    hd.append(el("span", "keep", "kept")); hd.append(el("span", "cum", "cut↓")); ov.append(hd);
+    // the narrowing pipe cell (yellow, width ∝ survivors / total) + survivor number
+    const pipeCell = (surv, label) => {
+      const cell = el("div", "ov-kept");
+      const pipe = el("span", "pipe"); pipe.style.width = (total ? Math.max(100 * surv / total, 0) : 0) + "%";
+      cell.append(pipe);
+      if (label != null) { const num = el("span", "num"); num.innerHTML = label; cell.append(num); }
+      return cell;
+    };
 
+    const hd = el("div", "ov-headrow"); hd.append(el("span", "name"));
+    hd.append(el("span", "pass", "pass")); hd.append(el("span", "kept", "kept")); hd.append(el("span", "cut", "cut")); ov.append(hd);
+
+    const funnel = el("div", "ov-funnel");
     let lastCat = null;
     rows.forEach((r) => {
-      if (r.cat !== lastCat) { ov.append(el("div", "ov-cat", r.cat)); lastCat = r.cat; }
+      if (r.cat !== lastCat) {   // category header — pipe continues at the entering survivor count
+        const ch = el("div", "ov-catrow"); ch.append(el("span", "name", r.cat));
+        ch.append(el("span")); ch.append(pipeCell(r.survBefore, null)); ch.append(el("span"));
+        funnel.append(ch); lastCat = r.cat;
+      }
       const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
-      row.title = `${r.mname} · ${r.cname} — ${r.inb}/${r.evaluable} within ${r.custom ? "the set range" : "p1–p99"} (alone); `
-        + `${r.cum} removed cumulatively by filters down to here`;
+      row.title = `${r.mname} · ${r.cname} — PASS ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
+        + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
       row.append(el("span", "name", r.cname));
-      const keep = el("span", "keep"); keep.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(keep);
-      row.append(el("span", "cum" + (r.cum > 0 ? " hit" : ""), `${r.cum}`));
+      const pass = el("span", "pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
+      row.append(pipeCell(r.survivors, `<b>${r.survivors}</b>/${total}`));
+      row.append(el("span", "cut" + (r.stepCut > 0 ? " hit" : ""), `${r.stepCut}`));
       row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
-      ov.append(row);
+      funnel.append(row);
     });
+    ov.append(funnel);
 
-    const tot = el("div", "ov-total"); tot.append(el("span", null, "designs kept"));
-    const v = el("span"); v.innerHTML = `<b>${keptTotal}</b>/${total}`; tot.append(v); ov.append(tot);
+    const tot = el("div", "ov-total"); tot.append(el("span", "name", "designs kept"));
+    tot.append(el("span")); tot.append(pipeCell(keptTotal, `<b>${keptTotal}</b>/${total}`)); tot.append(el("span"));
+    ov.append(tot);
   }
 
   // re-apply thresholds without rebuilding the DOM (keeps input focus)

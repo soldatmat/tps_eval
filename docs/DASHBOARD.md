@@ -62,10 +62,16 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
 - **Manual thresholds**: every numeric column has `min`/`max` inputs (placeholder = the
   p1/p99 default). Set either to override the band used for the in/out colouring; a dashed
   amber guide marks a custom bound.
-- **Filter overview** (right panel): per-metric counts of how many designs fall outside
-  each column's active threshold (custom or p1–p99), ordered by category like the main
-  view; click a row to jump to it. When any custom threshold is set it also shows
-  *N / M designs pass all set thresholds*.
+- **Filter overview** (right panel) — a filtering funnel, ordered by category like the
+  main view (click a row to jump to it). Three columns per metric:
+  - **PASS** — designs inside that metric's band alone (custom threshold if set, else
+    p1–p99); matches the in/out dot colouring.
+  - **KEPT** — cumulative survivors applying your **set thresholds** top→bottom, with a
+    yellow pipe that narrows as designs are filtered out (it only narrows at metrics you've
+    actually thresholded; with no thresholds set, everything is kept).
+  - **CUT** — designs removed at *that step only* (so once the pipe is empty, rows below
+    show 0).
+  A *designs kept N/M* total sits at the bottom of the pipe.
 
 ## Overlaying a real design batch
 
