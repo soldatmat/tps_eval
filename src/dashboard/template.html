@@ -66,7 +66,7 @@
   .legend .med { width: 2px; height: 15px; background: var(--median); border-radius: 1px; }
 
   /* ---------- layout ---------- */
-  .shell { max-width: 1520px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 184px minmax(0,1fr) 296px; gap: 26px; align-items: start; }
+  .shell { max-width: 1540px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 184px minmax(0,1fr) 340px; gap: 26px; align-items: start; }
   nav.side, aside.overview { position: sticky; top: 184px; align-self: start; max-height: calc(100vh - 200px); overflow-y: auto; }
   nav.side .eyebrow, aside.overview .eyebrow { padding: 0 0 10px 2px; }
   nav.side ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -90,7 +90,7 @@
   .grip { color: var(--mist-dim); cursor: grab; font-size: 12px; line-height: 1; user-select: none; padding-right: 4px; }
   .grip:active { cursor: grabbing; }
   .ov-row .rgrip, .ov-headrow .rgrip, .ov-catrow .rgrip, .ov-arrow-row .rgrip, .ov-total .rgrip { width: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mist-dim); font-size: 8px; line-height: 1; }
-  .ov-row .rgrip { cursor: grab; } .ov-row .rgrip:active { cursor: grabbing; }
+  .ov-row .rgrip { cursor: grab; margin-left: 12px; } .ov-row .rgrip:active { cursor: grabbing; }   /* indent grip + name together under the category */
   .ov-catrow .rgrip { cursor: grab; color: var(--nature); } .ov-catrow .rgrip:active { cursor: grabbing; }
   .metric.dragging, .ov-row.dragging, .ov-catrow.dragging { opacity: 0.45; }
   .metric.drop-target { box-shadow: 0 -2px 0 0 var(--design); }
@@ -172,7 +172,6 @@
   .ov-row:hover { background: rgba(255,255,255,0.03); }
   .ov-headrow .name, .ov-row .name, .ov-catrow .name, .ov-arrow-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
   .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
-  .ov-row .name { padding-left: 12px; }   /* indent metric rows so category headers stand out */
   .ov-row.thr .name { color: var(--design); }
   .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
   .ovc-pass { width: 38px; justify-content: flex-end; }
@@ -180,8 +179,8 @@
   .ovc-cut { width: 24px; justify-content: center; }
   .ovc-pass b, .ovc-kept b { color: var(--design); font-weight: 600; }
   .ovc-cut.hit { color: var(--design-out); font-weight: 600; }
-  .ov-grp { display: flex; align-items: stretch; margin-left: 12px; }   /* the KEPT·pipe·CUT cluster, set off from BAND */
-  .ovc-pipe { width: 24px; margin: 0 9px; position: relative; }
+  .ov-grp { display: flex; align-items: stretch; margin-left: 8px; }   /* the KEPT·pipe·CUT cluster, set off from BAND */
+  .ovc-pipe { width: 24px; margin: 0 6px; position: relative; }
   .ovc-pipe .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
     background: var(--design-soft); border-left: 1px solid #f0a83a88; border-right: 1px solid #f0a83a88; box-sizing: border-box; }
   /* arrow from the pipe tip down into the kept box (sits in the pipe column) */
