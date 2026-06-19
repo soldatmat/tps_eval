@@ -62,8 +62,13 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
 - **Manual thresholds**: every numeric column has `min`/`max` inputs (placeholder = the
   p1/p99 default). Set either to override the band used for the in/out colouring; a dashed
   amber guide marks a custom bound.
-- **Filter overview** (right panel) — a filtering funnel, ordered by category like the
-  main view (click a row to jump to it). Three columns per metric:
+- **Hide / reorder**: each metric in the left column has an eye toggle to hide it (from
+  both the main view and the pipeline); **hide no-data** bulk-hides metrics with no design
+  values, **show all** restores. Drag a card by its grip to reorder the **main** view, and
+  drag a row by its grip to reorder the **filter pipeline** (which changes the order filters
+  are applied in — see below). The two orders are independent.
+- **Filter pipeline** (right panel) — a filtering funnel, drag-reorderable (click a row to
+  jump to its metric). Three columns per metric:
   - **PASS** — designs inside that metric's band alone (custom threshold if set, else
     p1–p99); matches the in/out dot colouring.
   - **KEPT** — cumulative survivors applying each metric's band top→bottom (custom

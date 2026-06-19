@@ -71,11 +71,29 @@
   nav.side .eyebrow, aside.overview .eyebrow { padding: 0 0 10px 2px; }
   nav.side ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
   nav.side .navcat { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--nature); padding: 9px 0 4px 2px; }
-  nav.side a { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 12px;
-    color: var(--mist); text-decoration: none; padding: 5px 9px; border-radius: 6px; transition: background .12s, color .12s; }
-  nav.side a:hover { background: var(--panel); color: var(--bone); }
-  nav.side a .ct { color: var(--mist-dim); font-size: 10.5px; }
-  nav.side a.empty { opacity: 0.32; }
+  nav.side .nav-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .navbtn { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em; color: var(--mist); background: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  .navbtn:hover { color: var(--bone); border-color: var(--line-2); }
+  .navitem { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+  .navitem:hover { background: var(--panel); }
+  .navitem a { flex: 1; min-width: 0; display: flex; align-items: center; font-family: var(--mono); font-size: 12px; color: var(--mist);
+    text-decoration: none; padding: 5px 4px 5px 9px; overflow: hidden; }
+  .navitem a .nlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .navitem:hover a { color: var(--bone); }
+  .navitem.empty { opacity: 0.32; }
+  .navitem.hidden a .nlabel { opacity: 0.5; text-decoration: line-through; }
+  .eye { background: none; border: 0; color: var(--mist-dim); cursor: pointer; padding: 4px 7px; display: flex; align-items: center; border-radius: 5px; flex: none; }
+  .eye:hover { color: var(--bone); }
+  .navitem.hidden .eye { color: var(--design); }
+  /* drag-to-reorder */
+  .grip { color: var(--mist-dim); cursor: grab; font-size: 12px; line-height: 1; user-select: none; padding-right: 4px; }
+  .grip:active { cursor: grabbing; }
+  .ov-row .rgrip, .ov-headrow .rgrip, .ov-catrow .rgrip, .ov-arrow-row .rgrip, .ov-total .rgrip { width: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mist-dim); font-size: 8px; line-height: 1; }
+  .ov-row .rgrip { cursor: grab; } .ov-row .rgrip:active { cursor: grabbing; }
+  .metric.dragging, .ov-row.dragging { opacity: 0.45; }
+  .metric.drop-target { box-shadow: 0 -2px 0 0 var(--design); }
+  .ov-row.drop-target { box-shadow: inset 0 2px 0 0 var(--design); }
 
   main { min-width: 0; }
   .src-note { font-family: var(--mono); font-size: 11.5px; color: var(--mist); margin: -2px 0 16px; }
@@ -223,7 +241,7 @@
 <div class="shell">
   <nav class="side"><div class="eyebrow">Metrics</div><div id="nav"></div></nav>
   <main><div class="src-note" id="src-note"></div><div id="cards"></div></main>
-  <aside class="overview"><div class="eyebrow">Filtered out</div><div id="overview"></div></aside>
+  <aside class="overview"><div class="eyebrow">Filter pipeline</div><div id="overview"></div></aside>
 </div>
 
 <div id="tip" role="tooltip"></div>
@@ -252,6 +270,9 @@
     designs: SETS.length > 0,                       // on by default if any set loaded
     thresholds: {},                                 // "metric::col" -> {min,max}
     setColors: {},                                  // set index -> hex override
+    hidden: new Set(),                              // hidden metric names
+    mainOrder: null,                                // custom metric order for the main view
+    filterOrder: null,                              // custom colKey order for the pipeline
   };
 
   const $ = (s, r) => (r || document).querySelector(s);
@@ -260,6 +281,56 @@
   const svgEl = (t, a) => { const e = document.createElementNS(SVGNS, t); if (a) for (const k in a) e.setAttribute(k, a[k]); return e; };
   const colKey = (m, c) => m + "::" + c;
   const catOf = (m) => CAT_OF[m] || "Other";
+
+  // ---------- ordering + visibility ----------
+  function defaultMetricOrder() {                    // category-grouped metric names
+    const out = []; groupedMetricsAll().forEach(([, names]) => names.forEach((m) => out.push(m))); return out;
+  }
+  function defaultFilterKeys() {                     // numeric columns that have design data, in default order, minus hidden
+    const metrics = metricsOf(state.source), out = [];
+    defaultMetricOrder().forEach((m) => {
+      if (state.hidden.has(m)) return;
+      Object.entries(metrics[m].columns).forEach(([c, col]) => {
+        if (col.kind === "categorical") return;
+        if (!SETS.some((ds) => ds.values[c])) return;
+        out.push(colKey(m, c));
+      });
+    });
+    return out;
+  }
+  function applyOrder(stored, defaults) {            // defaults reordered by `stored`; new items appended
+    if (!stored) return defaults.slice();
+    const present = new Set(defaults), seen = new Set(), out = [];
+    stored.forEach((k) => { if (present.has(k) && !seen.has(k)) { out.push(k); seen.add(k); } });
+    defaults.forEach((k) => { if (!seen.has(k)) out.push(k); });
+    return out;
+  }
+  function hasData(mname) {                          // metric has design values in some column
+    const cols = metricsOf(state.source)[mname].columns;
+    return Object.keys(cols).some((c) => SETS.some((ds) => ds.values[c]));
+  }
+  function reorderArr(arr, fromId, toId) {           // move fromId to just before toId
+    const a = arr.slice(); const fi = a.indexOf(fromId); if (fi < 0) return a; a.splice(fi, 1);
+    let ti = a.indexOf(toId); if (ti < 0) ti = a.length; a.splice(ti, 0, fromId); return a;
+  }
+
+  // ---------- drag-to-reorder (HTML5 DnD, via a grip handle) ----------
+  let dragId = null, dragKind = null;
+  function makeDraggable(handle, item, id, kind, onDrop) {
+    handle.setAttribute("draggable", "true");
+    handle.addEventListener("click", (e) => e.stopPropagation());
+    handle.addEventListener("dragstart", (e) => { dragId = id; dragKind = kind; e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", id); } catch (_) {} item.classList.add("dragging"); });
+    handle.addEventListener("dragend", () => { dragId = dragKind = null; item.classList.remove("dragging");
+      document.querySelectorAll(".drop-target").forEach((e) => e.classList.remove("drop-target")); });
+    item.addEventListener("dragover", (e) => { if (dragKind !== kind || dragId === id) return; e.preventDefault(); item.classList.add("drop-target"); });
+    item.addEventListener("dragleave", () => item.classList.remove("drop-target"));
+    item.addEventListener("drop", (e) => { item.classList.remove("drop-target");
+      if (dragKind !== kind || dragId == null || dragId === id) return; e.preventDefault(); onDrop(dragId, id); });
+  }
+  function onMainDrop(from, to) { state.mainOrder = reorderArr(applyOrder(state.mainOrder, defaultMetricOrder()), from, to); renderCards(); }
+  function onFilterDrop(from, to) { state.filterOrder = reorderArr(applyOrder(state.filterOrder, defaultFilterKeys()), from, to); renderOverview(); }
+  const GRIP = "⠿";
 
   function fmt(v) {
     if (v == null || !isFinite(v)) return "–";
@@ -581,6 +652,8 @@
   function metricCard(mname, m, idx) {
     const box = el("div", "metric"); box.id = "m-" + mname; box.style.animationDelay = Math.min(idx * 35, 320) + "ms";
     const head = el("div", "head");
+    const grip = el("span", "grip", GRIP); grip.title = "drag to reorder"; head.append(grip);
+    makeDraggable(grip, box, mname, "metric", onMainDrop);
     const nm = el("div", "mname"); nm.append(document.createTextNode(mname)); head.append(nm);
     const info = INFO[mname];
     if (info && info.explanation) {
@@ -598,40 +671,59 @@
   }
 
   // ---------- main + nav ----------
-  function groupedMetrics() {
-    const metrics = metricsOf(state.source);
-    const names = Object.keys(metrics).filter((m) => matchesQuery(m, metrics[m].columns));
-    const groups = new Map(CAT_ORDER.map((c) => [c, []]));
-    names.forEach((m) => { const c = catOf(m); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(m); });
-    return Array.from(groups.entries()).filter(([, ms]) => ms.length);
-  }
   function renderCards() {
     drawers = []; chipUpdaters = []; threshInputs = {};
     const cards = $("#cards"); cards.innerHTML = "";
-    const grouped = groupedMetrics();
-    if (!grouped.length) { cards.append(el("div", "empty-state", `no metric or column matches “${state.query}”.`)); return; }
-    let idx = 0;
-    grouped.forEach(([cat, names]) => {
-      const div = el("div", "cat-divider"); div.append(el("span", "ctitle", cat)); div.append(el("span", "rule"));
-      div.append(el("span", "cn", names.length + (names.length === 1 ? " metric" : " metrics"))); cards.append(div);
-      const metrics = metricsOf(state.source);
-      names.forEach((mname) => { cards.append(metricCard(mname, metrics[mname], idx++)); });
+    const metrics = metricsOf(state.source);
+    const order = applyOrder(state.mainOrder, defaultMetricOrder())
+      .filter((m) => !state.hidden.has(m) && matchesQuery(m, metrics[m].columns));
+    if (!order.length) {
+      cards.append(el("div", "empty-state", state.query ? `no metric or column matches “${state.query}”.` : "all metrics hidden — use “show all” in the left column."));
+      return;
+    }
+    let idx = 0, lastCat = null;
+    order.forEach((mname) => {                       // category dividers re-derived from the (possibly custom) order
+      const cat = catOf(mname);
+      if (cat !== lastCat) { const div = el("div", "cat-divider"); div.append(el("span", "ctitle", cat)); div.append(el("span", "rule")); cards.append(div); lastCat = cat; }
+      cards.append(metricCard(mname, metrics[mname], idx++));
     });
     requestAnimationFrame(() => { animate = true; drawers.forEach((f) => f()); animate = false; });
+  }
+  function eyeSVG(hidden) {
+    return hidden
+      ? '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 8s2.2-3.6 5.5-3.6S13.5 8 13.5 8"/><line x1="3" y1="13" x2="13" y2="3"/></svg>'
+      : '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8s2.4-4 6-4 6 4 6 4-2.4 4-6 4-6-4-6-4z"/><circle cx="8" cy="8" r="1.7"/></svg>';
   }
   function buildNav() {
     const nav = $("#nav"); nav.innerHTML = "";
     const metrics = metricsOf(state.source);
+    // bulk hide controls
+    const ctrls = el("div", "nav-controls");
+    if (SETS.length && Object.keys(metrics).some((m) => !state.hidden.has(m) && !hasData(m))) {
+      const b = el("button", "navbtn", "hide no-data"); b.title = "hide metrics with no design data in the loaded batch";
+      b.onclick = () => { Object.keys(metrics).forEach((m) => { if (!hasData(m)) state.hidden.add(m); }); renderAll(); };
+      ctrls.append(b);
+    }
+    if (state.hidden.size) {
+      const s = el("button", "navbtn", `show all (${state.hidden.size})`);
+      s.onclick = () => { state.hidden.clear(); renderAll(); }; ctrls.append(s);
+    }
+    if (ctrls.childNodes.length) nav.append(ctrls);
+
     groupedMetricsAll().forEach(([cat, names]) => {
       if (!names.length) return;
       nav.append(el("div", "navcat", cat));
       const ul = el("ul");
       names.forEach((mname) => {
+        const hidden = state.hidden.has(mname);
         const matched = matchesQuery(mname, metrics[mname].columns);
-        const a = el("a", matched ? "" : "empty"); a.href = "#m-" + mname;
-        a.append(el("span", null, mname)); a.append(el("span", "ct", String(Object.keys(metrics[mname].columns).length)));
-        a.onclick = (e) => { const t = document.getElementById("m-" + mname); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); } };
-        ul.append(a);
+        const li = el("li", "navitem" + (hidden ? " hidden" : "") + (matched ? "" : " empty"));
+        const a = el("a"); a.href = "#m-" + mname; a.append(el("span", "nlabel", mname));
+        a.onclick = (e) => { if (hidden) { e.preventDefault(); return; } const t = document.getElementById("m-" + mname); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); } };
+        li.append(a);
+        const eye = el("button", "eye"); eye.innerHTML = eyeSVG(hidden); eye.title = hidden ? "show metric" : "hide metric";
+        eye.onclick = (e) => { e.stopPropagation(); e.preventDefault(); if (hidden) state.hidden.delete(mname); else state.hidden.add(mname); renderAll(); };
+        li.append(eye); ul.append(li);
       });
       nav.append(ul);
     });
@@ -666,19 +758,14 @@
     });
     ov.append(setsBox);
 
-    // collect the numeric columns that have design values, ordered by category -> metric
+    // filter rows in pipeline order (drag-reorderable); funnel applies them in this order
     const metrics = metricsOf(state.source);
-    const rows = [];  // {cat, mname, cname, col}
-    groupedMetricsAll().forEach(([cat, names]) => {
-      names.forEach((mname) => {
-        Object.entries(metrics[mname].columns).forEach(([cname, col]) => {
-          if (col.kind === "categorical") return;
-          if (!SETS.some((ds) => ds.values[cname])) return;   // no design values for this column
-          rows.push({ cat, mname, cname, col });
-        });
-      });
-    });
-    if (!rows.length) { ov.append(el("div", "ov-hint", "No numeric design values for the current source.")); return; }
+    const rows = applyOrder(state.filterOrder, defaultFilterKeys()).map((k) => {
+      const i = k.indexOf("::"); const mname = k.slice(0, i), cname = k.slice(i + 2);
+      const mm = metrics[mname]; const col = mm && mm.columns[cname];
+      return col ? { cat: catOf(mname), mname, cname, col, key: k } : null;
+    }).filter(Boolean);
+    if (!rows.length) { ov.append(el("div", "ov-hint", "No numeric design values for the current source (or all hidden).")); return; }
 
     // For each row compute: PASS = in this metric's band alone (inb/evaluable);
     // KEPT = cumulative survivors applying every filter top→bottom; CUT = removed at THIS
@@ -718,7 +805,7 @@
       return g;
     };
 
-    const hd = el("div", "ov-headrow"); hd.append(el("span", "name"));
+    const hd = el("div", "ov-headrow"); hd.append(el("span", "rgrip")); hd.append(el("span", "name"));
     hd.append(el("span", "ovc-pass", "band"));
     const hg = el("div", "ov-grp"); hg.append(el("span", "ovc-kept", "kept")); hg.append(el("span", "ovc-pipe")); hg.append(el("span", "ovc-cut", "cut"));
     hd.append(hg); ov.append(hd);
@@ -727,31 +814,33 @@
     let lastCat = null;
     rows.forEach((r) => {
       if (r.cat !== lastCat) {   // category header — pipe continues at the entering survivor count
-        const ch = el("div", "ov-catrow"); ch.append(el("span", "name", r.cat));
+        const ch = el("div", "ov-catrow"); ch.append(el("span", "rgrip")); ch.append(el("span", "name", r.cat));
         ch.append(el("span", "ovc-pass")); ch.append(grp(null, r.survBefore, null, false));
         funnel.append(ch); lastCat = r.cat;
       }
       const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
       row.title = `${r.mname} · ${r.cname} — BAND ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
         + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
+      const rgrip = el("span", "rgrip", GRIP); rgrip.title = "drag to reorder filter"; row.append(rgrip);
       row.append(el("span", "name", r.cname));
       const pass = el("span", "ovc-pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
       row.append(grp(`<b>${r.survivors}</b>/${total}`, r.survivors, `${r.stepCut}`, r.stepCut > 0));
       row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      makeDraggable(rgrip, row, r.key, "filter", onFilterDrop);
       funnel.append(row);
     });
     ov.append(funnel);
 
     // arrow from the pipe tip down into the kept box, placed in the pipe column
     const arr = el("div", "ov-arrow-row");
-    arr.append(el("span", "name")); arr.append(el("span", "ovc-pass"));
+    arr.append(el("span", "rgrip")); arr.append(el("span", "name")); arr.append(el("span", "ovc-pass"));
     const ag = el("div", "ov-grp"); ag.append(el("span", "ovc-kept"));
     const ap = el("span", "ovc-pipe"); const aw = el("div", "ov-arrow");
     aw.append(el("span", "stem")); aw.append(el("span", "head")); ap.append(aw); ag.append(ap);
     ag.append(el("span", "ovc-cut")); arr.append(ag); ov.append(arr);
 
     // kept total — number sits in the pipe column (centred under the pipe)
-    const tot = el("div", "ov-total"); tot.append(el("span", "name", "designs kept"));
+    const tot = el("div", "ov-total"); tot.append(el("span", "rgrip")); tot.append(el("span", "name", "designs kept"));
     tot.append(el("span", "ovc-pass"));
     const tg = el("div", "ov-grp"); tg.append(el("span", "ovc-kept"));
     const tn = el("span", "ovc-pipe ov-total-num"); tn.innerHTML = `<b>${keptTotal}</b>/${total}`;
