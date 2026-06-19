@@ -26,11 +26,12 @@
   header.top { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px);
     background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82));
     border-bottom: 2px solid var(--line-2); box-shadow: 0 10px 26px -12px rgba(0,0,0,0.7); }
-  .top-inner { max-width: 1540px; margin: 0 auto; padding: 16px 26px 0; }
+  .top-inner { max-width: 1540px; margin: 0 auto; padding: 16px 26px 0; position: relative; }
   .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
   .brand h1 { font-size: clamp(24px, 3vw, 38px); font-weight: 760; letter-spacing: -0.022em; margin: 4px 0 2px; line-height: 1.02; }
   .brand h1 { margin-left: 0; }
   .brand h1 .accent { color: var(--design); }
+  .brand h1 .natw { color: var(--nature); }
   .motto { font-family: var(--mono); font-size: 13px; letter-spacing: 0.01em; color: var(--mist); margin: 5px 0 0; }
   .motto .nat { color: var(--nature); font-weight: 600; }
   .motto .ours { color: var(--design); font-weight: 700; }
@@ -40,7 +41,7 @@
   .controls { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-end; padding: 14px 0 12px; }
   .controls .ctl.search { margin-left: auto; }   /* push the search box to the right edge */
   /* header pin/unpin toggle (top-right corner) */
-  .hdr-lock { position: absolute; top: 10px; right: 14px; z-index: 31; display: flex; align-items: center; justify-content: center;
+  .hdr-lock { position: absolute; top: 12px; right: 26px; z-index: 31; display: flex; align-items: center; justify-content: center;
     background: var(--ink-2); border: 1px solid var(--line); border-radius: 7px; color: var(--mist); cursor: pointer; padding: 5px 7px; }
   .hdr-lock:hover { color: var(--bone); border-color: var(--line-2); }
   .hdr-lock[aria-pressed="false"] { color: var(--design); border-color: var(--design); }
@@ -233,12 +234,12 @@
 </style>
 
 <header class="top">
-  <button class="hdr-lock" id="hdr-lock" aria-pressed="true"></button>
   <div class="top-inner">
+    <button class="hdr-lock" id="hdr-lock" aria-pressed="true"></button>
     <div class="titlerow">
       <div class="brand">
         <div class="eyebrow">in&nbsp;silico reference envelope for protein design</div>
-        <h1>Unnatural <span class="accent">selection</span></h1>
+        <h1><span class="accent">Un</span><span class="natw">natural</span> selection</h1>
         <div class="motto"><span class="nat">Nature</span> had its turn. Now it's <span class="ours">ours</span>.</div>
       </div>
       <div class="ident" id="ident"></div>
