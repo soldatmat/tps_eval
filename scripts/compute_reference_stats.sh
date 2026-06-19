@@ -17,16 +17,23 @@
 # ---------------------------------------------------------------------------
 # WHICH METRICS GET A NATURAL BAND (and why)
 # ---------------------------------------------------------------------------
-# INCLUDED — intrinsic properties, where a "natural TPS distribution" is
-# meaningful:
-#   sequence : motif_pair_distance, esm_pseudo_perplexity
+# DEFAULT = run/band ALL intrinsic metrics (a "natural TPS distribution" is
+# meaningful), NOT a curated subset:
+#   sequence : motif_pair_distance, esm_pseudo_perplexity, motif_search,
+#              soluprot, enzyme_explorer_sequence_only
 #   structure: plddt, motif_structural_distance, active_site_geometry,
 #              aggregation, domain_composition, proteinmpnn_score,
-#              radius_of_gyration
-# EXCLUDED — inherently COMPARATIVE ("similarity to a reference set"), so a
+#              radius_of_gyration, aromatic_lining, diphosphate_sensor,
+#              pocket_descriptors, ion_site_check
+#   PAE (needs --pae_dir): global_confidence, interdomain_pae
+#   holo-only (separate build): substrate_positioning (all-NaN on apo)
+# The aggregator (aggregate_reference_stats.py) bands EVERY metric CSV it finds,
+# so a newly-added tool's CSV is picked up with no edit here.
+# EXCLUDED — inherently COMPARATIVE ("similarity to a SEPARATE reference set"), so a
 # natural band is not meaningful (the reference set IS the natural set):
-#   max_sequence_identity, min_embedding_distance, structural_identity,
-#   swissprot_search, foldseek_swissprot_search
+#   max_sequence_identity, local_sequence_search, min_embedding_distance,
+#   structural_identity, domain_structural_identity, swissprot_search,
+#   foldseek_swissprot_search, knn_label_transfer, sdr_divergence, substrate_class
 # (self_consistency / scRMSD is a design-faithfulness metric, also excluded.)
 #
 # ---------------------------------------------------------------------------
@@ -36,9 +43,11 @@
 #       --fasta_path data/train/TPS_sequences.fasta \
 #       --ref_dir /home/soldat/documents/databases/marts_db_reference_stats \
 #       [--structs_dir <dir_of_MARTS-DB_structures>] \
+#       [--pae_dir <dir_of_saved_PAE_npz>] \
 #       [--sequence_only] [--aggregate_only]
 #
 # * --fasta_path   MARTS-DB known-TPS FASTA (the marts_E* records).
+# * --pae_dir      Dir of saved PAE npz (enables global_confidence + interdomain_pae).
 # * --ref_dir      Reference OUTPUT dir on the cluster, OUTSIDE the repo. The
 #                  metric CSVs are collected here; the aggregator reads them.
 # * --structs_dir  Dir of MARTS-DB structures (.pdb/.cif or an af_output tree).
@@ -57,6 +66,7 @@ set -euo pipefail
 CLUSTER=""
 FASTA_PATH=""
 STRUCTS_DIR=""
+PAE_DIR=""
 REF_DIR=""
 SEQUENCE_ONLY="false"
 AGGREGATE_ONLY="false"
@@ -66,6 +76,7 @@ while [[ $# -gt 0 ]]; do
         --cluster)       CLUSTER="$2"; shift 2 ;;
         --fasta_path)    FASTA_PATH="$2"; shift 2 ;;
         --structs_dir)   STRUCTS_DIR="$2"; shift 2 ;;
+        --pae_dir)       PAE_DIR="$2"; shift 2 ;;
         --ref_dir)       REF_DIR="$2"; shift 2 ;;
         --sequence_only) SEQUENCE_ONLY="true"; shift ;;
         --aggregate_only) AGGREGATE_ONLY="true"; shift ;;
@@ -121,8 +132,14 @@ submit() { # submit <job_name> <job_args...> ; echoes the job id
 declare -a METRIC_JOB_IDS=()
 
 echo "=== SEQUENCE metrics (MARTS-DB reference) ==="
+# All INTRINSIC sequence metrics (a "natural TPS" distribution is meaningful). The
+# comparative ones (max_sequence_identity, local_sequence_search, min_embedding_distance,
+# swissprot_search) are intentionally NOT run/banded -- see the header.
 METRIC_JOB_IDS+=("$(submit motif_pair_distance --fasta_path "$REF_FASTA")")
 METRIC_JOB_IDS+=("$(submit esm_pseudo_perplexity --fasta_path "$REF_FASTA")")
+METRIC_JOB_IDS+=("$(submit motif_search --fasta_path "$REF_FASTA")")
+METRIC_JOB_IDS+=("$(submit soluprot --fasta_path "$REF_FASTA")")
+METRIC_JOB_IDS+=("$(submit enzyme_explorer_sequence_only --fasta_path "$REF_FASTA")")
 
 # ---------------------------------------------------------------------------
 # STRUCTURE metrics — only if a MARTS-DB structures dir was supplied.
@@ -145,13 +162,27 @@ if [[ "$SEQUENCE_ONLY" != "true" && -n "$STRUCTS_DIR" ]]; then
         --save_path "$REF_DIR/${base}_domain_composition.csv")")
     METRIC_JOB_IDS+=("$(submit proteinmpnn_score --structs_dir "$STRUCTS_DIR" \
         --save_path "$REF_DIR/${base}_proteinmpnn_score.csv")")
-    # radius_of_gyration is concurrently being added — submit if its job script
-    # exists; the aggregator picks up the CSV automatically if produced.
-    if [[ -f "$SCRIPT_DIR/$CLUSTER/jobs/radius_of_gyration.sh" ]]; then
-        METRIC_JOB_IDS+=("$(submit radius_of_gyration --structs_dir "$STRUCTS_DIR" \
-            --save_path "$REF_DIR/${base}_radius_of_gyration.csv")")
+    METRIC_JOB_IDS+=("$(submit radius_of_gyration --structs_dir "$STRUCTS_DIR" \
+        --save_path "$REF_DIR/${base}_radius_of_gyration.csv")")
+    METRIC_JOB_IDS+=("$(submit aromatic_lining --structs_dir "$STRUCTS_DIR" \
+        --save_path "$REF_DIR/${base}_aromatic_lining.csv")")
+    METRIC_JOB_IDS+=("$(submit diphosphate_sensor --structs_dir "$STRUCTS_DIR" \
+        --save_path "$REF_DIR/${base}_diphosphate_sensor.csv")")
+    METRIC_JOB_IDS+=("$(submit pocket_descriptors --structs_dir "$STRUCTS_DIR" \
+        --save_path "$REF_DIR/${base}_pocket_descriptors.csv")")
+    # ion_site_check carries signal only on holo folds (modelled ions); on apo
+    # structures it reports n_ions_modelled=0 -- harmless to band. substrate_positioning
+    # is holo-ONLY (all-NaN on apo), so it is left to the holo (AF3-cofold / Boltz2) build.
+    METRIC_JOB_IDS+=("$(submit ion_site_check --structs_dir "$STRUCTS_DIR" \
+        --save_path "$REF_DIR/${base}_ion_site_check.csv")")
+    # PAE-derived fold confidence: only if a saved-PAE dir is supplied.
+    if [[ -n "$PAE_DIR" ]]; then
+        METRIC_JOB_IDS+=("$(submit global_confidence --structs_dir "$STRUCTS_DIR" \
+            --pae_dir "$PAE_DIR" --save_path "$REF_DIR/${base}_global_confidence.csv")")
+        METRIC_JOB_IDS+=("$(submit interdomain_pae --structs_dir "$STRUCTS_DIR" \
+            --pae_dir "$PAE_DIR" --save_path "$REF_DIR/${base}_interdomain_pae.csv")")
     else
-        echo "[skip] radius_of_gyration job script not present on $CLUSTER yet."
+        echo "[note] global_confidence + interdomain_pae skipped (no --pae_dir)."
     fi
 else
     echo "=== STRUCTURE metrics SKIPPED (no --structs_dir) ==="

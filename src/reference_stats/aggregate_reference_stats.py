@@ -67,7 +67,7 @@ import glob
 import json
 import math
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -98,14 +98,19 @@ _DROP_COLUMNS = {
     "sequence",
 }
 
-# Map metric-name -> CSV filename suffix. The MARTS-DB reference CSVs are named
+# Canonical metric-name -> CSV filename suffix, used only for PRETTY NAMING of the
+# known metrics. Discovery itself is generic (see discover_csvs): every ``*.csv``
+# keyed by ID in the input dir is banded EXCEPT labeling files and the inherently
+# comparative metrics below. The MARTS-DB reference CSVs are named
 # ``<input>_<suffix>.csv`` by the tools (fasta-keyed for the sequence branch,
-# structs-dir-keyed for the structure branch). We discover by suffix so the
-# input dir can mix sequence- and structure-metric outputs.
+# structs-dir-keyed for the structure branch).
 METRIC_SUFFIXES: Dict[str, str] = {
     # sequence branch (intrinsic properties)
     "motif_pair_distance": "motif_pair_distance",
     "esm_pseudo_perplexity": "esm_pseudo_perplexity",
+    "motif_search": "motifs",
+    "soluprot": "soluprot",
+    "enzyme_explorer_sequence_only": "enzyme_explorer_sequence_only",
     # structure branch (intrinsic properties; computed only if structures exist)
     "plddt": "plddt",
     "motif_structural_distance": "motif_structural_distance",
@@ -128,6 +133,30 @@ METRIC_SUFFIXES: Dict[str, str] = {
     # e.g. AF3 co-fold or Boltz2 holo; apo folds yield all-NaN, not-applicable)
     "substrate_positioning": "substrate_positioning",
 }
+
+# Inherently COMPARATIVE metrics: each measures similarity to a SEPARATE reference
+# set (a train set, the known-TPS set, or Swiss-Prot), or is a leave-one-out
+# prediction/transfer. A "natural band" is ill-defined for them on the reference set
+# itself (the reference set IS the natural set), so they are excluded from banding
+# even if a CSV is present. Matched as a metric name OR a trailing ``_<suffix>``.
+_COMPARATIVE_SUFFIXES = {
+    "max_sequence_identity", "max_sequence_identity_self",
+    "local_sequence_search", "local_sequence_search_self",
+    "embedding_esm1b", "embedding_esm1b_min_embedding_distance",
+    "embedding_esm1b_min_embedding_distance_self",
+    "min_embedding_distance", "min_embedding_distance_self",
+    "swissprot_search", "foldseek_swissprot_search",
+    "structural_identity", "domain_structural_identity",
+    "knn_label_transfer", "sdr_divergence", "substrate_class",
+    "self_consistency",
+}
+
+# Input-name prefixes the tools prepend; stripped to name an UNKNOWN (newly-added)
+# metric's CSV when it isn't in METRIC_SUFFIXES, so new tools band with no code change.
+_KNOWN_PREFIXES = (
+    "structs_esmfold_", "structs_af3_", "structs_boltz2_holo_", "structs_boltz2_",
+    "structs_", "TPS_sequences_",
+)
 
 
 def _numeric_stats(series: pd.Series) -> Dict[str, Optional[float]]:
@@ -257,24 +286,46 @@ def aggregate_csv(
     }
 
 
-def discover_csvs(input_dir: str) -> Dict[str, str]:
-    """Map metric-name -> CSV path for every known metric present in input_dir.
+def _metric_from_filename(base: str) -> Tuple[str, bool]:
+    """Derive (metric_name, is_comparative) from a CSV basename.
 
-    Matches ``*_<suffix>.csv`` (the tools' ``<input>_<suffix>.csv`` naming). If
-    several files match a suffix, the lexicographically last is used and a note
-    is printed. Unknown ``*.csv`` files in the dir are ignored.
+    Prefers a canonical name from METRIC_SUFFIXES; flags comparative metrics; and
+    for an unknown (newly-added) metric strips a known input prefix so it still
+    bands without a code change here.
+    """
+    stem = base[:-len(".csv")] if base.endswith(".csv") else base
+    for metric, suffix in sorted(METRIC_SUFFIXES.items(), key=lambda kv: len(kv[1]), reverse=True):
+        if stem == suffix or stem.endswith("_" + suffix):
+            return metric, False
+    for suffix in sorted(_COMPARATIVE_SUFFIXES, key=len, reverse=True):
+        if stem == suffix or stem.endswith("_" + suffix):
+            return suffix, True
+    for prefix in _KNOWN_PREFIXES:
+        if stem.startswith(prefix):
+            return stem[len(prefix):], False
+    return stem, False
+
+
+def discover_csvs(input_dir: str) -> Dict[str, str]:
+    """Map metric-name -> CSV path for EVERY metric CSV present in input_dir.
+
+    Generic: bands every ``*.csv`` keyed by ID, so a newly-added metric is picked up
+    with no code change here. Skips labeling files (``*_labels.csv``) and the
+    inherently comparative metrics (``_COMPARATIVE_SUFFIXES``). If several CSVs map to
+    one metric, the lexicographically last is used and a note is printed.
     """
     found: Dict[str, str] = {}
-    for metric, suffix in METRIC_SUFFIXES.items():
-        matches = sorted(glob.glob(os.path.join(input_dir, f"*_{suffix}.csv")))
-        # exact "<suffix>.csv" (no leading underscore) also accepted
-        matches += sorted(glob.glob(os.path.join(input_dir, f"{suffix}.csv")))
-        matches = sorted(set(matches))
-        if not matches:
+    for path in sorted(glob.glob(os.path.join(input_dir, "*.csv"))):
+        base = os.path.basename(path)
+        if base.endswith("_labels.csv"):
+            continue  # labeling files are consumed as by_<labeling> strata, not banded
+        metric, is_comparative = _metric_from_filename(base)
+        if is_comparative:
+            print(f"[skip] {base}: '{metric}' is comparative (similarity to a reference set) -> no natural band")
             continue
-        if len(matches) > 1:
-            print(f"[warn] {metric}: multiple CSVs match, using last: {matches}")
-        found[metric] = matches[-1]
+        if metric in found:
+            print(f"[warn] {metric}: multiple CSVs match, using last: {found[metric]} -> {path}")
+        found[metric] = path
     return found
 
 
