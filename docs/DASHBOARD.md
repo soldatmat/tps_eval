@@ -66,12 +66,13 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
   main view (click a row to jump to it). Three columns per metric:
   - **PASS** — designs inside that metric's band alone (custom threshold if set, else
     p1–p99); matches the in/out dot colouring.
-  - **KEPT** — cumulative survivors applying your **set thresholds** top→bottom, with a
-    yellow pipe that narrows as designs are filtered out (it only narrows at metrics you've
-    actually thresholded; with no thresholds set, everything is kept).
+  - **KEPT** — cumulative survivors applying each metric's band top→bottom (custom
+    threshold if set, else p1–p99), with a yellow pipe (its own column between the KEPT and
+    CUT numbers) that narrows as designs are filtered out; set/drag a threshold and the
+    whole funnel updates live.
   - **CUT** — designs removed at *that step only* (so once the pipe is empty, rows below
     show 0).
-  A *designs kept N/M* total sits at the bottom of the pipe.
+  A boxed *designs kept N/M* total sits at the bottom.
 
 ## Overlaying a real design batch
 

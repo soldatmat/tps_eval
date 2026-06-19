@@ -143,27 +143,25 @@
   .ov-swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px currentColor; }
   .ov-pass { font-family: var(--mono); font-size: 11px; color: var(--mist); margin: 4px 0 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); }
   .ov-pass b { color: var(--design); }
-  /* funnel: NAME | PASS | KEPT(pipe+num) | CUT — rows are flush so the pipe is continuous */
-  .ov-headrow, .ov-row, .ov-catrow, .ov-total { display: grid; grid-template-columns: 1fr 34px 56px 22px; gap: 6px; line-height: 21px; }
-  .ov-headrow { padding: 7px 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); line-height: 1.3; }
-  .ov-headrow .pass, .ov-headrow .kept, .ov-headrow .cut { text-align: right; }
-  .ov-row { padding: 0 6px; font-family: var(--mono); font-size: 11px; color: var(--mist); cursor: pointer; }
+  /* funnel: NAME | PASS · [ KEPT | pipe | CUT ] — flush rows so the pipe is continuous */
+  .ov-headrow, .ov-row, .ov-catrow { display: flex; align-items: stretch; height: 21px; padding: 0 6px; }
+  .ov-headrow { height: auto; padding: 7px 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); }
+  .ov-row { font-family: var(--mono); font-size: 11px; color: var(--mist); cursor: pointer; }
   .ov-row:hover { background: rgba(255,255,255,0.03); }
-  .ov-catrow { padding: 0 6px; }
-  .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ov-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-headrow .name, .ov-row .name, .ov-catrow .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
+  .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
   .ov-row.thr .name { color: var(--design); }
-  .ov-row .pass, .ov-row .cut { text-align: right; color: var(--mist-dim); font-variant-numeric: tabular-nums; }
-  .ov-row .pass b { color: var(--design); font-weight: 600; }
-  .ov-row .cut.hit { color: var(--design-out); font-weight: 600; }
-  .ov-kept { position: relative; text-align: right; font-variant-numeric: tabular-nums; }
-  .ov-kept .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
-    background: var(--design-soft); border-left: 1px solid #f0a83a77; border-right: 1px solid #f0a83a77; box-sizing: border-box; }
-  .ov-kept .num { position: relative; z-index: 1; color: var(--mist-dim); text-shadow: 0 0 3px var(--ink), 0 0 2px var(--ink); }
-  .ov-kept .num b { color: var(--design); font-weight: 600; }
-  .ov-total { margin-top: 0; padding: 0 6px; border-top: 1px solid var(--line-2); line-height: 30px; }
-  .ov-total .name { color: var(--bone); font-weight: 600; }
-  .ov-total .ov-kept .num b { font-weight: 700; }
+  .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; justify-content: flex-end; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
+  .ovc-pass { width: 38px; } .ovc-kept { width: 44px; } .ovc-cut { width: 22px; }
+  .ovc-pass b, .ovc-kept b { color: var(--design); font-weight: 600; }
+  .ovc-cut.hit { color: var(--design-out); font-weight: 600; }
+  .ov-grp { display: flex; align-items: stretch; margin-left: 12px; }   /* the KEPT·pipe·CUT cluster, set off from PASS */
+  .ovc-pipe { width: 24px; margin: 0 6px; position: relative; }
+  .ovc-pipe .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    background: var(--design-soft); border-left: 1px solid #f0a83a88; border-right: 1px solid #f0a83a88; box-sizing: border-box; }
+  .ov-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; padding: 9px 11px;
+    border: 1px solid var(--line-2); border-radius: 8px; background: var(--ink-2); font-family: var(--mono); font-size: 11.5px; color: var(--mist); }
+  .ov-total b { color: var(--design); font-weight: 700; }
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
 
   /* tooltip */
@@ -688,10 +686,7 @@
           if (v == null || !isFinite(v)) continue;
           evaluable++;
           const out = v < eff.min || v > eff.max;
-          if (!out) inb++;
-          // PASS counts the natural-band (p1/p99) fit; the cumulative funnel only applies
-          // the thresholds you've actually SET, so the default view keeps everything.
-          if (out && eff.custom) unionFailed.add(si + ":" + ri);
+          if (out) unionFailed.add(si + ":" + ri); else inb++;   // funnel applies the band (p1/p99 or custom)
         }
       });
       r.inb = inb; r.evaluable = evaluable; r.custom = eff.custom;
@@ -703,41 +698,42 @@
     });
     const keptTotal = total - unionFailed.size;
 
-    // the narrowing pipe cell (yellow, width ∝ survivors / total) + survivor number
-    const pipeCell = (surv, label) => {
-      const cell = el("div", "ov-kept");
-      const pipe = el("span", "pipe"); pipe.style.width = (total ? Math.max(100 * surv / total, 0) : 0) + "%";
-      cell.append(pipe);
-      if (label != null) { const num = el("span", "num"); num.innerHTML = label; cell.append(num); }
-      return cell;
+    // the KEPT·pipe·CUT cluster: kept number, the narrowing pipe (∝ survivors/total), cut number
+    const grp = (keptHTML, surv, cutText, cutHit) => {
+      const g = el("div", "ov-grp");
+      const k = el("span", "ovc-kept"); if (keptHTML != null) k.innerHTML = keptHTML; g.append(k);
+      const pc = el("span", "ovc-pipe"); const pp = el("span", "pipe");
+      pp.style.width = (total ? Math.max(100 * surv / total, 0) : 0) + "%"; pc.append(pp); g.append(pc);
+      const c = el("span", "ovc-cut" + (cutHit ? " hit" : "")); if (cutText != null) c.textContent = cutText; g.append(c);
+      return g;
     };
 
     const hd = el("div", "ov-headrow"); hd.append(el("span", "name"));
-    hd.append(el("span", "pass", "pass")); hd.append(el("span", "kept", "kept")); hd.append(el("span", "cut", "cut")); ov.append(hd);
+    hd.append(el("span", "ovc-pass", "pass"));
+    const hg = el("div", "ov-grp"); hg.append(el("span", "ovc-kept", "kept")); hg.append(el("span", "ovc-pipe")); hg.append(el("span", "ovc-cut", "cut"));
+    hd.append(hg); ov.append(hd);
 
     const funnel = el("div", "ov-funnel");
     let lastCat = null;
     rows.forEach((r) => {
       if (r.cat !== lastCat) {   // category header — pipe continues at the entering survivor count
         const ch = el("div", "ov-catrow"); ch.append(el("span", "name", r.cat));
-        ch.append(el("span")); ch.append(pipeCell(r.survBefore, null)); ch.append(el("span"));
+        ch.append(el("span", "ovc-pass")); ch.append(grp(null, r.survBefore, null, false));
         funnel.append(ch); lastCat = r.cat;
       }
       const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
       row.title = `${r.mname} · ${r.cname} — PASS ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
         + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
       row.append(el("span", "name", r.cname));
-      const pass = el("span", "pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
-      row.append(pipeCell(r.survivors, `<b>${r.survivors}</b>/${total}`));
-      row.append(el("span", "cut" + (r.stepCut > 0 ? " hit" : ""), `${r.stepCut}`));
+      const pass = el("span", "ovc-pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
+      row.append(grp(`<b>${r.survivors}</b>/${total}`, r.survivors, `${r.stepCut}`, r.stepCut > 0));
       row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
       funnel.append(row);
     });
     ov.append(funnel);
 
-    const tot = el("div", "ov-total"); tot.append(el("span", "name", "designs kept"));
-    tot.append(el("span")); tot.append(pipeCell(keptTotal, `<b>${keptTotal}</b>/${total}`)); tot.append(el("span"));
-    ov.append(tot);
+    const tot = el("div", "ov-total"); tot.append(el("span", null, "designs kept"));
+    const v = el("span"); v.innerHTML = `<b>${keptTotal}</b>/${total}`; tot.append(v); ov.append(tot);
   }
 
   // re-apply thresholds without rebuilding the DOM (keeps input focus)
