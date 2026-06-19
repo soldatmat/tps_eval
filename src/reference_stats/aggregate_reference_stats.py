@@ -87,6 +87,12 @@ _PERCENTILES = {
 # exact column name. ``ID`` is handled separately (always the key).
 _DROP_COLUMNS = {
     "ID",
+    # row-index / leftover id-alias columns (after _normalize_id_column picks the
+    # canonical ID, any other identifier column is a per-design annotation, not a band)
+    "runtime_id",
+    "fa_id",
+    "id",
+    "reference_id",
     # motif_pair_distance helper columns (matched substrings + raw start indices)
     "ddxxd_motif",
     "ddxxd_start",
@@ -256,6 +262,27 @@ def _column_stats(
     return overall
 
 
+# Column names that identify the row's protein, in priority order. The first one
+# present becomes the canonical ``ID`` (tools vary: ``ID`` / lowercase ``id`` from EE
+# seq-only / ``fa_id`` from SoluProt). Lets the labeling join + per-design drop work
+# regardless of which a tool emitted.
+_ID_ALIASES = ("ID", "id", "Id", "fa_id", "reference_id")
+
+
+def _normalize_id_column(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Rename whichever ID-alias column is present to the canonical ``ID``.
+
+    Leaves df unchanged if ``ID`` already exists. Surplus alias columns (and a
+    pure row-index ``runtime_id``) are dropped downstream via ``_DROP_COLUMNS``.
+    """
+    if "ID" in df.columns:
+        return df
+    for alias in _ID_ALIASES:
+        if alias in df.columns:
+            return df.rename(columns={alias: "ID"})
+    return df
+
+
 def aggregate_csv(
     csv_path: str,
     labelings: Optional[Dict[str, Dict[str, str]]] = None,
@@ -268,6 +295,7 @@ def aggregate_csv(
     labeling's ``reference_id``).
     """
     df = pd.read_csv(csv_path)
+    df = _normalize_id_column(df)
     # Build per-labeling label Series aligned to df's rows (by the ID column).
     groupings: Dict[str, pd.Series] = {}
     if labelings and "ID" in df.columns:
