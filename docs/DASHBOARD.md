@@ -62,11 +62,13 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
 - **Manual thresholds**: every numeric column has `min`/`max` inputs (placeholder = the
   p1/p99 default). Set either to override the band used for the in/out colouring; a dashed
   amber guide marks a custom bound.
-- **Hide / reorder**: each metric in the left column has an eye toggle to hide it (from
-  both the main view and the pipeline); **hide no-data** bulk-hides metrics with no design
-  values, **show all** restores. Drag a card by its grip to reorder the **main** view, and
-  drag a row by its grip to reorder the **filter pipeline** (which changes the order filters
-  are applied in — see below). The two orders are independent.
+- **Hide / reorder**: hide a metric via the eye toggle in the left column **or** the eye in
+  a card's top-right corner (it disappears from both the main view and the pipeline);
+  **hide no-data** bulk-hides metrics with no design values, **show all** restores. Drag a
+  card by its grip to reorder the **main** view; drag a pipeline row by its grip to reorder
+  a single filter, or drag a pipeline **category header** to move that whole category block
+  (this changes the order filters are applied in — see below). Main and pipeline orders are
+  independent.
 - **Filter pipeline** (right panel) — a filtering funnel, drag-reorderable (click a row to
   jump to its metric). Three columns per metric:
   - **PASS** — designs inside that metric's band alone (custom threshold if set, else

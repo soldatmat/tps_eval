@@ -91,9 +91,13 @@
   .grip:active { cursor: grabbing; }
   .ov-row .rgrip, .ov-headrow .rgrip, .ov-catrow .rgrip, .ov-arrow-row .rgrip, .ov-total .rgrip { width: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mist-dim); font-size: 8px; line-height: 1; }
   .ov-row .rgrip { cursor: grab; } .ov-row .rgrip:active { cursor: grabbing; }
-  .metric.dragging, .ov-row.dragging { opacity: 0.45; }
+  .ov-catrow .rgrip { cursor: grab; color: var(--nature); } .ov-catrow .rgrip:active { cursor: grabbing; }
+  .metric.dragging, .ov-row.dragging, .ov-catrow.dragging { opacity: 0.45; }
   .metric.drop-target { box-shadow: 0 -2px 0 0 var(--design); }
-  .ov-row.drop-target { box-shadow: inset 0 2px 0 0 var(--design); }
+  .ov-row.drop-target, .ov-catrow.drop-target { box-shadow: inset 0 2px 0 0 var(--design); }
+  .card-hide { margin-left: auto; align-self: center; background: none; border: 0; color: var(--mist-dim);
+    cursor: pointer; padding: 2px 5px; display: flex; align-items: center; border-radius: 5px; }
+  .card-hide:hover { color: var(--bone); }
 
   main { min-width: 0; }
   .src-note { font-family: var(--mono); font-size: 11.5px; color: var(--mist); margin: -2px 0 16px; }
@@ -329,7 +333,26 @@
       if (dragKind !== kind || dragId == null || dragId === id) return; e.preventDefault(); onDrop(dragId, id); });
   }
   function onMainDrop(from, to) { state.mainOrder = reorderArr(applyOrder(state.mainOrder, defaultMetricOrder()), from, to); renderCards(); }
-  function onFilterDrop(from, to) { state.filterOrder = reorderArr(applyOrder(state.filterOrder, defaultFilterKeys()), from, to); renderOverview(); }
+  function onFilterDrop(from, to) {
+    const order = applyOrder(state.filterOrder, defaultFilterKeys());
+    const toKey = to.indexOf("CAT::") === 0 ? to.slice(5) : to;
+    if (from.indexOf("CAT::") === 0) {            // moving a whole category block
+      const firstKey = from.slice(5), start = order.indexOf(firstKey);
+      if (start < 0) return;
+      const cat = catOf(firstKey.split("::")[0]);
+      let end = start;
+      while (end + 1 < order.length && catOf(order[end + 1].split("::")[0]) === cat) end++;
+      const block = order.slice(start, end + 1);
+      if (block.indexOf(toKey) !== -1) return;    // dropped within itself -> no-op
+      const rest = order.filter((k) => block.indexOf(k) === -1);
+      let ti = rest.indexOf(toKey); if (ti < 0) ti = rest.length;
+      rest.splice(ti, 0, ...block);
+      state.filterOrder = rest;
+    } else {
+      state.filterOrder = reorderArr(order, from, toKey);
+    }
+    renderOverview();
+  }
   const GRIP = "⠿";
 
   function fmt(v) {
@@ -665,6 +688,9 @@
       head.append(q);
     }
     head.append(el("div", "mmeta", `${Object.keys(m.columns).length} columns · ${m.design_only ? "design-only (no band)" : "n=" + (m.n_rows || 0).toLocaleString()}`));
+    const hideBtn = el("button", "card-hide"); hideBtn.innerHTML = eyeSVG(false); hideBtn.title = "hide metric";
+    hideBtn.onclick = () => { state.hidden.add(mname); renderAll(); };
+    head.append(hideBtn);
     box.append(head);
     Object.entries(m.columns).forEach(([cname, col]) => renderColumn(box, mname, cname, col));
     return box;
@@ -813,10 +839,13 @@
     const funnel = el("div", "ov-funnel");
     let lastCat = null;
     rows.forEach((r) => {
-      if (r.cat !== lastCat) {   // category header — pipe continues at the entering survivor count
-        const ch = el("div", "ov-catrow"); ch.append(el("span", "rgrip")); ch.append(el("span", "name", r.cat));
+      if (r.cat !== lastCat) {   // category header — draggable (moves the whole category block)
+        const ch = el("div", "ov-catrow");
+        const cg = el("span", "rgrip", GRIP); cg.title = "drag to move the whole category"; ch.append(cg);
+        ch.append(el("span", "name", r.cat));
         ch.append(el("span", "ovc-pass")); ch.append(grp(null, r.survBefore, null, false));
         funnel.append(ch); lastCat = r.cat;
+        makeDraggable(cg, ch, "CAT::" + r.key, "filter", onFilterDrop);
       }
       const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
       row.title = `${r.mname} · ${r.cname} — BAND ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
