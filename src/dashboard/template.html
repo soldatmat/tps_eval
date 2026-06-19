@@ -148,7 +148,7 @@
   .ov-headrow { height: auto; padding: 7px 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); }
   .ov-row { font-family: var(--mono); font-size: 11px; color: var(--mist); cursor: pointer; }
   .ov-row:hover { background: rgba(255,255,255,0.03); }
-  .ov-headrow .name, .ov-row .name, .ov-catrow .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
+  .ov-headrow .name, .ov-row .name, .ov-catrow .name, .ov-arrow-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
   .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
   .ov-row.thr .name { color: var(--design); }
   .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
@@ -161,9 +161,17 @@
   .ovc-pipe { width: 24px; margin: 0 9px; position: relative; }
   .ovc-pipe .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
     background: var(--design-soft); border-left: 1px solid #f0a83a88; border-right: 1px solid #f0a83a88; box-sizing: border-box; }
-  .ov-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; padding: 9px 11px;
+  /* arrow from the pipe tip down into the kept box (sits in the pipe column) */
+  .ov-arrow-row { display: flex; align-items: center; height: 15px; padding: 0 6px; }
+  .ov-arrow-row .ovc-pipe { display: flex; align-items: flex-start; justify-content: center; }
+  .ov-arrow { display: flex; flex-direction: column; align-items: center; }
+  .ov-arrow .stem { width: 1px; height: 8px; background: var(--design); }
+  .ov-arrow .head { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--design); }
+  .ov-total { display: flex; align-items: center; margin-top: 1px; padding: 9px 6px;
     border: 1px solid var(--line-2); border-radius: 8px; background: var(--ink-2); font-family: var(--mono); font-size: 11.5px; color: var(--mist); }
+  .ov-total .name { flex: 1; }
   .ov-total b { color: var(--design); font-weight: 700; }
+  .ov-total-num { display: flex; align-items: center; justify-content: center; overflow: visible; white-space: nowrap; }
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
 
   /* tooltip */
@@ -734,8 +742,20 @@
     });
     ov.append(funnel);
 
-    const tot = el("div", "ov-total"); tot.append(el("span", null, "designs kept"));
-    const v = el("span"); v.innerHTML = `<b>${keptTotal}</b>/${total}`; tot.append(v); ov.append(tot);
+    // arrow from the pipe tip down into the kept box, placed in the pipe column
+    const arr = el("div", "ov-arrow-row");
+    arr.append(el("span", "name")); arr.append(el("span", "ovc-pass"));
+    const ag = el("div", "ov-grp"); ag.append(el("span", "ovc-kept"));
+    const ap = el("span", "ovc-pipe"); const aw = el("div", "ov-arrow");
+    aw.append(el("span", "stem")); aw.append(el("span", "head")); ap.append(aw); ag.append(ap);
+    ag.append(el("span", "ovc-cut")); arr.append(ag); ov.append(arr);
+
+    // kept total — number sits in the pipe column (centred under the pipe)
+    const tot = el("div", "ov-total"); tot.append(el("span", "name", "designs kept"));
+    tot.append(el("span", "ovc-pass"));
+    const tg = el("div", "ov-grp"); tg.append(el("span", "ovc-kept"));
+    const tn = el("span", "ovc-pipe ov-total-num"); tn.innerHTML = `<b>${keptTotal}</b>/${total}`;
+    tg.append(tn); tg.append(el("span", "ovc-cut")); tot.append(tg); ov.append(tot);
   }
 
   // re-apply thresholds without rebuilding the DOM (keeps input focus)
