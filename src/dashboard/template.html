@@ -90,7 +90,8 @@
   .metric .mname { font-family: var(--mono); font-size: 14px; letter-spacing: 0.03em; color: var(--bone); font-weight: 600; }
   .metric .mmeta { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); }
   .qmark { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%;
-    border: 1px solid var(--line-2); color: var(--mist); font-family: var(--mono); font-size: 10px; cursor: help; user-select: none; flex: none; }
+    border: 1px solid var(--line-2); color: var(--mist); font-family: var(--mono); font-size: 9.5px; line-height: 1; cursor: help;
+    user-select: none; flex: none; align-self: center; vertical-align: middle; }
   .qmark:hover { color: var(--bone); border-color: var(--design); }
 
   .col { padding: 13px 18px 15px; border-bottom: 1px solid var(--line); }
@@ -176,7 +177,7 @@
       <div class="brand">
         <div class="eyebrow">in&nbsp;silico reference envelope · protein design</div>
         <h1>The natural <span class="accent">band</span></h1>
-        <div class="motto"><span class="nat">Nature</span> had its turn, now it's <span class="ours">ours</span>.</div>
+        <div class="motto"><span class="nat">Nature</span> drew the band. Now it's <span class="ours">ours</span> to redraw.</div>
       </div>
       <div class="ident" id="ident"></div>
     </div>
@@ -250,9 +251,29 @@
   }
 
   // redraw registry (SVGs are pixel-space; re-measure on resize) + chip updaters
-  let drawers = [], chipUpdaters = [];
+  let drawers = [], chipUpdaters = [], threshInputs = {};
   let animate = false;   // only animate needles on a fresh card render, not on resize/threshold redraws
   let raf = null;
+
+  // ---- draggable threshold lines ----
+  let dragState = null, dragRaf = null;
+  function startDrag(e, key, which, dom, svg) {
+    e.preventDefault(); dragState = { key, which, dom, svg };
+    window.addEventListener("pointermove", onDrag); window.addEventListener("pointerup", endDrag);
+  }
+  function onDrag(e) {
+    if (!dragState) return;
+    const r = dragState.svg.getBoundingClientRect(), PAD = 9, W = r.width;
+    let frac = (e.clientX - r.left - PAD) / (W - 2 * PAD); frac = Math.max(0, Math.min(1, frac));
+    const v = dragState.dom[0] + frac * (dragState.dom[1] - dragState.dom[0]);
+    const t = state.thresholds[dragState.key] || (state.thresholds[dragState.key] = {});
+    t[dragState.which] = v;
+    const inp = (threshInputs[dragState.key] || {})[dragState.which];
+    if (inp) { inp.value = fmt(v); inp.classList.add("set"); }
+    if (dragRaf) cancelAnimationFrame(dragRaf);
+    dragRaf = requestAnimationFrame(() => { chipUpdaters.forEach((f) => f()); drawers.forEach((f) => f()); renderOverview(); });
+  }
+  function endDrag() { dragState = null; window.removeEventListener("pointermove", onDrag); window.removeEventListener("pointerup", endDrag); }
   window.addEventListener("resize", () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(() => drawers.forEach((f) => f())); });
 
   // ---------- design-set helpers ----------
@@ -355,11 +376,7 @@
     if (col.mean != null) { const mx = x(col.mean), r = 3;
       svg.append(svgEl("path", { d: `M${mx} ${cy - r} L${mx + r} ${cy} L${mx} ${cy + r} L${mx - r} ${cy} Z`, fill: "none", stroke: "var(--mist)", "stroke-width": 1, opacity: 0.8 })); }
     if (col.median != null) svg.append(svgEl("line", { x1: x(col.median), y1: cy - hCore / 2 - 3, x2: x(col.median), y2: cy + hCore / 2 + 3, stroke: "var(--median)", "stroke-width": 2, "stroke-linecap": "round" }));
-    // custom-threshold guide lines (dashed amber) when set
     const eff = opts.eff;
-    if (eff && eff.custom) [eff.hasMin ? eff.min : null, eff.hasMax ? eff.max : null].forEach((v) => {
-      if (v != null && isFinite(v)) svg.append(svgEl("line", { x1: x(v), y1: 2, x2: x(v), y2: H - 2, stroke: "var(--design)", "stroke-width": 1, "stroke-dasharray": "2 2", opacity: 0.7 }));
-    });
     // design needles, per set (outline = set colour), fill = in/out of effective band
     if (opts.dsets && opts.dsets.length) {
       const total = opts.dsets.reduce((a, s) => a + s.vals.filter((v) => v != null && isFinite(v)).length, 0);
@@ -374,6 +391,20 @@
         svg.append(c); gi++;
       }));
     }
+    // threshold guides at the effective bounds (default p1/p99) — thin dashed amber,
+    // drawn on top; draggable on the interactive (overall) track.
+    if (eff && opts.key) [["min", eff.min], ["max", eff.max]].forEach(([which, val]) => {
+      if (val == null || !isFinite(val) || val < dom[0] || val > dom[1]) return;
+      const xv = x(val);
+      svg.append(svgEl("line", { x1: xv, y1: 1, x2: xv, y2: H - 1, stroke: "var(--design)", "stroke-width": 1, "stroke-dasharray": "3 2", opacity: 0.85 }));
+      if (opts.interactive) {
+        svg.append(svgEl("rect", { x: xv - 3, y: 0, width: 6, height: 4, rx: 1, fill: "var(--design)" }));  // grip
+        const hit = svgEl("line", { x1: xv, y1: 0, x2: xv, y2: H, stroke: "transparent", "stroke-width": 13 });
+        hit.style.cursor = "ew-resize"; hit.style.touchAction = "none";
+        hit.addEventListener("pointerdown", (e) => startDrag(e, opts.key, which, dom, svg));
+        svg.append(hit);
+      }
+    });
   }
   function drawAxis(svg, dom) {
     const W = svg.clientWidth || svg.parentNode.clientWidth || 600, H = 18, PAD = 9;
@@ -416,8 +447,8 @@
       if (count != null) lab.append(el("span", "ct", count.toLocaleString())); row.append(lab);
       const hold = el("div", "track"); const s = svgEl("svg"); hold.append(s); row.append(hold); colWrap.append(row);
       const big = isOverall && !strata, h = big ? 38 : 30;
-      registerDraw(() => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, eff }));
-      row.addEventListener("mousemove", (e) => showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol), e));
+      registerDraw(() => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, eff, key: colKey(mname, cname), interactive: isOverall }));
+      row.addEventListener("mousemove", (e) => { if (dragState) return; showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol), e); });
       row.addEventListener("mouseleave", hideTip);
     };
     if (strata) {
@@ -466,12 +497,13 @@
   // ---------- column header (range + thresholds + chip) ----------
   function buildThreshold(head, mname, cname, col) {
     const key = colKey(mname, cname);
+    const inputs = {};
     const wrap = el("div", "thresh");
     const mk = (which, ph) => {
       const inp = el("input"); inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = ph;
       inp.setAttribute("aria-label", `${cname} ${which}`);
       const cur = (state.thresholds[key] || {})[which];
-      if (cur != null) { inp.value = cur; inp.classList.add("set"); }
+      if (cur != null) { inp.value = fmt(cur); inp.classList.add("set"); }
       inp.addEventListener("input", () => {
         const raw = inp.value.trim(); const num = raw === "" ? null : parseFloat(raw);
         const t = state.thresholds[key] || (state.thresholds[key] = {});
@@ -479,10 +511,12 @@
         inp.classList.toggle("set", t[which] != null);
         applyFilters();
       });
+      inputs[which] = inp;
       return inp;
     };
     wrap.append(el("span", null, "min")); wrap.append(mk("min", col.p1 != null ? fmt(col.p1) : "−∞"));
     wrap.append(el("span", "dash", "–")); wrap.append(mk("max", col.p99 != null ? fmt(col.p99) : "∞")); wrap.append(el("span", null, "max"));
+    threshInputs[key] = inputs;
     head.append(wrap);
   }
   function renderColumn(metricBox, mname, cname, col) {
@@ -508,7 +542,7 @@
         const inb = vals.filter((x) => x >= eff.min && x <= eff.max).length;
         const lab = eff.custom ? "in range" : (col.band_missing ? "loaded" : "in p1–p99");
         chipEl.textContent = `${inb}/${vals.length} ${lab}`;
-        chipEl.classList.toggle("warn", inb < vals.length);
+        chipEl.classList.toggle("warn", inb === 0);   // ember only when nothing is in-band
       };
       chipUpdaters.push(update); update();
     } else if (hasDesign(cname)) {
@@ -550,7 +584,7 @@
     return Array.from(groups.entries()).filter(([, ms]) => ms.length);
   }
   function renderCards() {
-    drawers = []; chipUpdaters = [];
+    drawers = []; chipUpdaters = []; threshInputs = {};
     const cards = $("#cards"); cards.innerHTML = "";
     const grouped = groupedMetrics();
     if (!grouped.length) { cards.append(el("div", "empty-state", `no metric or column matches “${state.query}”.`)); return; }
