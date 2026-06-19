@@ -70,6 +70,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | Tool | Branch | Description | Output |
 |------|--------|-------------|--------|
 | [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
+| [dashboard](docs/DASHBOARD.md) | aggregator | Builds the interactive, self-contained **natural-bands HTML dashboard** with the design batch overlaid on the committed MARTS-DB reference bands (design metrics with no band are still shown). Default last pipeline step; also standalone via `scripts/run_build_dashboard.sh`. Effectively always on unless excluded. | `dashboard/<gen>_dashboard.html` |
 | [plot_domains](docs/TOOLS.md#plot_domains) | visualization | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
 | [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | visualization | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
 | [run_visualization](docs/TOOLS.md#run_visualization) | visualization | Dataset-level class-coloured 2D landscape map of a protein set from any representation (PCA / t-SNE / UMAP / PaCMAP / PCoA; vectors or precomputed distances). Standalone. | PNG figure(s) at `--output` |

@@ -279,6 +279,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "domain_structural_identity": {"default": True, "branch": "structure", "description": "Domain-level structural identity: EE detects each design's TPS domains, then foldseek-aligns them to the known martsDB reference domains (per-domain-type best TM-score/lddt; n_detected_domains)."},
     "substrate_class":      {"default": True,  "branch": "structure", "description": "Substrate-class combiner: fuses the SUBSTRATE k-NN vote (3 spaces) with the pocket-volume size band + EnzymeExplorer per-substrate signal -> predicted substrate (GPP/FPP/GGPP/...) + agreement (needs --train_path + --structs_dir + --known_structs_dir)."},
     "plots":                {"default": True,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless excluded."},
+    "dashboard":            {"default": True,  "branch": "sequence",  "description": "Aggregator: builds the interactive natural-bands HTML dashboard with the design batch overlaid against the committed MARTS-DB reference bands. Design metrics that have no reference band are still shown (design-only). Effectively always on unless excluded."},
 }
 
 
@@ -373,7 +374,8 @@ def resolve_enabled_tools(catalog: Dict[str, dict], args) -> set:
 
     if only:
         enabled = set(only)
-        enabled.add("plots")                        # aggregator stays on unless excluded
+        enabled.add("plots")                        # aggregators stay on unless excluded
+        enabled.add("dashboard")
     else:
         enabled = {k for k, v in catalog.items() if v.get("default", False)}
     enabled |= set(include)
@@ -921,6 +923,30 @@ def build_steps(args, enabled: set) -> List[Step]:
         # Sentinel output that never exists -> plots always (re)runs after the metrics.
         steps.append(Step("plots", "plots.sh", plot_args, os.path.join(plot_dir, ".__never__"),
                           tool="plots", soft_deps=metric_steps))
+
+    # dashboard: like plots, an aggregator that soft-depends on every (enabled) metric.
+    # Builds the self-contained interactive natural-bands HTML with the generated batch
+    # overlaid on the committed MARTS-DB bands; design columns that lack a reference band
+    # are still shown (design-only). Skipped in the mg_ee auto-chain first pass (the
+    # continuation re-run produces the full dashboard).
+    if "dashboard" in enabled and not autochain_ee:
+        metric_steps = [s.name for s in steps if s.tool not in ("plots", "dashboard")]
+        gen_dir = os.path.dirname(os.path.abspath(gen))
+        genbase = os.path.basename(_base(gen))
+        dash_dir = os.path.join(gen_dir, "dashboard")
+        # Sequence CSVs are <gen>_<tool>.csv, structure CSVs are <structs>_<tool>.csv. The
+        # <genbase>_* glob also catches the folded <genbase>_esmfold_structs_* CSVs and
+        # excludes a sibling train_* set; the structs glob covers an externally-supplied
+        # --structs_dir whose base differs from the gen base. build_dashboard.py globs at
+        # run time and tolerates globs that match nothing.
+        design_globs = [os.path.join(gen_dir, genbase + "_*.csv")]
+        if structs:
+            design_globs.append(structs.rstrip(os.sep) + "_*.csv")
+        dash_args = (["--designs"] + design_globs
+                     + ["--output", os.path.join(dash_dir, genbase + "_dashboard.html")])
+        steps.append(Step("dashboard", "dashboard.sh", dash_args,
+                          os.path.join(dash_dir, ".__never__"),
+                          tool="dashboard", soft_deps=metric_steps))
     return steps
 
 
