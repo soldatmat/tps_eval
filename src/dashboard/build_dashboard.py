@@ -121,6 +121,13 @@ _DROP_DESIGN_COLUMNS = {
     "ddxxd_motif", "ddxxd_start", "nse_dte_motif", "nse_dte_start", "best_template",
 }
 
+# A design CSV with more data columns than this is a raw feature matrix (e.g. the
+# 1280-dim ESM embedding `*_embedding_esm1b.csv`), not a per-design metric table.
+# Ingesting one turns every dimension into a design-only metric card, exploding the
+# rendered SVG count (~dims x designs needles) and making the dashboard unusable.
+# Real metric tables are narrow (<= ~15 columns), so skip anything far above that.
+_MAX_DESIGN_COLUMNS_PER_FILE = 64
+
 
 def _compact_numeric(col: dict) -> dict:
     return {k: col[k] for k in NUMERIC_FIELDS if k in col}
@@ -260,6 +267,11 @@ def load_design_batch(
             if id_col is None:
                 continue
             data_cols = [c for c in reader.fieldnames if c not in _DROP_DESIGN_COLUMNS and c != id_col]
+            if len(data_cols) > _MAX_DESIGN_COLUMNS_PER_FILE:
+                print(f"  skipping {os.path.basename(p)}: {len(data_cols)} data columns "
+                      f"(> {_MAX_DESIGN_COLUMNS_PER_FILE}) — looks like a raw feature matrix, "
+                      f"not a metric table")
+                continue
             for c in data_cols:
                 col_tool.setdefault(c, tool)
             for r in reader:
