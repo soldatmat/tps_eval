@@ -7,11 +7,17 @@ of the eval / submit-all pipeline. Runs locally (Python stdlib only, no conda en
 ## Run
 
 ```sh
-scripts/run_build_dashboard.sh [--designs <csv|dir|glob ...>] [--demo] \
-    [--bands <json...>] [--output <out.html>]
-# or directly:
-python3 src/dashboard/build_dashboard.py --demo
+# one design set:
+scripts/run_build_dashboard.sh --designs '[name=]path[,path2,...]' [--bands <json...>] [--output <out.html>]
+# several sets (repeat --designs; each becomes a distinctly-outlined overlay):
+scripts/run_build_dashboard.sh --designs 'rfdiffusion=run1/' --designs 'esm3=run2/metrics.csv'
+# reference-only / demo:
+scripts/run_build_dashboard.sh            # bands only
+python3 src/dashboard/build_dashboard.py --demo   # synthetic overlay
 ```
+
+Each `--designs` value is one set: `[name=]path[,path2,...]`, where each path is a merged
+CSV, a directory, or a glob of the pipeline's `*_<tool>.csv` outputs.
 
 ## Pipeline integration
 
@@ -35,18 +41,31 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
 
 ## What it shows
 
-- **Sources**: ESMFold / AlphaFold3 / Boltz-2 (holo) — the three committed band JSONs in
+- **Sources**: ESMFold / AlphaFold3 / Boltz-2 (holo) — the committed band JSONs in
   `src/reference_stats/marts_db_<source>_metric_stats.json`. Toggle between them.
+- **Categories**: metrics are grouped into *Fold & confidence · Active site · Sequence ·
+  Function · Novelty* (the comparative similarity metrics), in both the left nav and the
+  main view. The grouping lives in `src/dashboard/metric_info.py` (`METRIC_CATEGORY`).
+- **Per-metric "?"**: hover the `?` by a metric name for a one-line explanation; numeric
+  columns show their **mathematical range** (e.g. `range 0–1`) in the header. Both come
+  from `src/dashboard/metric_info.py` (`METRIC_INFO`).
 - **Numeric metrics** render as a layered *natural band*: min–max hairline → p1–p99 →
   p5–p95 → p25–p75 (IQR) core → median tick (+ a mean diamond).
 - **Categorical metrics** render as stacked-proportion bars of the category frequencies.
 - **Stratify by** `substrate` / `first_cyclization` / `domain_architecture` → one small
-  band per stratum, sharing the metric's x-axis (top strata by count; the rest are
-  summarised, never silently dropped).
-- **Design overlay** (when a batch is loaded): each design's raw value drops onto the
-  same axis as an amber needle — coral if it falls outside the natural p1–p99 envelope —
-  plus an "N/M in p5–p95" chip per column. In stratified view the pooled batch rides one
-  "all TPS" row so the per-stratum natural bands stay clean.
+  band per stratum, sharing the metric's x-axis (top strata by count; the rest summarised).
+- **Design overlay** (when ≥1 set loaded): each design's value drops onto the same axis as
+  a needle — amber inside the band, ember outside. With multiple sets the dots carry a
+  per-set **outline colour** (pick from a palette in the right panel; a single set has no
+  outline). In stratified view the pooled batch rides one "all" row so the per-stratum
+  bands stay clean.
+- **Manual thresholds**: every numeric column has `min`/`max` inputs (placeholder = the
+  p1/p99 default). Set either to override the band used for the in/out colouring; a dashed
+  amber guide marks a custom bound.
+- **Filter overview** (right panel): per-metric counts of how many designs fall outside
+  each column's active threshold (custom or p1–p99), ordered by category like the main
+  view; click a row to jump to it. When any custom threshold is set it also shows
+  *N / M designs pass all set thresholds*.
 
 ## Overlaying a real design batch
 

@@ -942,7 +942,8 @@ def build_steps(args, enabled: set) -> List[Step]:
         design_globs = [os.path.join(gen_dir, genbase + "_*.csv")]
         if structs:
             design_globs.append(structs.rstrip(os.sep) + "_*.csv")
-        dash_args = (["--designs"] + design_globs
+        # one design SET, comma-joined (build_dashboard's --designs is repeatable-per-set)
+        dash_args = (["--designs", genbase + "=" + ",".join(design_globs)]
                      + ["--output", os.path.join(dash_dir, genbase + "_dashboard.html")])
         steps.append(Step("dashboard", "dashboard.sh", dash_args,
                           os.path.join(dash_dir, ".__never__"),

@@ -31,6 +31,13 @@ import math
 import os
 from typing import Dict, List, Optional, Tuple
 
+try:
+    from metric_info import METRIC_INFO, METRIC_CATEGORY, CATEGORY_ORDER
+except ImportError:  # when imported as a module rather than run as a script
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from metric_info import METRIC_INFO, METRIC_CATEGORY, CATEGORY_ORDER
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 REFERENCE_STATS_DIR = os.path.join(REPO_ROOT, "src", "reference_stats")
@@ -106,6 +113,13 @@ KNOWN_SUFFIXES = sorted(
 )
 
 _MISSING = ("", "nan", "NA", "NaN", "None", "null")
+
+# Identifier / per-design annotation columns that are never a banded metric (mirrors the
+# aggregator's _DROP_COLUMNS). Dropped from design CSVs before overlay.
+_DROP_DESIGN_COLUMNS = {
+    "ID", "id", "Id", "fa_id", "reference_id", "runtime_id", "sequence",
+    "ddxxd_motif", "ddxxd_start", "nse_dte_motif", "nse_dte_start", "best_template",
+}
 
 
 def _compact_numeric(col: dict) -> dict:
@@ -238,13 +252,18 @@ def load_design_batch(
         tool = _parse_tool_label(p)
         with open(p, newline="") as f:
             reader = csv.DictReader(f)
-            if reader.fieldnames is None or "ID" not in reader.fieldnames:
+            if reader.fieldnames is None:
                 continue
-            data_cols = [c for c in reader.fieldnames if c != "ID"]
+            # the row-id column varies by tool: ID / lowercase id / fa_id (SoluProt)
+            id_col = next((a for a in ("ID", "id", "Id", "fa_id", "reference_id")
+                           if a in reader.fieldnames), None)
+            if id_col is None:
+                continue
+            data_cols = [c for c in reader.fieldnames if c not in _DROP_DESIGN_COLUMNS and c != id_col]
             for c in data_cols:
                 col_tool.setdefault(c, tool)
             for r in reader:
-                rid = r.get("ID")
+                rid = r.get(id_col)
                 if rid is None:
                     continue
                 if rid not in merged:
@@ -338,28 +357,49 @@ def synthetic_design_batch(sources: Dict[str, dict], n: int = 28) -> dict:
     }
 
 
-def _design_only_groups(designs: dict, band_kind: Dict[str, str]) -> List[Tuple[str, dict]]:
-    """Group the design columns that have NO reference band into metric cards.
+def parse_design_specs(values: List[str]) -> List[Tuple[Optional[str], List[str]]]:
+    """Parse ``--designs`` values into (name, [paths]) sets.
 
+    Each value is one design SET: ``[name=]path[,path2,...]``. ``name=`` is optional
+    (the part before the first comma is checked for ``=``); paths are comma-separated
+    and each may be a file, directory, or glob.
+    """
+    specs: List[Tuple[Optional[str], List[str]]] = []
+    for value in values:
+        name: Optional[str] = None
+        head = value.split(",", 1)[0]
+        if "=" in head:
+            name, _, rest = value.partition("=")
+            name = name.strip() or None
+            value = rest
+        entries = [p.strip() for p in value.split(",") if p.strip()]
+        if entries:
+            specs.append((name, entries))
+    return specs
+
+
+def _design_only_groups(union_cols: Dict[str, Tuple[Optional[str], str]],
+                        band_kind: Dict[str, str]) -> List[Tuple[str, dict]]:
+    """Group design columns with NO reference band into metric cards.
+
+    ``union_cols`` maps column -> (tool, kind) unioned across all design sets.
     Returns an ordered list of ``(metric_label, {column: {kind, band_missing}})``.
     """
-    col_tool = designs.get("col_tool", {})
-    col_kind = designs.get("col_kind", {})
     groups: Dict[str, dict] = {}
-    for c in designs["values"]:
+    for c, (tool, kind) in union_cols.items():
         if c in band_kind:
-            continue  # band-backed -> rendered on its band card via the global overlay
-        tool = col_tool.get(c) or "design metrics"
-        groups.setdefault(tool, {})[c] = {
-            "kind": col_kind.get(c, "numeric"),
-            "band_missing": True,
+            continue  # band-backed -> rendered on its band card via the overlay
+        groups.setdefault(tool or "design metrics", {})[c] = {
+            "kind": kind, "band_missing": True,
         }
     ordered = [(m, groups[m]) for m in METRIC_ORDER if m in groups]
     ordered += [(m, groups[m]) for m in sorted(groups) if m not in METRIC_ORDER]
     return ordered
 
 
-def build_data(source_paths: List[str], design_entries: Optional[List[str]], demo: bool) -> dict:
+def build_data(source_paths: List[str],
+               design_specs: Optional[List[Tuple[Optional[str], List[str]]]],
+               demo: bool) -> dict:
     sources: Dict[str, dict] = {}
     for p in source_paths:
         src = load_band_source(p)
@@ -370,27 +410,34 @@ def build_data(source_paths: List[str], design_entries: Optional[List[str]], dem
         (s.get("reference_set") for s in sources.values() if s.get("reference_set")), "marts_db"
     )
 
-    designs = None
-    if design_entries:
-        designs = load_design_batch(design_entries, sources)
+    design_sets: List[dict] = []
+    if design_specs:
+        for name, entries in design_specs:
+            ds = load_design_batch(entries, sources, name=name)
+            if ds:
+                design_sets.append(ds)
     elif demo and sources:
-        designs = synthetic_design_batch(sources)
+        design_sets.append(synthetic_design_batch(sources))
 
     # Append design-only metric cards (columns with no band) to every source so the
     # batch is always inspectable, even where bands are missing.
-    if designs:
+    if design_sets:
         band_kind = _band_column_kinds(sources)
-        only_groups = _design_only_groups(designs, band_kind)
+        union_cols: Dict[str, Tuple[Optional[str], str]] = {}
+        for ds in design_sets:
+            for c in ds["values"]:
+                if c not in union_cols:
+                    union_cols[c] = (ds.get("col_tool", {}).get(c),
+                                     ds.get("col_kind", {}).get(c, "numeric"))
+        only_groups = _design_only_groups(union_cols, band_kind)
         if only_groups:
             if not sources:
                 # No bands at all -> a pseudo "designs" source carrying every column.
                 sources["designs"] = {
-                    "structure_source": "designs",
-                    "label": "designs (no bands)",
-                    "n_rows": designs["n"],
+                    "structure_source": "designs", "label": "designs (no bands)",
+                    "n_rows": sum(d["n"] for d in design_sets),
                     "release": release, "reference_set": reference_set,
-                    "no_bands": True,
-                    "metrics": {},
+                    "no_bands": True, "metrics": {},
                 }
             for src in sources.values():
                 for mlabel, cols in only_groups:
@@ -399,7 +446,6 @@ def build_data(source_paths: List[str], design_entries: Optional[List[str]], dem
                         src["metrics"][mlabel] = {"n_rows": None, "columns": dict(cols),
                                                   "design_only": True}
                     else:
-                        # metric exists in bands but is missing these specific columns
                         for c, spec in cols.items():
                             existing["columns"].setdefault(c, spec)
 
@@ -408,7 +454,10 @@ def build_data(source_paths: List[str], design_entries: Optional[List[str]], dem
         "release": release,
         "labelings": ["substrate", "first_cyclization", "domain_architecture"],
         "sources": sources,
-        "designs": designs,
+        "design_sets": design_sets,
+        "metric_info": METRIC_INFO,
+        "category_order": CATEGORY_ORDER,
+        "metric_category": METRIC_CATEGORY,
     }
 
 
@@ -449,10 +498,12 @@ def main(argv: Optional[List[str]] = None) -> None:
              "Pass an empty set / nonexistent paths to render a design-only view.",
     )
     ap.add_argument(
-        "--designs", nargs="*", default=None,
-        help="Generated-design batch: any mix of merged CSVs, directories, or globs of the "
-             "pipeline's *_<tool>.csv outputs (matched to bands by column name; columns with "
-             "no band are still shown as design-only).",
+        "--designs", action="append", default=None, metavar="[NAME=]PATH[,PATH...]",
+        help="A design SET to overlay. Repeatable — pass --designs once per set to overlay "
+             "several sets (distinguished by dot-outline colour). Each value is "
+             "'[name=]path[,path2,...]' where each path is a merged CSV, a directory, or a "
+             "glob of the pipeline's *_<tool>.csv outputs (matched to bands by column name; "
+             "columns with no band are still shown as design-only).",
     )
     ap.add_argument(
         "--demo", action="store_true",
@@ -467,11 +518,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     source_paths = args.bands if args.bands is not None else default_source_paths()
     source_paths = [p for p in source_paths if os.path.exists(p)]
 
-    design_entries = args.designs if args.designs else None
-    if not source_paths and not design_entries and not args.demo:
+    design_specs = parse_design_specs(args.designs) if args.designs else None
+    if not source_paths and not design_specs and not args.demo:
         ap.error("no band JSONs found and no --designs given; nothing to render.")
 
-    data = build_data(source_paths, design_entries, demo=args.demo)
+    data = build_data(source_paths, design_specs, demo=args.demo)
     if not data["sources"]:
         ap.error("nothing to render: no bands resolved and no design columns found.")
     data = _sanitize_for_json(data)
@@ -483,13 +534,11 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     n_sources = len(data["sources"])
     n_metrics = sum(len(s["metrics"]) for s in data["sources"].values())
-    designs = data.get("designs")
     print(f"wrote {args.output}")
     print(f"  sources: {', '.join(data['sources']) or '(none)'}  ({n_sources} sources, {n_metrics} metric-tables)")
-    if designs:
-        tag = " [synthetic demo]" if designs.get("synthetic") else f" from {designs.get('n_files', 0)} csv(s)"
-        n_only = sum(1 for c in designs["values"] if c not in _band_column_kinds(data["sources"]))
-        print(f"  designs overlaid: {designs['n']} ({designs['name']}){tag}")
+    for ds in data.get("design_sets", []):
+        tag = " [synthetic demo]" if ds.get("synthetic") else f" from {ds.get('n_files', 0)} csv(s)"
+        print(f"  design set '{ds['name']}': {ds['n']} designs{tag}")
     print(f"  size: {os.path.getsize(args.output) / 1e6:.2f} MB")
 
 

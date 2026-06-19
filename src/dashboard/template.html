@@ -1,190 +1,119 @@
-<title>MARTS-DB · natural bands</title>
+<title>The natural band · design reference envelope</title>
 <style>
   :root {
-    /* instrument-panel ink (deep petrol with a teal undertone — the enzyme domain) */
-    --ink: #0c1719;
-    --ink-2: #0f1e21;
-    --panel: #132a2e;
-    --panel-2: #163035;
-    --line: #1f3b40;
-    --line-2: #27474d;
-    /* text */
-    --bone: #e7efed;
-    --mist: #8aa3a3;
-    --mist-dim: #5e7777;
-    /* the natural band: a cool teal ramp, calm + established */
-    --band-core: #2f7f84;   /* IQR */
-    --band-mid: #2a5e63;    /* p5-p95 */
-    --band-out: #1e4448;    /* p1-p99 */
-    --median: #bfeae3;      /* median tick */
-    --whisker: #4d7176;
-    /* designs: warm honey/amber — the substrate, the thing under evaluation */
-    --design: #f0a83a;
-    --design-soft: #f0a83a44;
-    --design-out: #e8633a;  /* outside the natural envelope */
-    --design-out-soft: #e8633a33;
+    --ink: #0c1719; --ink-2: #0f1e21; --panel: #132a2e; --panel-2: #163035;
+    --line: #1f3b40; --line-2: #27474d;
+    --bone: #e7efed; --mist: #8aa3a3; --mist-dim: #5e7777;
+    --band-core: #2f7f84; --band-mid: #2a5e63; --band-out: #1e4448;
+    --median: #bfeae3; --whisker: #4d7176; --nature: #5fb0a6;
+    --design: #f0a83a; --design-soft: #f0a83a44;
+    --design-out: #e8633a; --design-out-soft: #e8633a33;
     --radius: 9px;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
   }
-
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
-    background:
-      radial-gradient(1200px 600px at 78% -8%, #143034 0%, rgba(20,48,52,0) 55%),
-      var(--ink);
-    color: var(--bone);
-    font-family: var(--sans);
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.45;
+    background: radial-gradient(1200px 600px at 78% -8%, #143034 0%, rgba(20,48,52,0) 55%), var(--ink);
+    color: var(--bone); font-family: var(--sans); -webkit-font-smoothing: antialiased; line-height: 1.45;
   }
   a { color: inherit; }
-
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--mist-dim);
-  }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--mist-dim); }
 
   /* ---------- header ---------- */
-  header.top {
-    position: sticky; top: 0; z-index: 30;
-    backdrop-filter: blur(10px);
-    background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82));
-    border-bottom: 1px solid var(--line);
-  }
-  .top-inner {
-    max-width: 1320px; margin: 0 auto; padding: 18px 26px 0;
-  }
+  header.top { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px);
+    background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82)); border-bottom: 1px solid var(--line); }
+  .top-inner { max-width: 1480px; margin: 0 auto; padding: 16px 26px 0; }
   .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-  .brand h1 {
-    font-size: clamp(26px, 3.4vw, 40px);
-    font-weight: 760;
-    letter-spacing: -0.022em;
-    margin: 4px 0 2px;
-    line-height: 1.02;
-  }
+  .brand h1 { font-size: clamp(24px, 3vw, 38px); font-weight: 760; letter-spacing: -0.022em; margin: 4px 0 2px; line-height: 1.02; }
   .brand h1 .accent { color: var(--design); }
-  .ident {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--mist);
-    display: flex; gap: 16px; flex-wrap: wrap; align-items: baseline;
-    margin-top: 2px;
-  }
-  .ident b { color: var(--bone); font-weight: 600; }
-  .ident .dot { color: var(--line-2); }
+  .motto { font-family: var(--mono); font-size: 13px; letter-spacing: 0.01em; color: var(--mist); margin-top: 4px; }
+  .motto .nat { color: var(--nature); font-weight: 600; }
+  .motto .ours { color: var(--design); font-weight: 700; }
+  .ident { font-family: var(--mono); font-size: 12px; color: var(--mist); display: flex; gap: 16px; flex-wrap: wrap; align-items: baseline; margin-top: 2px; }
+  .ident b { color: var(--bone); font-weight: 600; } .ident .dot { color: var(--line-2); }
 
-  /* controls */
-  .controls {
-    display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-end;
-    padding: 16px 0 14px;
-  }
+  .controls { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-end; padding: 14px 0 12px; }
   .ctl { display: flex; flex-direction: column; gap: 6px; }
-  .ctl > .eyebrow { margin-bottom: 1px; }
   .seg { display: inline-flex; background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
-  .seg button {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em;
-    color: var(--mist); background: transparent; border: 0; cursor: pointer;
-    padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
-    white-space: nowrap;
-  }
+  .seg button { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; color: var(--mist); background: transparent; border: 0;
+    cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s; white-space: nowrap; }
   .seg button:hover { color: var(--bone); }
   .seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--bone); box-shadow: inset 0 0 0 1px var(--line-2); }
   .seg button:focus-visible { outline: 2px solid var(--design); outline-offset: 2px; }
-
   .search { position: relative; }
-  .search input {
-    font-family: var(--mono); font-size: 12.5px; color: var(--bone);
-    background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
-    padding: 8px 12px 8px 30px; width: 230px; transition: border-color .15s;
-  }
+  .search input { font-family: var(--mono); font-size: 12.5px; color: var(--bone); background: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px 8px 30px; width: 220px; transition: border-color .15s; }
   .search input::placeholder { color: var(--mist-dim); }
   .search input:focus { outline: none; border-color: var(--line-2); }
   .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mist-dim); }
-
-  .toggle-designs {
-    display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
-    font-family: var(--mono); font-size: 12px; color: var(--mist);
-    background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 13px;
-    transition: border-color .15s, color .15s;
-  }
+  .toggle-designs { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--mist);
+    background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 13px; transition: border-color .15s, color .15s; }
   .toggle-designs:hover { color: var(--bone); }
   .toggle-designs[aria-pressed="true"] { color: var(--bone); border-color: var(--design); }
-  .toggle-designs .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); box-shadow: 0 0 0 0 var(--design); transition: background .15s; }
+  .toggle-designs .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); transition: background .15s; }
   .toggle-designs[aria-pressed="true"] .pip { background: var(--design); box-shadow: 0 0 10px 1px var(--design-soft); }
   .toggle-designs.disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* legend strip */
-  .legend {
-    border-top: 1px solid var(--line);
-    display: flex; gap: 26px; flex-wrap: wrap; align-items: center;
-    padding: 11px 0 13px;
-    font-family: var(--mono); font-size: 11px; color: var(--mist);
-  }
+  .legend { border-top: 1px solid var(--line); display: flex; gap: 24px; flex-wrap: wrap; align-items: center; padding: 10px 0 12px;
+    font-family: var(--mono); font-size: 11px; color: var(--mist); }
   .legend .grp { display: flex; align-items: center; gap: 9px; }
   .legend .anat { display: inline-flex; align-items: center; height: 16px; border-radius: 3px; overflow: hidden; }
-  .legend .swatch { width: 13px; height: 13px; border-radius: 3px; }
-  .legend .needle { width: 9px; height: 9px; border-radius: 50%; background: var(--design); box-shadow: 0 0 8px var(--design-soft); }
-  .legend .needle.out { background: var(--design-out); box-shadow: 0 0 8px var(--design-out-soft); }
+  .legend .needle { width: 9px; height: 9px; border-radius: 50%; background: var(--design); }
+  .legend .needle.out { background: var(--design-out); }
   .legend .med { width: 2px; height: 15px; background: var(--median); border-radius: 1px; }
 
   /* ---------- layout ---------- */
-  .shell { max-width: 1320px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 212px 1fr; gap: 30px; align-items: start; }
-  nav.side { position: sticky; top: 168px; align-self: start; }
-  nav.side .eyebrow { padding: 0 0 10px 2px; }
-  nav.side ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
-  nav.side a {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
-    font-family: var(--mono); font-size: 12px; color: var(--mist);
-    text-decoration: none; padding: 6px 9px; border-radius: 6px; border-left: 2px solid transparent;
-    transition: background .12s, color .12s;
-  }
+  .shell { max-width: 1480px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 196px minmax(0,1fr) 232px; gap: 26px; align-items: start; }
+  nav.side, aside.overview { position: sticky; top: 184px; align-self: start; max-height: calc(100vh - 200px); overflow-y: auto; }
+  nav.side .eyebrow, aside.overview .eyebrow { padding: 0 0 10px 2px; }
+  nav.side ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+  nav.side .navcat { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--nature); padding: 9px 0 4px 2px; }
+  nav.side a { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 12px;
+    color: var(--mist); text-decoration: none; padding: 5px 9px; border-radius: 6px; transition: background .12s, color .12s; }
   nav.side a:hover { background: var(--panel); color: var(--bone); }
   nav.side a .ct { color: var(--mist-dim); font-size: 10.5px; }
   nav.side a.empty { opacity: 0.32; }
 
   main { min-width: 0; }
-  .src-note { font-family: var(--mono); font-size: 11.5px; color: var(--mist); margin: -2px 0 20px; }
+  .src-note { font-family: var(--mono); font-size: 11.5px; color: var(--mist); margin: -2px 0 16px; }
   .src-note b { color: var(--bone); }
+  .cat-divider { display: flex; align-items: center; gap: 12px; margin: 26px 0 12px; }
+  .cat-divider:first-child { margin-top: 4px; }
+  .cat-divider .ctitle { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--nature); font-weight: 600; white-space: nowrap; }
+  .cat-divider .rule { height: 1px; background: var(--line); flex: 1; }
+  .cat-divider .cn { font-family: var(--mono); font-size: 10.5px; color: var(--mist-dim); }
 
-  .metric {
-    background: linear-gradient(180deg, var(--panel), var(--ink-2));
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin-bottom: 16px;
-    overflow: hidden;
-    scroll-margin-top: 178px;
-  }
-  .metric > .head {
-    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
-    padding: 15px 18px 13px;
-    border-bottom: 1px solid var(--line);
-    background: rgba(255,255,255,0.012);
-  }
+  .metric { background: linear-gradient(180deg, var(--panel), var(--ink-2)); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; scroll-margin-top: 196px; }
+  .metric > .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 14px 18px 12px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.012); }
   .metric .mname { font-family: var(--mono); font-size: 14px; letter-spacing: 0.03em; color: var(--bone); font-weight: 600; }
-  .metric .mname .src-tag { color: var(--design); }
   .metric .mmeta { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); }
+  .qmark { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%;
+    border: 1px solid var(--line-2); color: var(--mist); font-family: var(--mono); font-size: 10px; cursor: help; user-select: none; flex: none; }
+  .qmark:hover { color: var(--bone); border-color: var(--design); }
 
-  .col { padding: 14px 18px 16px; border-bottom: 1px solid var(--line); }
+  .col { padding: 13px 18px 15px; border-bottom: 1px solid var(--line); }
   .col:last-child { border-bottom: 0; }
-  .col .colhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+  .col .colhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; flex-wrap: wrap; }
+  .col .cname-wrap { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .col .cname { font-family: var(--mono); font-size: 12.5px; color: var(--bone); letter-spacing: 0.01em; }
-  .col .cname .kind { color: var(--mist-dim); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-left: 8px; }
-  .col .chip {
-    font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px;
-    background: var(--design-soft); color: var(--design); border: 1px solid #f0a83a55; white-space: nowrap;
-  }
+  .col .kind { color: var(--mist-dim); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .col .range { font-family: var(--mono); font-size: 10px; color: var(--mist-dim); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; }
+  .col .range b { color: var(--mist); font-weight: 500; }
+  .colhead .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .col .chip { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--design-soft); color: var(--design); border: 1px solid #f0a83a55; white-space: nowrap; }
   .col .chip.warn { background: var(--design-out-soft); color: var(--design-out); border-color: #e8633a55; }
   .col .chip.ghost { background: transparent; color: var(--mist-dim); border: 1px dashed var(--line-2); }
+  .thresh { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--mist-dim); }
+  .thresh input { font-family: var(--mono); font-size: 11px; color: var(--bone); background: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; width: 58px; text-align: center; }
+  .thresh input:focus { outline: none; border-color: var(--design); }
+  .thresh input.set { border-color: var(--design); color: var(--design); }
+  .thresh .dash { color: var(--mist-dim); }
 
   /* numeric track rows */
-  .axis-row { display: grid; grid-template-columns: var(--labw, 132px) 1fr; align-items: center; margin-bottom: 4px; }
-  .track-row { display: grid; grid-template-columns: var(--labw, 132px) 1fr; align-items: center; min-height: 30px; }
-  .track-row + .track-row { margin-top: 2px; }
+  .axis-row, .track-row { display: grid; grid-template-columns: var(--labw, 124px) 1fr; align-items: center; }
+  .axis-row { margin-bottom: 4px; } .track-row { min-height: 30px; } .track-row + .track-row { margin-top: 2px; }
   .strat-label { font-family: var(--mono); font-size: 11px; color: var(--mist); padding-right: 12px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
   .strat-label .ct { color: var(--mist-dim); font-size: 10px; }
   .strat-label.overall { color: var(--bone); }
@@ -193,30 +122,42 @@
 
   /* categorical bars */
   .catbar-wrap { display: flex; flex-direction: column; gap: 4px; }
-  .catrow { display: grid; grid-template-columns: var(--labw, 132px) 1fr; align-items: center; gap: 0; }
+  .catrow { display: grid; grid-template-columns: var(--labw, 124px) 1fr; align-items: center; }
   .catrow .rl { font-family: var(--mono); font-size: 11px; color: var(--mist); padding-right: 12px; display: flex; justify-content: space-between; gap: 6px; }
   .catrow .rl.designs { color: var(--design); }
   .catbar { display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
   .catbar span { height: 100%; min-width: 0; }
   .catlegend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 9px; font-family: var(--mono); font-size: 10.5px; color: var(--mist); }
-  .catlegend .item { display: flex; align-items: center; gap: 6px; }
-  .catlegend .sw { width: 10px; height: 10px; border-radius: 3px; }
-
+  .catlegend .item { display: flex; align-items: center; gap: 6px; } .catlegend .sw { width: 10px; height: 10px; border-radius: 3px; }
   .empty-state { font-family: var(--mono); font-size: 12px; color: var(--mist-dim); padding: 40px 4px; text-align: center; }
 
+  /* ---------- right overview ---------- */
+  aside.overview .ov-sets { margin-bottom: 18px; }
+  .ov-set { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--bone); padding: 4px 0; flex-wrap: wrap; }
+  .ov-set .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-set .cnt { color: var(--mist-dim); }
+  .ov-swatches { display: flex; gap: 4px; flex-basis: 100%; padding: 2px 0 4px; }
+  .ov-swatches button { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--ink); cursor: pointer; padding: 0; }
+  .ov-swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px currentColor; }
+  .ov-pass { font-family: var(--mono); font-size: 11px; color: var(--mist); margin: 4px 0 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); }
+  .ov-pass b { color: var(--design); }
+  .ov-cat { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--nature); padding: 11px 0 3px; }
+  .ov-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--mist);
+    padding: 3px 6px; border-radius: 5px; cursor: pointer; }
+  .ov-row:hover { background: var(--panel); color: var(--bone); }
+  .ov-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-row .cut { color: var(--mist-dim); flex: none; }
+  .ov-row .cut.hit { color: var(--design-out); }
+  .ov-row.thr .name { color: var(--design); }
+  .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
+
   /* tooltip */
-  #tip {
-    position: fixed; z-index: 60; pointer-events: none; opacity: 0;
-    transform: translate(-50%, -100%) translateY(-10px);
-    background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px;
-    padding: 9px 11px; font-family: var(--mono); font-size: 11px; color: var(--bone);
-    box-shadow: 0 14px 38px rgba(0,0,0,0.55); max-width: 320px; transition: opacity .1s;
-  }
+  #tip { position: fixed; z-index: 60; pointer-events: none; opacity: 0; transform: translate(-50%, -100%) translateY(-10px);
+    background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; font-family: var(--mono);
+    font-size: 11px; color: var(--bone); box-shadow: 0 14px 38px rgba(0,0,0,0.55); max-width: 340px; transition: opacity .1s; line-height: 1.5; }
   #tip .t-title { color: var(--design); margin-bottom: 6px; letter-spacing: 0.02em; }
-  #tip table { border-collapse: collapse; }
-  #tip td { padding: 1px 0; }
-  #tip td.k { color: var(--mist); padding-right: 14px; }
-  #tip td.v { text-align: right; color: var(--bone); }
+  #tip .t-expl { color: var(--bone); white-space: normal; } #tip table { border-collapse: collapse; }
+  #tip td { padding: 1px 0; } #tip td.k { color: var(--mist); padding-right: 14px; } #tip td.v { text-align: right; color: var(--bone); }
   #tip .sep { height: 1px; background: var(--line); margin: 5px 0; }
 
   /* load reveal */
@@ -224,45 +165,28 @@
   @keyframes rise { to { opacity: 1; transform: none; } }
   .needle-anim { animation: drop .55s cubic-bezier(.2,.8,.25,1) backwards; }
   @keyframes drop { from { opacity: 0; transform: translateY(-9px); } to { opacity: 1; transform: none; } }
-
-  @media (prefers-reduced-motion: reduce) {
-    .metric { animation: none; opacity: 1; transform: none; }
-    .needle-anim { animation: none; }
-    .seg button, .toggle-designs, nav.side a { transition: none; }
-  }
-  @media (max-width: 860px) {
-    .shell { grid-template-columns: 1fr; }
-    nav.side { position: static; top: auto; }
-    nav.side ul { flex-direction: row; flex-wrap: wrap; }
-  }
+  @media (prefers-reduced-motion: reduce) { .metric { animation: none; opacity: 1; transform: none; } .needle-anim { animation: none; } }
+  @media (max-width: 1080px) { .shell { grid-template-columns: 1fr; } nav.side, aside.overview { position: static; max-height: none; }
+    nav.side ul { flex-direction: row; flex-wrap: wrap; } }
 </style>
 
 <header class="top">
   <div class="top-inner">
     <div class="titlerow">
       <div class="brand">
-        <div class="eyebrow">in&nbsp;silico reference envelope · terpene synthases</div>
+        <div class="eyebrow">in&nbsp;silico reference envelope · protein design</div>
         <h1>The natural <span class="accent">band</span></h1>
+        <div class="motto"><span class="nat">Nature</span> had its turn, now it's <span class="ours">ours</span>.</div>
       </div>
       <div class="ident" id="ident"></div>
     </div>
     <div class="controls">
-      <div class="ctl">
-        <span class="eyebrow">Structure source</span>
-        <div class="seg" id="seg-source" role="group" aria-label="Structure source"></div>
+      <div class="ctl"><span class="eyebrow">Structure source</span><div class="seg" id="seg-source" role="group" aria-label="Structure source"></div></div>
+      <div class="ctl"><span class="eyebrow">Stratify by</span><div class="seg" id="seg-strat" role="group" aria-label="Stratify by"></div></div>
+      <div class="ctl"><span class="eyebrow">Designs</span>
+        <button class="toggle-designs" id="toggle-designs" aria-pressed="false"><span class="pip"></span><span id="design-label">none loaded</span></button>
       </div>
-      <div class="ctl">
-        <span class="eyebrow">Stratify by</span>
-        <div class="seg" id="seg-strat" role="group" aria-label="Stratify by"></div>
-      </div>
-      <div class="ctl">
-        <span class="eyebrow">Designs</span>
-        <button class="toggle-designs" id="toggle-designs" aria-pressed="false">
-          <span class="pip"></span><span id="design-label">none loaded</span>
-        </button>
-      </div>
-      <div class="ctl search">
-        <span class="eyebrow">Filter</span>
+      <div class="ctl search"><span class="eyebrow">Filter</span>
         <div class="search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
           <input id="search" type="search" placeholder="metric or column…" autocomplete="off" spellcheck="false" aria-label="Filter metrics" />
@@ -274,14 +198,9 @@
 </header>
 
 <div class="shell">
-  <nav class="side">
-    <div class="eyebrow">Metrics</div>
-    <ul id="nav"></ul>
-  </nav>
-  <main>
-    <div class="src-note" id="src-note"></div>
-    <div id="cards"></div>
-  </main>
+  <nav class="side"><div class="eyebrow">Metrics</div><div id="nav"></div></nav>
+  <main><div class="src-note" id="src-note"></div><div id="cards"></div></main>
+  <aside class="overview"><div class="eyebrow">Filtered out</div><div id="overview"></div></aside>
 </div>
 
 <div id="tip" role="tooltip"></div>
@@ -294,25 +213,30 @@
   "use strict";
   const D = window.__DATA__;
   const SOURCE_KEYS = Object.keys(D.sources);
-  const STRATS = [["none", "none"], ["substrate", "substrate"],
-                  ["first_cyclization", "1st cyclization"], ["domain_architecture", "domain arch."]];
-  const MAX_STRATA = 8;       // cap stratum small-multiples; surplus is reported, never hidden silently
-  const MAX_CATS = 8;         // cap categorical categories shown (+ "other")
-  // ramp alternates light/dark so adjacent (count-ordered) categories stay distinct
+  const SETS = D.design_sets || [];
+  const INFO = D.metric_info || {};
+  const CAT_OF = D.metric_category || {};
+  const CAT_ORDER = D.category_order || ["Other"];
+  const STRATS = [["none", "none"], ["substrate", "substrate"], ["first_cyclization", "1st cyclization"], ["domain_architecture", "domain arch."]];
+  const MAX_STRATA = 8, MAX_CATS = 8;
   const CAT_RAMP = ["#7fc6b6", "#26565b", "#4fa39a", "#1f4347", "#9bd7c6", "#33707a", "#163035", "#5fb0a6"];
   const BOOL_COLORS = { "True": "#7fc6b6", "true": "#7fc6b6", "False": "#274b50", "false": "#274b50" };
+  // distinct outline colours for multiple design sets (avoid amber/ember — reserved for fill)
+  const SET_PALETTE = ["#46c9e0", "#e878b4", "#86d46b", "#b18cff", "#5b9bff", "#eef3f1"];
 
   const state = {
-    source: SOURCE_KEYS[0],
-    labeling: "none",
-    query: "",
-    designs: false,
+    source: SOURCE_KEYS[0], labeling: "none", query: "",
+    designs: SETS.length > 0,                       // on by default if any set loaded
+    thresholds: {},                                 // "metric::col" -> {min,max}
+    setColors: {},                                  // set index -> hex override
   };
 
   const $ = (s, r) => (r || document).querySelector(s);
   const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   const SVGNS = "http://www.w3.org/2000/svg";
-  const svgEl = (t, attrs) => { const e = document.createElementNS(SVGNS, t); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const svgEl = (t, a) => { const e = document.createElementNS(SVGNS, t); if (a) for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const colKey = (m, c) => m + "::" + c;
+  const catOf = (m) => CAT_OF[m] || "Other";
 
   function fmt(v) {
     if (v == null || !isFinite(v)) return "–";
@@ -325,470 +249,438 @@
     return v.toPrecision(2);
   }
 
-  // ---- redraw registry: SVGs are drawn in pixel space, so re-measure on resize ----
-  let drawers = [];
-  function registerDraw(fn) { drawers.push(fn); }
+  // redraw registry (SVGs are pixel-space; re-measure on resize) + chip updaters
+  let drawers = [], chipUpdaters = [];
+  let animate = false;   // only animate needles on a fresh card render, not on resize/threshold redraws
   let raf = null;
-  window.addEventListener("resize", () => {
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => drawers.forEach((f) => f()));
-  });
+  window.addEventListener("resize", () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(() => drawers.forEach((f) => f())); });
 
-  // ---------- header bits ----------
-  function renderIdent() {
-    const src = D.sources[state.source];
-    const n = src ? src.n_rows : null;
-    const ident = $("#ident");
-    ident.innerHTML = "";
-    const add = (label, val) => {
-      const b = el("span"); b.append(label + " "); const s = el("b", null, val); b.append(s); ident.append(b);
-    };
-    const unit = src && src.no_bands ? " designs" : " TPS";
-    add("set", (D.reference_set || "marts_db").toUpperCase());
-    ident.append(el("span", "dot", "·"));
-    add("release", D.release || "—");
-    ident.append(el("span", "dot", "·"));
-    add("n", n != null ? n.toLocaleString() + unit : "—");
+  // ---------- design-set helpers ----------
+  const multiSet = () => SETS.length > 1;
+  function setColor(i) { return multiSet() ? (state.setColors[i] || SET_PALETTE[i % SET_PALETTE.length]) : null; }
+  function designSetsFor(cname) {
+    if (!state.designs) return [];
+    const out = [];
+    SETS.forEach((ds, i) => { const v = ds.values[cname]; if (v) out.push({ vals: v, color: setColor(i), name: ds.name }); });
+    return out;
+  }
+  function hasDesign(cname) { return state.designs && SETS.some((ds) => ds.values[cname]); }
+  function allDesignVals(cname) { return designSetsFor(cname).reduce((a, s) => a.concat(s.vals), []); }
+
+  // effective filter band for a numeric column: custom threshold if set, else p1–p99.
+  function effBand(mname, cname, col) {
+    const t = state.thresholds[colKey(mname, cname)] || {};
+    const hasMin = t.min != null && isFinite(t.min), hasMax = t.max != null && isFinite(t.max);
+    const min = hasMin ? t.min : (col.p1 != null ? col.p1 : -Infinity);
+    const max = hasMax ? t.max : (col.p99 != null ? col.p99 : Infinity);
+    return { min, max, custom: hasMin || hasMax, hasMin, hasMax };
   }
 
+  // ---------- header ----------
+  function renderIdent() {
+    const src = D.sources[state.source]; const n = src ? src.n_rows : null;
+    const ident = $("#ident"); ident.innerHTML = "";
+    const add = (label, val) => { const b = el("span"); b.append(label + " "); b.append(el("b", null, val)); ident.append(b); };
+    const unit = src && src.no_bands ? " designs" : " proteins";
+    add("set", (D.reference_set || "marts_db").toUpperCase());
+    ident.append(el("span", "dot", "·")); add("release", D.release || "—");
+    ident.append(el("span", "dot", "·")); add("n", n != null ? n.toLocaleString() + unit : "—");
+  }
   function renderLegend() {
-    const L = $("#legend");
-    L.innerHTML = "";
-    const anat = el("div", "grp");
-    anat.append(el("span", null, "natural band"));
+    const L = $("#legend"); L.innerHTML = "";
+    const anat = el("div", "grp"); anat.append(el("span", null, "natural band"));
     const bar = el("span", "anat");
     [["var(--band-out)", 24], ["var(--band-mid)", 18], ["var(--band-core)", 14], ["var(--band-mid)", 18], ["var(--band-out)", 24]]
       .forEach(([c, w]) => { const s = el("span"); s.style.cssText = `width:${w}px;height:13px;background:${c}`; bar.append(s); });
-    anat.append(bar);
-    anat.append(el("span", null, "p1·p5·p25–p75·p95·p99"));
+    anat.append(bar); anat.append(el("span", null, "p1·p5·p25–p75·p95·p99"));
     const med = el("div", "grp"); med.append(el("span", "med")); med.append(el("span", null, "median"));
-    const dz = el("div", "grp"); dz.append(el("span", "needle")); dz.append(el("span", null, "design"));
-    const dzo = el("div", "grp"); dzo.append(el("span", "needle out")); dzo.append(el("span", null, "outside p1–p99"));
+    const dz = el("div", "grp"); dz.append(el("span", "needle")); dz.append(el("span", null, "design · in band"));
+    const dzo = el("div", "grp"); dzo.append(el("span", "needle out")); dzo.append(el("span", null, "outside band"));
     L.append(anat, med, dz, dzo);
   }
-
   function buildSegs() {
     const ss = $("#seg-source"); ss.innerHTML = "";
-    SOURCE_KEYS.forEach((k) => {
-      const b = el("button", null, D.sources[k].label || k);
-      b.setAttribute("aria-pressed", k === state.source);
-      b.onclick = () => { state.source = k; renderAll(); };
-      ss.append(b);
-    });
+    SOURCE_KEYS.forEach((k) => { const b = el("button", null, D.sources[k].label || k); b.setAttribute("aria-pressed", k === state.source);
+      b.onclick = () => { state.source = k; renderAll(); }; ss.append(b); });
     const st = $("#seg-strat"); st.innerHTML = "";
-    STRATS.forEach(([k, lab]) => {
-      const b = el("button", null, lab);
-      b.setAttribute("aria-pressed", k === state.labeling);
-      b.onclick = () => { state.labeling = k; renderAll(); };
-      st.append(b);
-    });
+    STRATS.forEach(([k, lab]) => { const b = el("button", null, lab); b.setAttribute("aria-pressed", k === state.labeling);
+      b.onclick = () => { state.labeling = k; renderAll(); }; st.append(b); });
   }
-
   function setupDesignToggle() {
-    const t = $("#toggle-designs");
-    const lab = $("#design-label");
-    if (!D.designs) {
-      t.classList.add("disabled");
-      t.setAttribute("aria-disabled", "true");
-      lab.textContent = "none loaded";
-      return;
-    }
-    const tag = D.designs.synthetic ? " · demo" : "";
-    lab.textContent = `${D.designs.n} designs${tag}`;
+    const t = $("#toggle-designs"), lab = $("#design-label");
+    if (!SETS.length) { t.classList.add("disabled"); t.setAttribute("aria-disabled", "true"); lab.textContent = "none loaded"; return; }
+    const total = SETS.reduce((a, s) => a + s.n, 0);
+    const demo = SETS.length === 1 && SETS[0].synthetic ? " · demo" : "";
+    lab.textContent = multiSet() ? `${total} designs · ${SETS.length} sets` : `${total} designs${demo}`;
+    t.setAttribute("aria-pressed", state.designs);
     t.onclick = () => { state.designs = !state.designs; t.setAttribute("aria-pressed", state.designs); renderAll(); };
   }
-
-  $("#search").addEventListener("input", (e) => { state.query = e.target.value.trim().toLowerCase(); renderCards(); buildNav(); });
+  $("#search").addEventListener("input", (e) => { state.query = e.target.value.trim().toLowerCase(); renderAll(); });
 
   // ---------- data helpers ----------
   function metricsOf(srcKey) { return D.sources[srcKey].metrics; }
-
   function matchesQuery(mname, cols) {
     if (!state.query) return true;
     if (mname.toLowerCase().includes(state.query)) return true;
     return Object.keys(cols).some((c) => c.toLowerCase().includes(state.query));
   }
-
-  function designVals(colName) {
-    if (!state.designs || !D.designs || !D.designs.values) return null;
-    const v = D.designs.values[colName];
-    return v ? v : null;
-  }
-
-  // pick strata (top-N by count) for the active labeling on a given column
   function strataFor(col) {
     if (state.labeling === "none" || !col.by || !col.by[state.labeling]) return null;
-    const entries = Object.entries(col.by[state.labeling])
-      .filter(([, s]) => (s.count || 0) > 0)
-      .sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
-    return entries;
+    return Object.entries(col.by[state.labeling]).filter(([, s]) => (s.count || 0) > 0).sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
   }
 
   // ---------- numeric track ----------
   function axisDomain(col, dvals) {
     let lo = col.min, hi = col.max;
-    if (lo == null || hi == null) {
-      const pool = [col.p1, col.p99, col.median].filter((x) => x != null);
-      lo = lo != null ? lo : Math.min.apply(null, pool);
-      hi = hi != null ? hi : Math.max.apply(null, pool);
-    }
+    if (lo == null || hi == null) { const pool = [col.p1, col.p99, col.median].filter((x) => x != null);
+      lo = lo != null ? lo : Math.min.apply(null, pool); hi = hi != null ? hi : Math.max.apply(null, pool); }
     if (dvals) dvals.forEach((v) => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
     if (!(isFinite(lo) && isFinite(hi))) return [0, 1];
     if (lo === hi) { const p = Math.abs(lo) * 0.05 || 0.5; return [lo - p, hi + p]; }
-    const pad = (hi - lo) * 0.04;
-    return [lo - pad, hi + pad];
+    const pad = (hi - lo) * 0.04; return [lo - pad, hi + pad];
   }
-
   function drawNumericBand(svg, col, dom, opts) {
-    // opts: {height, showDesign, dvals, big}
-    const W = svg.clientWidth || svg.parentNode.clientWidth || 600;
-    const H = opts.height;
-    const PAD = 9;
-    const x = (v) => PAD + (v - dom[0]) / (dom[1] - dom[0]) * (W - 2 * PAD);
-    const cy = H / 2;
+    const W = svg.clientWidth || svg.parentNode.clientWidth || 600, H = opts.height, PAD = 9;
+    const x = (v) => PAD + (v - dom[0]) / (dom[1] - dom[0]) * (W - 2 * PAD), cy = H / 2;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    svg.setAttribute("height", H);
-
-    const rect = (a, b, h, fill) => {
-      if (a == null || b == null) return;
-      const xa = x(Math.min(a, b)), xb = x(Math.max(a, b));
-      svg.append(svgEl("rect", { x: xa, y: cy - h / 2, width: Math.max(xb - xa, 1), height: h, rx: 2, fill }));
-    };
-    const big = opts.big;
-    const hOut = big ? 13 : 10, hMid = big ? 19 : 15, hCore = big ? 26 : 21;
-
-    // min–max hairline + end ticks
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("height", H);
+    const rect = (a, b, h, fill) => { if (a == null || b == null) return; const xa = x(Math.min(a, b)), xb = x(Math.max(a, b));
+      svg.append(svgEl("rect", { x: xa, y: cy - h / 2, width: Math.max(xb - xa, 1), height: h, rx: 2, fill })); };
+    const big = opts.big, hOut = big ? 13 : 10, hMid = big ? 19 : 15, hCore = big ? 26 : 21;
     if (col.min != null && col.max != null) {
       svg.append(svgEl("line", { x1: x(col.min), y1: cy, x2: x(col.max), y2: cy, stroke: "var(--whisker)", "stroke-width": 1, opacity: 0.5 }));
       [col.min, col.max].forEach((v) => svg.append(svgEl("line", { x1: x(v), y1: cy - 5, x2: x(v), y2: cy + 5, stroke: "var(--whisker)", "stroke-width": 1, opacity: 0.7 })));
     }
-    rect(col.p1, col.p99, hOut, "var(--band-out)");
-    rect(col.p5, col.p95, hMid, "var(--band-mid)");
-    rect(col.p25, col.p75, hCore, "var(--band-core)");
-    // mean marker (diamond)
-    if (col.mean != null) {
-      const mx = x(col.mean), r = 3;
-      svg.append(svgEl("path", { d: `M${mx} ${cy - r} L${mx + r} ${cy} L${mx} ${cy + r} L${mx - r} ${cy} Z`, fill: "none", stroke: "var(--mist)", "stroke-width": 1, opacity: 0.8 }));
-    }
-    // median tick
-    if (col.median != null) {
-      svg.append(svgEl("line", { x1: x(col.median), y1: cy - hCore / 2 - 3, x2: x(col.median), y2: cy + hCore / 2 + 3, stroke: "var(--median)", "stroke-width": 2, "stroke-linecap": "round" }));
-    }
-
-    // design needles
-    if (opts.showDesign && opts.dvals) {
-      const vals = opts.dvals.filter((v) => v != null && isFinite(v));
-      const jitterN = Math.max(vals.length, 1);
-      vals.forEach((v, i) => {
-        const out = (col.p1 != null && v < col.p1) || (col.p99 != null && v > col.p99);
-        const jy = jitterN > 1 ? ((i % 5) - 2) * (big ? 3.0 : 2.2) : 0;
-        const c = svgEl("circle", {
-          cx: x(v), cy: cy + jy, r: 3,
-          fill: out ? "var(--design-out)" : "var(--design)",
-          stroke: "var(--ink)", "stroke-width": 0.8, opacity: 0.92,
-        });
-        c.classList.add("needle-anim");
-        c.style.animationDelay = (i * 14) + "ms";
-        svg.append(c);
-      });
+    rect(col.p1, col.p99, hOut, "var(--band-out)"); rect(col.p5, col.p95, hMid, "var(--band-mid)"); rect(col.p25, col.p75, hCore, "var(--band-core)");
+    if (col.mean != null) { const mx = x(col.mean), r = 3;
+      svg.append(svgEl("path", { d: `M${mx} ${cy - r} L${mx + r} ${cy} L${mx} ${cy + r} L${mx - r} ${cy} Z`, fill: "none", stroke: "var(--mist)", "stroke-width": 1, opacity: 0.8 })); }
+    if (col.median != null) svg.append(svgEl("line", { x1: x(col.median), y1: cy - hCore / 2 - 3, x2: x(col.median), y2: cy + hCore / 2 + 3, stroke: "var(--median)", "stroke-width": 2, "stroke-linecap": "round" }));
+    // custom-threshold guide lines (dashed amber) when set
+    const eff = opts.eff;
+    if (eff && eff.custom) [eff.hasMin ? eff.min : null, eff.hasMax ? eff.max : null].forEach((v) => {
+      if (v != null && isFinite(v)) svg.append(svgEl("line", { x1: x(v), y1: 2, x2: x(v), y2: H - 2, stroke: "var(--design)", "stroke-width": 1, "stroke-dasharray": "2 2", opacity: 0.7 }));
+    });
+    // design needles, per set (outline = set colour), fill = in/out of effective band
+    if (opts.dsets && opts.dsets.length) {
+      const total = opts.dsets.reduce((a, s) => a + s.vals.filter((v) => v != null && isFinite(v)).length, 0);
+      let gi = 0;
+      opts.dsets.forEach((ds) => ds.vals.forEach((v) => {
+        if (v == null || !isFinite(v)) return;
+        const out = v < eff.min || v > eff.max;
+        const jy = total > 1 ? ((gi % 5) - 2) * (big ? 3.0 : 2.2) : 0;
+        const c = svgEl("circle", { cx: x(v), cy: cy + jy, r: 3, fill: out ? "var(--design-out)" : "var(--design)",
+          stroke: ds.color || "var(--ink)", "stroke-width": ds.color ? 1.4 : 0.8, opacity: 0.92 });
+        if (animate) { c.classList.add("needle-anim"); c.style.animationDelay = Math.min(gi * 12, 400) + "ms"; }
+        svg.append(c); gi++;
+      }));
     }
   }
-
   function drawAxis(svg, dom) {
-    const W = svg.clientWidth || svg.parentNode.clientWidth || 600;
-    const H = 18, PAD = 9;
+    const W = svg.clientWidth || svg.parentNode.clientWidth || 600, H = 18, PAD = 9;
     const x = (v) => PAD + (v - dom[0]) / (dom[1] - dom[0]) * (W - 2 * PAD);
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("height", H);
     svg.append(svgEl("line", { x1: PAD, y1: 3, x2: W - PAD, y2: 3, stroke: "var(--line-2)", "stroke-width": 1 }));
     const N = 5;
-    for (let i = 0; i < N; i++) {
-      const v = dom[0] + (dom[1] - dom[0]) * i / (N - 1);
-      const xv = x(v);
+    for (let i = 0; i < N; i++) { const v = dom[0] + (dom[1] - dom[0]) * i / (N - 1), xv = x(v);
       svg.append(svgEl("line", { x1: xv, y1: 3, x2: xv, y2: 7, stroke: "var(--line-2)", "stroke-width": 1 }));
       const t = svgEl("text", { x: xv, y: 16, fill: "var(--mist-dim)", "font-size": 9.5, "font-family": "var(--mono)", "text-anchor": i === 0 ? "start" : i === N - 1 ? "end" : "middle" });
-      t.textContent = fmt(v);
-      svg.append(t);
-    }
+      t.textContent = fmt(v); svg.append(t); }
   }
-
   function statsTip(title, col, extra) {
-    const rows = [["count", col.count], ["max", col.max], ["p99", col.p99], ["p95", col.p95],
-                  ["p75", col.p75], ["median", col.median], ["p25", col.p25], ["p5", col.p5],
-                  ["p1", col.p1], ["min", col.min], ["mean", col.mean], ["std", col.std]];
+    const rows = [["count", col.count], ["max", col.max], ["p99", col.p99], ["p95", col.p95], ["p75", col.p75], ["median", col.median],
+                  ["p25", col.p25], ["p5", col.p5], ["p1", col.p1], ["min", col.min], ["mean", col.mean], ["std", col.std]];
     let h = `<div class="t-title">${title}</div><table>`;
-    rows.forEach(([k, v]) => {
-      if (v == null) return;
-      h += `<tr><td class="k">${k}</td><td class="v">${k === "count" ? v : fmt(v)}</td></tr>`;
-    });
-    h += "</table>";
-    if (extra) h += `<div class="sep"></div>${extra}`;
-    return h;
+    rows.forEach(([k, v]) => { if (v == null) return; h += `<tr><td class="k">${k}</td><td class="v">${k === "count" ? v : fmt(v)}</td></tr>`; });
+    h += "</table>"; if (extra) h += `<div class="sep"></div>${extra}`; return h;
   }
-
   const tip = $("#tip");
-  function showTip(html, ev) {
-    tip.innerHTML = html;
-    tip.style.left = ev.clientX + "px";
-    tip.style.top = ev.clientY + "px";
-    tip.style.opacity = "1";
-  }
+  function showTip(html, ev) { tip.innerHTML = html; tip.style.left = ev.clientX + "px"; tip.style.top = ev.clientY + "px"; tip.style.opacity = "1"; }
   function hideTip() { tip.style.opacity = "0"; }
+  function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
   function numericColumn(colWrap, mname, cname, col) {
-    const dvals = designVals(cname);
-    if (col.band_missing && !(state.designs && dvals)) {
-      colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values"));
-      return;
-    }
-    const dom = axisDomain(col, (state.designs || col.band_missing) ? dvals : null);
+    const dsets = designSetsFor(cname), has = hasDesign(cname);
+    if (col.band_missing && !has) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; }
+    const dom = axisDomain(col, (state.designs || col.band_missing) ? allDesignVals(cname) : null);
+    const eff = effBand(mname, cname, col);
     const strata = strataFor(col);
-
-    // axis row
-    const axisRow = el("div", "axis-row");
-    axisRow.append(el("div"));
-    const axisHold = el("div", "track");
-    const asvg = svgEl("svg"); axisHold.append(asvg); axisRow.append(axisHold);
-    colWrap.append(axisRow);
+    const axisRow = el("div", "axis-row"); axisRow.append(el("div"));
+    const axisHold = el("div", "track"); const asvg = svgEl("svg"); axisHold.append(asvg); axisRow.append(axisHold); colWrap.append(axisRow);
     registerDraw(() => drawAxis(asvg, dom));
 
     const addTrack = (label, count, statCol, isOverall, withDesign) => {
-      const showDesign = withDesign != null ? withDesign : (state.designs && !!dvals);
+      const showDesign = withDesign != null ? withDesign : has;
       const row = el("div", "track-row");
-      const lab = el("div", "strat-label" + (isOverall ? " overall" : ""));
-      lab.append(el("span", null, label));
-      if (count != null) lab.append(el("span", "ct", count.toLocaleString()));
-      row.append(lab);
-      const hold = el("div", "track");
-      const s = svgEl("svg"); hold.append(s); row.append(hold);
-      colWrap.append(row);
-      const big = isOverall && !strata;
-      const h = big ? 38 : 30;
-      registerDraw(() => drawNumericBand(s, statCol, dom, { height: h, big, showDesign, dvals }));
-      row.addEventListener("mousemove", (e) => {
-        let extra = "";
-        if (state.designs && dvals) {
-          const v = dvals.filter((x) => x != null && isFinite(x));
-          const inb = v.filter((x) => (statCol.p5 == null || x >= statCol.p5) && (statCol.p95 == null || x <= statCol.p95)).length;
-          extra = `<span style="color:var(--design)">${inb}/${v.length} designs in p5–p95</span>`;
-        }
-        showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol, extra), e);
-      });
+      const lab = el("div", "strat-label" + (isOverall ? " overall" : "")); lab.append(el("span", null, label));
+      if (count != null) lab.append(el("span", "ct", count.toLocaleString())); row.append(lab);
+      const hold = el("div", "track"); const s = svgEl("svg"); hold.append(s); row.append(hold); colWrap.append(row);
+      const big = isOverall && !strata, h = big ? 38 : 30;
+      registerDraw(() => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, eff }));
+      row.addEventListener("mousemove", (e) => showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol), e));
       row.addEventListener("mouseleave", hideTip);
     };
-
     if (strata) {
-      // pooled overlay: the design batch is a single set, so it rides one "all TPS"
-      // row at the top — the per-stratum natural bands below stay clean.
-      if (state.designs && dvals) addTrack("all TPS", col.count, col, true, true);
-      const shown = strata.slice(0, MAX_STRATA);
-      shown.forEach(([name, s]) => addTrack(name, s.count, s, false, false));
-      if (strata.length > shown.length) {
-        const rest = strata.length - shown.length;
-        const restN = strata.slice(shown.length).reduce((a, [, s]) => a + (s.count || 0), 0);
-        colWrap.append(el("div", "more-note", `+ ${rest} smaller ${state.labeling.replace("_", " ")} strata (${restN.toLocaleString()} TPS) not shown`));
-      }
-    } else {
-      addTrack(col.band_missing ? "designs" : "all TPS", col.band_missing ? null : col.count, col, true);
-    }
+      if (has) addTrack("all", col.count, col, true, true);
+      strata.slice(0, MAX_STRATA).forEach(([name, s]) => addTrack(name, s.count, s, false, false));
+      if (strata.length > MAX_STRATA) { const rest = strata.length - MAX_STRATA;
+        const restN = strata.slice(MAX_STRATA).reduce((a, [, s]) => a + (s.count || 0), 0);
+        colWrap.append(el("div", "more-note", `+ ${rest} smaller ${state.labeling.replace("_", " ")} strata (${restN.toLocaleString()}) not shown`)); }
+    } else { addTrack(col.band_missing ? "designs" : "all", col.band_missing ? null : col.count, col, true); }
   }
 
   // ---------- categorical column ----------
-  function topCats(freq) {
-    const entries = Object.entries(freq || {}).sort((a, b) => b[1] - a[1]);
-    const shown = entries.slice(0, MAX_CATS);
-    const restSum = entries.slice(MAX_CATS).reduce((a, [, n]) => a + n, 0);
-    if (restSum > 0) shown.push(["other", restSum]);
-    return shown;
-  }
-  function colorForCats(catNames) {
-    const isBool = catNames.every((c) => c in BOOL_COLORS || c === "other");
-    const m = {};
-    catNames.forEach((c, i) => {
-      if (c === "other") m[c] = "var(--line-2)";
-      else if (isBool) m[c] = BOOL_COLORS[c];
-      else m[c] = CAT_RAMP[i % CAT_RAMP.length];
-    });
-    return m;
-  }
-  function freqFromDesignVals(vals) {
-    const f = {};
-    vals.forEach((v) => { if (v == null) return; const k = String(v); f[k] = (f[k] || 0) + 1; });
-    return f;
-  }
-  function stackBar(freq, colorMap, totalOverride) {
-    const total = totalOverride != null ? totalOverride : Object.values(freq).reduce((a, b) => a + b, 0);
-    const bar = el("div", "catbar");
-    Object.entries(freq).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => {
-      const s = el("span");
-      s.style.width = (100 * n / (total || 1)) + "%";
-      s.style.background = colorMap[k] || "var(--line-2)";
-      s.title = `${k}: ${n} (${(100 * n / (total || 1)).toFixed(1)}%)`;
-      bar.append(s);
-    });
-    return bar;
-  }
+  function topCats(freq) { const e = Object.entries(freq || {}).sort((a, b) => b[1] - a[1]); const shown = e.slice(0, MAX_CATS);
+    const rest = e.slice(MAX_CATS).reduce((a, [, n]) => a + n, 0); if (rest > 0) shown.push(["other", rest]); return shown; }
+  function colorForCats(catNames) { const isBool = catNames.every((c) => c in BOOL_COLORS || c === "other"); const m = {};
+    catNames.forEach((c, i) => { m[c] = c === "other" ? "var(--line-2)" : (isBool ? BOOL_COLORS[c] : CAT_RAMP[i % CAT_RAMP.length]); }); return m; }
+  function freqFromVals(vals) { const f = {}; vals.forEach((v) => { if (v == null) return; const k = String(v); f[k] = (f[k] || 0) + 1; }); return f; }
+  function stackBar(freq, colorMap) { const total = Object.values(freq).reduce((a, b) => a + b, 0); const bar = el("div", "catbar");
+    Object.entries(freq).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => { const s = el("span"); s.style.width = (100 * n / (total || 1)) + "%";
+      s.style.background = colorMap[k] || "var(--line-2)"; s.title = `${k}: ${n} (${(100 * n / (total || 1)).toFixed(1)}%)`; bar.append(s); }); return bar; }
 
   function categoricalColumn(colWrap, mname, cname, col) {
-    // gather category universe from reference (and design) to color consistently
-    const refTop = topCats(col.frequencies);
-    const catNames = refTop.map(([k]) => k);
-    const dvals = designVals(cname);
-    if (state.designs && dvals) {
-      const df = freqFromDesignVals(dvals);
-      Object.keys(df).forEach((k) => { if (!catNames.includes(k) && !catNames.includes("other")) catNames.push(k); });
-    }
+    const refTop = topCats(col.frequencies); const catNames = refTop.map(([k]) => k);
+    const dsets = designSetsFor(cname);
+    dsets.forEach((ds) => Object.keys(freqFromVals(ds.vals)).forEach((k) => { if (!catNames.includes(k) && !catNames.includes("other")) catNames.push(k); }));
     const colorMap = colorForCats(catNames);
-
-    const wrap = el("div", "catbar-wrap");
-    const strata = strataFor(col);
-
+    const wrap = el("div", "catbar-wrap"); const strata = strataFor(col);
+    const allowed = new Set(catNames);
     const addCatRow = (label, count, freq, isDesign) => {
-      const row = el("div", "catrow");
-      const rl = el("div", "rl" + (isDesign ? " designs" : ""));
-      rl.append(el("span", null, label));
-      if (count != null) rl.append(el("span", "ct", count.toLocaleString()));
-      row.append(rl);
-      // restrict freq to top cats (fold the rest into "other")
-      const folded = {};
-      const allowed = new Set(catNames);
-      Object.entries(freq).forEach(([k, n]) => {
-        const key = allowed.has(k) ? k : "other";
-        folded[key] = (folded[key] || 0) + n;
-      });
-      row.append(stackBar(folded, colorMap));
-      wrap.append(row);
+      const row = el("div", "catrow"); const rl = el("div", "rl" + (isDesign ? " designs" : "")); rl.append(el("span", null, label));
+      if (count != null) rl.append(el("span", "ct", count.toLocaleString())); row.append(rl);
+      const folded = {}; Object.entries(freq).forEach(([k, n]) => { const key = allowed.has(k) ? k : "other"; folded[key] = (folded[key] || 0) + n; });
+      row.append(stackBar(folded, colorMap)); wrap.append(row);
     };
-
-    if (col.band_missing) {
-      if (!(state.designs && dvals)) {
-        colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values"));
-        return;
-      }
-    } else if (strata) {
-      strata.slice(0, MAX_STRATA).forEach(([name, s]) => addCatRow(name, s.count, s.frequencies || {}));
-      if (strata.length > MAX_STRATA) {
-        wrap.append(el("div", "more-note", `+ ${strata.length - MAX_STRATA} smaller strata not shown`));
-      }
-    } else {
-      addCatRow("all TPS", col.count, col.frequencies || {});
-    }
-    if (state.designs && dvals) {
-      const dv = dvals.filter((v) => v != null);
-      addCatRow("designs", dv.length, freqFromDesignVals(dv), true);
-    }
+    if (col.band_missing) { if (!dsets.length) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; } }
+    else if (strata) { strata.slice(0, MAX_STRATA).forEach(([name, s]) => addCatRow(name, s.count, s.frequencies || {}));
+      if (strata.length > MAX_STRATA) wrap.append(el("div", "more-note", `+ ${strata.length - MAX_STRATA} smaller strata not shown`)); }
+    else addCatRow("all", col.count, col.frequencies || {});
+    dsets.forEach((ds) => { const dv = ds.vals.filter((v) => v != null); addCatRow(multiSet() ? ds.name : "designs", dv.length, freqFromVals(dv), true); });
     colWrap.append(wrap);
-
-    // legend
     const lg = el("div", "catlegend");
-    catNames.forEach((c) => {
-      const it = el("div", "item");
-      const sw = el("span", "sw"); sw.style.background = colorMap[c]; it.append(sw); it.append(el("span", null, c));
-      lg.append(it);
-    });
+    catNames.forEach((c) => { const it = el("div", "item"); const sw = el("span", "sw"); sw.style.background = colorMap[c]; it.append(sw); it.append(el("span", null, c)); lg.append(it); });
     colWrap.append(lg);
   }
 
-  // ---------- card rendering ----------
+  // ---------- column header (range + thresholds + chip) ----------
+  function buildThreshold(head, mname, cname, col) {
+    const key = colKey(mname, cname);
+    const wrap = el("div", "thresh");
+    const mk = (which, ph) => {
+      const inp = el("input"); inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = ph;
+      inp.setAttribute("aria-label", `${cname} ${which}`);
+      const cur = (state.thresholds[key] || {})[which];
+      if (cur != null) { inp.value = cur; inp.classList.add("set"); }
+      inp.addEventListener("input", () => {
+        const raw = inp.value.trim(); const num = raw === "" ? null : parseFloat(raw);
+        const t = state.thresholds[key] || (state.thresholds[key] = {});
+        t[which] = (raw !== "" && isFinite(num)) ? num : null;
+        inp.classList.toggle("set", t[which] != null);
+        applyFilters();
+      });
+      return inp;
+    };
+    wrap.append(el("span", null, "min")); wrap.append(mk("min", col.p1 != null ? fmt(col.p1) : "−∞"));
+    wrap.append(el("span", "dash", "–")); wrap.append(mk("max", col.p99 != null ? fmt(col.p99) : "∞")); wrap.append(el("span", null, "max"));
+    head.append(wrap);
+  }
   function renderColumn(metricBox, mname, cname, col) {
     const colWrap = el("div", "col");
     const head = el("div", "colhead");
-    const left = el("div", "cname");
-    left.append(document.createTextNode(cname));
+    const left = el("div", "cname-wrap");
+    left.append(el("span", "cname", cname));
     left.append(el("span", "kind", col.kind === "categorical" ? "categorical" : "numeric"));
+    const rng = ((INFO[mname] || {}).columns || {})[cname];
+    if (col.kind !== "categorical" && rng) { const r = el("span", "range"); r.innerHTML = "range&nbsp;<b>" + esc(rng) + "</b>"; left.append(r); }
     head.append(left);
-
-    const dvals = designVals(cname);
-    if (col.band_missing) head.append(el("div", "chip ghost", "no reference band"));
-    if (state.designs && dvals) {
-      const v = dvals.filter((x) => x != null && (col.kind === "categorical" || isFinite(x)));
-      if (col.kind !== "categorical" && !col.band_missing) {
-        const inb = v.filter((x) => (col.p5 == null || x >= col.p5) && (col.p95 == null || x <= col.p95)).length;
-        const ratio = v.length ? inb / v.length : 0;
-        const chip = el("div", "chip" + (ratio < 0.5 ? " warn" : ""), `${inb}/${v.length} in p5–p95`);
-        head.append(chip);
-      } else {
-        head.append(el("div", "chip", `${v.length} designs`));
-      }
+    const right = el("div", "right");
+    if (col.band_missing) right.append(el("div", "chip ghost", "no reference band"));
+    // chip (kept / in-band)
+    let chipEl = null;
+    if (col.kind !== "categorical") {
+      chipEl = el("div", "chip"); right.append(chipEl);
+      const update = () => {
+        const vals = allDesignVals(cname).filter((x) => x != null && isFinite(x));
+        if (!vals.length) { chipEl.style.display = "none"; return; }
+        chipEl.style.display = "";
+        const eff = effBand(mname, cname, col);
+        const inb = vals.filter((x) => x >= eff.min && x <= eff.max).length;
+        const lab = eff.custom ? "in range" : (col.band_missing ? "loaded" : "in p1–p99");
+        chipEl.textContent = `${inb}/${vals.length} ${lab}`;
+        chipEl.classList.toggle("warn", inb < vals.length);
+      };
+      chipUpdaters.push(update); update();
+    } else if (hasDesign(cname)) {
+      const n = allDesignVals(cname).filter((v) => v != null).length; right.append(el("div", "chip", `${n} designs`));
     }
+    head.append(right);
     colWrap.append(head);
-
-    if (col.kind === "categorical") categoricalColumn(colWrap, mname, cname, col);
-    else numericColumn(colWrap, mname, cname, col);
+    // threshold inputs (numeric only, second row of header)
+    if (col.kind !== "categorical") buildThreshold(head, mname, cname, col);
+    if (col.kind === "categorical") categoricalColumn(colWrap, mname, cname, col); else numericColumn(colWrap, mname, cname, col);
     metricBox.append(colWrap);
   }
 
-  function renderCards() {
-    drawers = [];
-    const cards = $("#cards");
-    cards.innerHTML = "";
+  function metricCard(mname, m, idx) {
+    const box = el("div", "metric"); box.id = "m-" + mname; box.style.animationDelay = Math.min(idx * 35, 320) + "ms";
+    const head = el("div", "head");
+    const nm = el("div", "mname"); nm.append(document.createTextNode(mname)); head.append(nm);
+    const info = INFO[mname];
+    if (info && info.explanation) {
+      const q = el("span", "qmark", "?"); q.setAttribute("tabindex", "0");
+      const show = (e) => showTip(`<div class="t-title">${esc(mname)}</div><div class="t-expl">${esc(info.explanation)}</div>`, e);
+      q.addEventListener("mousemove", show); q.addEventListener("mouseleave", hideTip);
+      q.addEventListener("focus", (e) => { const r = q.getBoundingClientRect(); show({ clientX: r.left + r.width / 2, clientY: r.top }); });
+      q.addEventListener("blur", hideTip);
+      head.append(q);
+    }
+    head.append(el("div", "mmeta", `${Object.keys(m.columns).length} columns · ${m.design_only ? "design-only (no band)" : "n=" + (m.n_rows || 0).toLocaleString()}`));
+    box.append(head);
+    Object.entries(m.columns).forEach(([cname, col]) => renderColumn(box, mname, cname, col));
+    return box;
+  }
+
+  // ---------- main + nav ----------
+  function groupedMetrics() {
     const metrics = metricsOf(state.source);
     const names = Object.keys(metrics).filter((m) => matchesQuery(m, metrics[m].columns));
-    if (!names.length) {
-      cards.append(el("div", "empty-state", `no metric or column matches “${state.query}”.`));
-      return;
-    }
-    names.forEach((mname, idx) => {
-      const m = metrics[mname];
-      const box = el("div", "metric");
-      box.id = "m-" + mname;
-      box.style.animationDelay = Math.min(idx * 45, 360) + "ms";
-      const head = el("div", "head");
-      const nm = el("div", "mname");
-      nm.append(document.createTextNode(mname));
-      head.append(nm);
-      head.append(el("div", "mmeta", `${Object.keys(m.columns).length} columns · ${m.design_only ? "design-only (no band)" : "n=" + (m.n_rows || 0).toLocaleString()}`));
-      box.append(head);
-      Object.entries(m.columns).forEach(([cname, col]) => renderColumn(box, mname, cname, col));
-      cards.append(box);
+    const groups = new Map(CAT_ORDER.map((c) => [c, []]));
+    names.forEach((m) => { const c = catOf(m); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(m); });
+    return Array.from(groups.entries()).filter(([, ms]) => ms.length);
+  }
+  function renderCards() {
+    drawers = []; chipUpdaters = [];
+    const cards = $("#cards"); cards.innerHTML = "";
+    const grouped = groupedMetrics();
+    if (!grouped.length) { cards.append(el("div", "empty-state", `no metric or column matches “${state.query}”.`)); return; }
+    let idx = 0;
+    grouped.forEach(([cat, names]) => {
+      const div = el("div", "cat-divider"); div.append(el("span", "ctitle", cat)); div.append(el("span", "rule"));
+      div.append(el("span", "cn", names.length + (names.length === 1 ? " metric" : " metrics"))); cards.append(div);
+      const metrics = metricsOf(state.source);
+      names.forEach((mname) => { cards.append(metricCard(mname, metrics[mname], idx++)); });
     });
-    // draw all SVGs after layout settles
-    requestAnimationFrame(() => drawers.forEach((f) => f()));
+    requestAnimationFrame(() => { animate = true; drawers.forEach((f) => f()); animate = false; });
+  }
+  function buildNav() {
+    const nav = $("#nav"); nav.innerHTML = "";
+    const metrics = metricsOf(state.source);
+    groupedMetricsAll().forEach(([cat, names]) => {
+      if (!names.length) return;
+      nav.append(el("div", "navcat", cat));
+      const ul = el("ul");
+      names.forEach((mname) => {
+        const matched = matchesQuery(mname, metrics[mname].columns);
+        const a = el("a", matched ? "" : "empty"); a.href = "#m-" + mname;
+        a.append(el("span", null, mname)); a.append(el("span", "ct", String(Object.keys(metrics[mname].columns).length)));
+        a.onclick = (e) => { const t = document.getElementById("m-" + mname); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); } };
+        ul.append(a);
+      });
+      nav.append(ul);
+    });
+  }
+  function groupedMetricsAll() {  // all metrics (nav shows everything, dims non-matches)
+    const metrics = metricsOf(state.source);
+    const groups = new Map(CAT_ORDER.map((c) => [c, []]));
+    Object.keys(metrics).forEach((m) => { const c = catOf(m); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(m); });
+    return Array.from(groups.entries()).filter(([, ms]) => ms.length);
   }
 
-  function buildNav() {
-    const nav = $("#nav");
-    nav.innerHTML = "";
-    const metrics = metricsOf(state.source);
-    Object.keys(metrics).forEach((mname) => {
-      const m = metrics[mname];
-      const matched = matchesQuery(mname, m.columns);
-      const a = el("a", matched ? "" : "empty");
-      a.href = "#m-" + mname;
-      a.append(el("span", null, mname));
-      a.append(el("span", "ct", String(Object.keys(m.columns).length)));
-      a.onclick = (e) => {
-        const t = document.getElementById("m-" + mname);
-        if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); }
-      };
-      nav.append(a);
+  // ---------- right overview (filter cut counts + design-set colours) ----------
+  function renderOverview() {
+    const ov = $("#overview"); ov.innerHTML = "";
+    if (!SETS.length) { ov.append(el("div", "ov-hint", "Load a design batch (--designs) to overlay it and see how many designs fall outside each metric.")); return; }
+    if (!state.designs) { ov.append(el("div", "ov-hint", "Designs hidden. Toggle Designs on to view per-metric filter counts.")); return; }
+
+    // design-set colour pickers
+    const setsBox = el("div", "ov-sets");
+    SETS.forEach((ds, i) => {
+      const row = el("div", "ov-set");
+      const dot = el("span"); dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${setColor(i) || "var(--design)"};border:1px solid var(--ink)`;
+      row.append(dot); row.append(el("span", "nm", ds.name)); row.append(el("span", "cnt", ds.n.toLocaleString()));
+      if (multiSet()) {
+        const sw = el("div", "ov-swatches");
+        SET_PALETTE.forEach((hex) => { const b = el("button"); b.style.background = hex; b.title = hex;
+          b.style.color = hex; b.setAttribute("aria-pressed", (setColor(i) === hex));
+          b.onclick = () => { state.setColors[i] = hex; renderAll(); }; sw.append(b); });
+        row.append(sw);
+      }
+      setsBox.append(row);
     });
+    ov.append(setsBox);
+
+    // per-metric/column cut counts, ordered by category -> metric (same as main)
+    const metrics = metricsOf(state.source);
+    let anyCustom = false, passSet = null;
+    const rows = [];  // {cat, mname, cname, cut, total, custom}
+    groupedMetricsAll().forEach(([cat, names]) => {
+      names.forEach((mname) => {
+        Object.entries(metrics[mname].columns).forEach(([cname, col]) => {
+          if (col.kind === "categorical") return;
+          const vals = allDesignVals(cname).filter((x) => x != null && isFinite(x));
+          if (!vals.length) return;
+          const eff = effBand(mname, cname, col);
+          const cut = vals.filter((x) => x < eff.min || x > eff.max).length;
+          rows.push({ cat, mname, cname, cut, total: vals.length, custom: eff.custom });
+          if (eff.custom) {
+            anyCustom = true;
+            // track global "pass all custom thresholds" over the union of design ids per set
+          }
+        });
+      });
+    });
+
+    // global pass over CUSTOM thresholds only (across all sets, per-design)
+    if (anyCustom) {
+      let totalDesigns = 0, passing = 0;
+      SETS.forEach((ds) => {
+        for (let r = 0; r < ds.n; r++) {
+          totalDesigns++;
+          let ok = true;
+          for (const k in state.thresholds) {
+            const [mn, cn] = k.split("::");
+            const col = (metrics[mn] || { columns: {} }).columns[cn]; if (!col) continue;
+            const eff = effBand(mn, cn, col); if (!eff.custom) continue;
+            const v = (ds.values[cn] || [])[r];
+            if (v == null || !isFinite(v)) continue;          // missing value doesn't fail a filter
+            if (v < eff.min || v > eff.max) { ok = false; break; }
+          }
+          if (ok) passing++;
+        }
+      });
+      const p = el("div", "ov-pass"); p.innerHTML = `<b>${passing}</b> / ${totalDesigns} designs pass all set thresholds`;
+      ov.append(p);
+    }
+
+    let lastCat = null;
+    rows.forEach((r) => {
+      if (r.cat !== lastCat) { ov.append(el("div", "ov-cat", r.cat)); lastCat = r.cat; }
+      const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
+      row.title = `${r.mname} · ${r.cname} — ${r.cut} of ${r.total} outside ${r.custom ? "the set range" : "p1–p99"}`;
+      row.append(el("span", "name", r.cname));
+      const cut = el("span", "cut" + (r.cut > 0 ? " hit" : ""), `${r.cut}`); row.append(cut);
+      row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      ov.append(row);
+    });
+    if (!rows.length) ov.append(el("div", "ov-hint", "No numeric design values match the current source / filter."));
   }
+
+  // re-apply thresholds without rebuilding the DOM (keeps input focus)
+  function applyFilters() { chipUpdaters.forEach((f) => f()); drawers.forEach((f) => f()); renderOverview(); }
+  function registerDraw(fn) { drawers.push(fn); }
 
   function renderSrcNote() {
-    const src = D.sources[state.source];
-    const note = $("#src-note");
-    const strat = state.labeling === "none" ? "pooled across all TPS" : `stratified by ${state.labeling.replace("_", " ")}`;
-    const overlay = (state.designs && D.designs)
-      ? ` Overlaying <b style="color:var(--design)">${D.designs.n}</b> ${D.designs.synthetic ? "demo " : ""}designs.` : "";
-    if (src.no_bands) {
-      note.innerHTML = `No reference bands loaded — showing <b style="color:var(--design)">${(src.n_rows || 0).toLocaleString()}</b> designs only. Toggle <b>Designs</b> on to view the batch values.`;
-    } else {
-      note.innerHTML = `Reference bands from <b>${src.label}</b> structures of <b>${(src.n_rows || 0).toLocaleString()}</b> MARTS-DB terpene synthases, ${strat}.` + overlay;
-    }
+    const src = D.sources[state.source]; const note = $("#src-note");
+    const strat = state.labeling === "none" ? "pooled" : `stratified by ${state.labeling.replace("_", " ")}`;
+    const total = SETS.reduce((a, s) => a + s.n, 0);
+    const overlay = state.designs && SETS.length ? ` Overlaying <b style="color:var(--design)">${total}</b> design${total === 1 ? "" : "s"}${multiSet() ? ` across ${SETS.length} sets` : ""}.` : "";
+    if (src.no_bands) note.innerHTML = `No reference bands loaded — showing <b style="color:var(--design)">${(src.n_rows || 0).toLocaleString()}</b> designs only.`;
+    else note.innerHTML = `Reference bands from <b>${src.label}</b> structures of <b>${(src.n_rows || 0).toLocaleString()}</b> ${(D.reference_set || "reference").toUpperCase()} reference proteins, ${strat}.` + overlay;
   }
 
-  function renderAll() {
-    buildSegs();
-    renderIdent();
-    renderSrcNote();
-    buildNav();
-    renderCards();
-  }
+  function renderAll() { buildSegs(); renderIdent(); renderSrcNote(); buildNav(); renderCards(); renderOverview(); }
 
-  renderLegend();
-  setupDesignToggle();
-  renderAll();
+  renderLegend(); setupDesignToggle(); renderAll();
 })();
 </script>
