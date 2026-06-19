@@ -38,6 +38,14 @@
   .ident b { color: var(--bone); font-weight: 600; } .ident .dot { color: var(--line-2); }
 
   .controls { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-end; padding: 14px 0 12px; }
+  .controls .ctl.search { margin-left: auto; }   /* push the search box to the right edge */
+  /* header pin/unpin toggle (top-right corner) */
+  .hdr-lock { position: absolute; top: 10px; right: 14px; z-index: 31; display: flex; align-items: center; justify-content: center;
+    background: var(--ink-2); border: 1px solid var(--line); border-radius: 7px; color: var(--mist); cursor: pointer; padding: 5px 7px; }
+  .hdr-lock:hover { color: var(--bone); border-color: var(--line-2); }
+  .hdr-lock[aria-pressed="false"] { color: var(--design); border-color: var(--design); }
+  .hdr-unlocked header.top { position: static; box-shadow: none; }
+  .hdr-unlocked nav.side, .hdr-unlocked aside.overview { top: 12px; max-height: calc(100vh - 24px); }
   .ctl { display: flex; flex-direction: column; gap: 6px; }
   .seg { display: inline-flex; background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
   .seg button { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; color: var(--mist); background: transparent; border: 0;
@@ -195,9 +203,9 @@
   /* arrow from the pipe tip down into the kept box (sits in the pipe column) */
   .ov-arrow-row { display: flex; align-items: center; height: 15px; padding: 0 6px; }
   .ov-arrow-row .ovc-pipe { display: flex; align-items: flex-start; justify-content: center; }
-  .ov-arrow { display: flex; flex-direction: column; align-items: center; }
-  .ov-arrow .stem { width: 1px; height: 8px; background: var(--design); }
-  .ov-arrow .head { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--design); }
+  .arrowsvg { display: block; }
+  .arrowsvg line { stroke: var(--design); stroke-width: 1.2; }
+  .arrowsvg path { fill: var(--design); }
   .ov-total { display: flex; align-items: center; margin-top: 1px; padding: 9px 6px;
     border: 1px solid var(--line-2); border-radius: 8px; background: var(--ink-2); font-family: var(--mono); font-size: 11.5px; color: var(--mist); }
   .ov-total .name { flex: 1; }
@@ -225,10 +233,11 @@
 </style>
 
 <header class="top">
+  <button class="hdr-lock" id="hdr-lock" aria-pressed="true"></button>
   <div class="top-inner">
     <div class="titlerow">
       <div class="brand">
-        <div class="eyebrow">in&nbsp;silico reference envelope · protein design</div>
+        <div class="eyebrow">in&nbsp;silico reference envelope for protein design</div>
         <h1>The natural <span class="accent">band</span></h1>
         <div class="motto"><span class="nat">Nature</span> had its turn. Now it's <span class="ours">ours</span>.</div>
       </div>
@@ -889,8 +898,9 @@
     const arr = el("div", "ov-arrow-row");
     arr.append(el("span", "rgrip")); arr.append(el("span", "name")); arr.append(el("span", "ovc-pass"));
     const ag = el("div", "ov-grp"); ag.append(el("span", "ovc-kept"));
-    const ap = el("span", "ovc-pipe"); const aw = el("div", "ov-arrow");
-    aw.append(el("span", "stem")); aw.append(el("span", "head")); ap.append(aw); ag.append(ap);
+    const ap = el("span", "ovc-pipe");
+    ap.innerHTML = '<svg class="arrowsvg" width="9" height="14" viewBox="0 0 9 14" aria-hidden="true"><line x1="4.5" y1="0" x2="4.5" y2="9"/><path d="M4.5 13.5 L0.8 8.5 L8.2 8.5 Z"/></svg>';
+    ag.append(ap);
     ag.append(el("span", "ovc-cut")); arr.append(ag); ov.append(arr);
 
     // kept total — number sits in the pipe column (centred under the pipe)
@@ -915,6 +925,24 @@
   }
 
   function renderAll() { buildSegs(); renderIdent(); renderSrcNote(); buildNav(); renderCards(); renderOverview(); }
+
+  // header pin/unpin: locked (default) keeps the header pinned with the sidebars; unlocked lets it scroll away
+  function lockSVG(locked) {
+    const shackle = locked ? "M5.4 7.4V5.4a2.6 2.6 0 0 1 5.2 0v2" : "M5.4 7.4V5.4a2.6 2.6 0 0 1 4.7-1.6";
+    return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="3.4" y="7.3" width="9.2" height="6.4" rx="1.3"/><path d="' + shackle + '"/></svg>';
+  }
+  (function () {
+    const btn = $("#hdr-lock"); let locked = true;
+    const apply = () => {
+      document.documentElement.classList.toggle("hdr-unlocked", !locked);
+      btn.setAttribute("aria-pressed", locked);
+      btn.innerHTML = lockSVG(locked);
+      btn.title = locked ? "Header pinned — click to let it scroll away" : "Header scrolls away — click to pin it";
+      syncHeaderH();
+    };
+    btn.onclick = () => { locked = !locked; apply(); };
+    apply();
+  })();
 
   renderLegend(); setupDesignToggle(); renderAll();
   syncHeaderH(); requestAnimationFrame(syncHeaderH);   // measure header after initial layout
