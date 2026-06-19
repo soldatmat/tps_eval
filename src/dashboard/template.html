@@ -151,12 +151,14 @@
   .ov-headrow .name, .ov-row .name, .ov-catrow .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
   .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
   .ov-row.thr .name { color: var(--design); }
-  .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; justify-content: flex-end; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
-  .ovc-pass { width: 38px; } .ovc-kept { width: 44px; } .ovc-cut { width: 22px; }
+  .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
+  .ovc-pass { width: 38px; justify-content: flex-end; }
+  .ovc-kept { width: 44px; justify-content: center; }
+  .ovc-cut { width: 24px; justify-content: center; }
   .ovc-pass b, .ovc-kept b { color: var(--design); font-weight: 600; }
   .ovc-cut.hit { color: var(--design-out); font-weight: 600; }
-  .ov-grp { display: flex; align-items: stretch; margin-left: 12px; }   /* the KEPT·pipe·CUT cluster, set off from PASS */
-  .ovc-pipe { width: 24px; margin: 0 6px; position: relative; }
+  .ov-grp { display: flex; align-items: stretch; margin-left: 12px; }   /* the KEPT·pipe·CUT cluster, set off from BAND */
+  .ovc-pipe { width: 24px; margin: 0 9px; position: relative; }
   .ovc-pipe .pipe { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
     background: var(--design-soft); border-left: 1px solid #f0a83a88; border-right: 1px solid #f0a83a88; box-sizing: border-box; }
   .ov-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; padding: 9px 11px;
@@ -709,7 +711,7 @@
     };
 
     const hd = el("div", "ov-headrow"); hd.append(el("span", "name"));
-    hd.append(el("span", "ovc-pass", "pass"));
+    hd.append(el("span", "ovc-pass", "band"));
     const hg = el("div", "ov-grp"); hg.append(el("span", "ovc-kept", "kept")); hg.append(el("span", "ovc-pipe")); hg.append(el("span", "ovc-cut", "cut"));
     hd.append(hg); ov.append(hd);
 
@@ -722,7 +724,7 @@
         funnel.append(ch); lastCat = r.cat;
       }
       const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
-      row.title = `${r.mname} · ${r.cname} — PASS ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
+      row.title = `${r.mname} · ${r.cname} — BAND ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
         + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
       row.append(el("span", "name", r.cname));
       const pass = el("span", "ovc-pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
