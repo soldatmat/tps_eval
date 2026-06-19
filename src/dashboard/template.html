@@ -23,7 +23,8 @@
 
   /* ---------- header ---------- */
   header.top { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px);
-    background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82)); border-bottom: 1px solid var(--line); }
+    background: linear-gradient(180deg, rgba(12,23,25,0.96), rgba(12,23,25,0.82));
+    border-bottom: 2px solid var(--line-2); box-shadow: 0 10px 26px -12px rgba(0,0,0,0.7); }
   .top-inner { max-width: 1480px; margin: 0 auto; padding: 16px 26px 0; }
   .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
   .brand h1 { font-size: clamp(24px, 3vw, 38px); font-weight: 760; letter-spacing: -0.022em; margin: 4px 0 2px; line-height: 1.02; }
@@ -66,7 +67,9 @@
   .legend .med { width: 2px; height: 15px; background: var(--median); border-radius: 1px; }
 
   /* ---------- layout ---------- */
-  .shell { max-width: 1540px; margin: 0 auto; padding: 22px 26px 80px; display: grid; grid-template-columns: 184px minmax(0,1fr) 340px; gap: 26px; align-items: start; }
+  .shell { max-width: 1540px; margin: 0 auto; padding: 32px 26px 80px; display: grid; grid-template-columns: 184px minmax(0,1fr) 340px; gap: 26px; align-items: start; }
+  .col-title { color: var(--design); font-size: 11px; font-weight: 600; }
+  main .col-title { padding: 0 0 12px 2px; }
   nav.side, aside.overview { position: sticky; top: 184px; align-self: start; max-height: calc(100vh - 200px); overflow-y: auto; }
   nav.side .eyebrow, aside.overview .eyebrow { padding: 0 0 10px 2px; }
   nav.side ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -243,9 +246,9 @@
 </header>
 
 <div class="shell">
-  <nav class="side"><div class="eyebrow">Metrics</div><div id="nav"></div></nav>
-  <main><div class="src-note" id="src-note"></div><div id="cards"></div></main>
-  <aside class="overview"><div class="eyebrow">Filter pipeline</div><div id="overview"></div></aside>
+  <nav class="side"><div class="eyebrow col-title">Metrics</div><div id="nav"></div></nav>
+  <main><div class="eyebrow col-title">Distributions</div><div class="src-note" id="src-note"></div><div id="cards"></div></main>
+  <aside class="overview"><div class="eyebrow col-title">Filter pipeline</div><div id="overview"></div></aside>
 </div>
 
 <div id="tip" role="tooltip"></div>
