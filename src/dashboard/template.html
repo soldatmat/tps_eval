@@ -173,14 +173,18 @@
   .catlegend .item { display: flex; align-items: center; gap: 6px; } .catlegend .sw { width: 10px; height: 10px; border-radius: 3px; }
   .empty-state { font-family: var(--mono); font-size: 12px; color: var(--mist-dim); padding: 40px 4px; text-align: center; }
 
+  /* ---------- design-set key (top of the Distributions column) ---------- */
+  .design-sets { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 4px 0 18px; }
+  .ds-chip { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--line-2); border-radius: 999px;
+    background: var(--ink-2); font-family: var(--mono); font-size: 11px; color: var(--bone); }
+  .ds-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ink); flex: none; }
+  .ds-nm { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ds-cnt { color: var(--mist-dim); }
+  .ds-swatches { display: flex; gap: 4px; margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--line-2); }
+  .ds-swatches button { width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--ink); cursor: pointer; padding: 0; }
+  .ds-swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px currentColor; }
+
   /* ---------- right overview ---------- */
-  aside.overview .ov-sets { margin-bottom: 18px; }
-  .ov-set { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--bone); padding: 4px 0; flex-wrap: wrap; }
-  .ov-set .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ov-set .cnt { color: var(--mist-dim); }
-  .ov-swatches { display: flex; gap: 4px; flex-basis: 100%; padding: 2px 0 4px; }
-  .ov-swatches button { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--ink); cursor: pointer; padding: 0; }
-  .ov-swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px currentColor; }
   .ov-pass { font-family: var(--mono); font-size: 11px; color: var(--mist); margin: 4px 0 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); }
   .ov-pass b { color: var(--design); }
   /* funnel: NAME | PASS · [ KEPT | pipe | CUT ] — flush rows so the pipe is continuous */
@@ -209,9 +213,14 @@
   .arrowsvg path { fill: var(--design); }
   .ov-total { display: flex; align-items: center; margin-top: 1px; padding: 9px 6px;
     border: 1px solid var(--line-2); border-radius: 8px; background: var(--ink-2); font-family: var(--mono); font-size: 11.5px; color: var(--mist); }
-  .ov-total .name { flex: 1; }
+  .ov-total .name { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .ov-total b { color: var(--design); font-weight: 700; }
   .ov-total-num { display: flex; align-items: center; justify-content: center; overflow: visible; white-space: nowrap; }
+  .ov-extract { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-family: var(--mono); font-size: 10.5px;
+    color: var(--design); background: var(--design-soft); border: 1px solid #f0a83a55; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .ov-extract:hover { background: var(--design); color: var(--ink); border-color: var(--design); }
+  .ov-extract:disabled { opacity: 0.4; cursor: default; }
+  .ov-extract svg { display: block; }
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
 
   /* tooltip */
@@ -263,7 +272,7 @@
 
 <div class="shell">
   <nav class="side"><div class="eyebrow col-title">Metrics</div><div id="nav"></div></nav>
-  <main><div class="eyebrow col-title">Distributions</div><div class="src-note" id="src-note"></div><div id="cards"></div></main>
+  <main><div class="eyebrow col-title">Distributions</div><div class="src-note" id="src-note"></div><div class="design-sets" id="design-sets"></div><div id="cards"></div></main>
   <aside class="overview"><div class="eyebrow col-title">Filter pipeline</div><div id="overview"></div></aside>
 </div>
 
@@ -285,8 +294,14 @@
   const MAX_STRATA = 8, MAX_CATS = 8;
   const CAT_RAMP = ["#7fc6b6", "#26565b", "#4fa39a", "#1f4347", "#9bd7c6", "#33707a", "#163035", "#5fb0a6"];
   const BOOL_COLORS = { "True": "#7fc6b6", "true": "#7fc6b6", "False": "#274b50", "false": "#274b50" };
-  // distinct outline colours for multiple design sets (avoid amber/ember — reserved for fill)
-  const SET_PALETTE = ["#46c9e0", "#e878b4", "#86d46b", "#b18cff", "#5b9bff", "#eef3f1"];
+  // distinct fill colours for multiple design sets (with >1 set the dot IS the set colour;
+  // amber/ember in/out fill is only used for a single set)
+  const SET_PALETTE = ["#46c9e0", "#e878b4", "#86d46b", "#b18cff", "#5b9bff", "#d8b24a"];
+  // blend a set colour toward neutral grey for filtered-out dots — muted but still its hue
+  const _hex2rgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map((c) => c + c).join(""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+  const _mix = (hex, tgt, t) => { const a = _hex2rgb(hex), b = _hex2rgb(tgt); return "rgb(" + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",") + ")"; };
+  const DIM_GREY = "#586863";
+  const dimColor = (hex) => _mix(hex, DIM_GREY, 0.62);
 
   const state = {
     source: SOURCE_KEYS[0], labeling: "none", query: "",
@@ -453,9 +468,39 @@
       .forEach(([c, w]) => { const s = el("span"); s.style.cssText = `width:${w}px;height:13px;background:${c}`; bar.append(s); });
     anat.append(bar); anat.append(el("span", null, "p1·p5·p25–p75·p95·p99"));
     const med = el("div", "grp"); med.append(el("span", "med")); med.append(el("span", null, "median"));
-    const dz = el("div", "grp"); dz.append(el("span", "needle")); dz.append(el("span", null, "design · in band"));
-    const dzo = el("div", "grp"); dzo.append(el("span", "needle out")); dzo.append(el("span", null, "outside band"));
-    L.append(anat, med, dz, dzo);
+    L.append(anat, med);
+    if (multiSet()) {
+      const dz = el("div", "grp"); const k = el("span", "needle"); k.style.background = "var(--mist)";
+      dz.append(k); dz.append(el("span", null, "design · set colour (key below)"));
+      const dzo = el("div", "grp"); const o = el("span", "needle"); o.style.background = dimColor("#9fb0ab");
+      dzo.append(o); dzo.append(el("span", null, "filtered out · dimmed"));
+      L.append(dz, dzo);
+    } else {
+      const dz = el("div", "grp"); dz.append(el("span", "needle")); dz.append(el("span", null, "design · in band"));
+      const dzo = el("div", "grp"); dzo.append(el("span", "needle out")); dzo.append(el("span", null, "outside band"));
+      L.append(dz, dzo);
+    }
+  }
+  // design-set key + colour pickers — a legend strip at the top of the Distributions column,
+  // where the dots are read (not in the filter pipeline, which it has nothing to do with).
+  function renderDesignSets() {
+    const box = $("#design-sets"); if (!box) return;
+    box.innerHTML = "";
+    if (!SETS.length || !state.designs) { box.style.display = "none"; return; }
+    box.style.display = "";
+    SETS.forEach((ds, i) => {
+      const chip = el("div", "ds-chip");
+      const dot = el("span", "ds-dot"); dot.style.background = setColor(i) || "var(--design)";
+      chip.append(dot); chip.append(el("span", "ds-nm", ds.name)); chip.append(el("span", "ds-cnt", ds.n.toLocaleString()));
+      if (multiSet()) {
+        const sw = el("div", "ds-swatches");
+        SET_PALETTE.forEach((hex) => { const b = el("button"); b.type = "button"; b.style.background = hex; b.style.color = hex; b.title = hex;
+          b.setAttribute("aria-pressed", setColor(i) === hex);
+          b.onclick = () => { state.setColors[i] = hex; renderAll(); }; sw.append(b); });
+        chip.append(sw);
+      }
+      box.append(chip);
+    });
   }
   function buildSegs() {
     const ss = $("#seg-source"); ss.innerHTML = "";
@@ -524,8 +569,11 @@
         if (v == null || !isFinite(v)) return;
         const out = eff && (v < eff.min || v > eff.max);
         const jy = total > 1 ? ((gi % 5) - 2) * (big ? 3.0 : 2.2) : 0;
-        const c = svgEl("circle", { cx: x(v), cy: cy + jy, r: 3, fill: out ? "var(--design-out)" : "var(--design)",
-          stroke: ds.color || "var(--ink)", "stroke-width": ds.color ? 1.4 : 0.8, opacity: 0.92 });
+        // multi-set: the dot is the set colour (full when kept, dimmed-but-coloured when filtered out);
+        // single set: amber in-band / ember outside.
+        const fill = ds.color ? (out ? dimColor(ds.color) : ds.color) : (out ? "var(--design-out)" : "var(--design)");
+        const c = svgEl("circle", { cx: x(v), cy: cy + jy, r: 3, fill,
+          stroke: "var(--ink)", "stroke-width": 0.8, opacity: ds.color ? (out ? 0.72 : 0.96) : 0.92 });
         if (animate) { c.classList.add("needle-anim"); c.style.animationDelay = Math.min(gi * 12, 400) + "ms"; }
         svg.append(c); gi++;
       }));
@@ -802,23 +850,6 @@
     if (!SETS.length) { ov.append(el("div", "ov-hint", "Load a design batch (--designs) to overlay it and see how many designs fall outside each metric.")); return; }
     if (!state.designs) { ov.append(el("div", "ov-hint", "Designs hidden. Toggle Designs on to view per-metric filter counts.")); return; }
 
-    // design-set colour pickers
-    const setsBox = el("div", "ov-sets");
-    SETS.forEach((ds, i) => {
-      const row = el("div", "ov-set");
-      const dot = el("span"); dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${setColor(i) || "var(--design)"};border:1px solid var(--ink)`;
-      row.append(dot); row.append(el("span", "nm", ds.name)); row.append(el("span", "cnt", ds.n.toLocaleString()));
-      if (multiSet()) {
-        const sw = el("div", "ov-swatches");
-        SET_PALETTE.forEach((hex) => { const b = el("button"); b.style.background = hex; b.title = hex;
-          b.style.color = hex; b.setAttribute("aria-pressed", (setColor(i) === hex));
-          b.onclick = () => { state.setColors[i] = hex; renderAll(); }; sw.append(b); });
-        row.append(sw);
-      }
-      setsBox.append(row);
-    });
-    ov.append(setsBox);
-
     // filter rows in pipeline order (drag-reorderable); funnel applies them in this order
     const metrics = metricsOf(state.source);
     const rows = applyOrder(state.filterOrder, defaultFilterKeys()).map((k) => {
@@ -855,6 +886,11 @@
       prevCum = r.cum;
     });
     const keptTotal = total - unionFailed.size;
+    // the surviving designs (passed every filter) — for the extract button
+    const keptDesigns = [];
+    SETS.forEach((ds, si) => { for (let ri = 0; ri < ds.n; ri++) {
+      if (!unionFailed.has(si + ":" + ri)) keptDesigns.push({ si, ri, set: ds.name, id: (ds.ids && ds.ids[ri]) || (ds.name + ":" + ri) });
+    } });
 
     // the KEPT·pipe·CUT cluster: kept number, the narrowing pipe (∝ survivors/total), cut number
     const grp = (keptHTML, surv, cutText, cutHit) => {
@@ -905,11 +941,37 @@
     ag.append(el("span", "ovc-cut")); arr.append(ag); ov.append(arr);
 
     // kept total — number sits in the pipe column (centred under the pipe)
-    const tot = el("div", "ov-total"); tot.append(el("span", "rgrip")); tot.append(el("span", "name", "designs kept"));
+    const tot = el("div", "ov-total"); tot.append(el("span", "rgrip"));
+    const totName = el("span", "name"); totName.append(el("span", "lbl", "designs kept"));
+    const exBtn = el("button", "ov-extract"); exBtn.type = "button";
+    exBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8"/><path d="M4.5 7L8 10.5 11.5 7"/><path d="M3 13h10"/></svg><span>extract</span>';
+    exBtn.title = "Download the kept designs (set, ID + all metric values) as CSV";
+    exBtn.disabled = keptTotal === 0;
+    exBtn.onclick = (e) => { e.stopPropagation(); extractKeptDesigns(keptDesigns); };
+    totName.append(exBtn); tot.append(totName);
     tot.append(el("span", "ovc-pass"));
     const tg = el("div", "ov-grp"); tg.append(el("span", "ovc-kept"));
     const tn = el("span", "ovc-pipe ov-total-num"); tn.innerHTML = `<b>${keptTotal}</b>/${total}`;
     tg.append(tn); tg.append(el("span", "ovc-cut")); tot.append(tg); ov.append(tot);
+  }
+
+  // download the surviving designs as CSV: set, ID + every metric value (kept = passed all filters
+  // for the current source's bands / custom thresholds, in the current pipeline order).
+  function extractKeptDesigns(kept) {
+    if (!kept || !kept.length) return;
+    const cols = [], seen = new Set();
+    SETS.forEach((ds) => Object.keys(ds.values).forEach((c) => { if (!seen.has(c)) { seen.add(c); cols.push(c); } }));
+    const csvEsc = (v) => { if (v == null) return ""; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const header = (multiSet() ? ["set"] : []).concat(["ID"], cols);
+    const lines = [header.map(csvEsc).join(",")];
+    kept.forEach((k) => {
+      const ds = SETS[k.si];
+      const row = (multiSet() ? [k.set] : []).concat([k.id], cols.map((c) => { const a = ds.values[c]; return a ? a[k.ri] : null; }));
+      lines.push(row.map(csvEsc).join(","));
+    });
+    const href = "data:text/csv;charset=utf-8," + encodeURIComponent(lines.join("\n"));
+    const a = el("a"); a.href = href; a.download = `designs_kept_${state.source}_${kept.length}of${SETS.reduce((s, d) => s + d.n, 0)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   // re-apply thresholds without rebuilding the DOM (keeps input focus)
@@ -925,7 +987,7 @@
     else note.innerHTML = `Reference bands from <b>${src.label}</b> structures of <b>${(src.n_rows || 0).toLocaleString()}</b> ${(D.reference_set || "reference").toUpperCase()} reference proteins, ${strat}.` + overlay;
   }
 
-  function renderAll() { buildSegs(); renderIdent(); renderSrcNote(); buildNav(); renderCards(); renderOverview(); }
+  function renderAll() { buildSegs(); renderIdent(); renderSrcNote(); renderDesignSets(); buildNav(); renderCards(); renderOverview(); }
 
   // header pin/unpin: locked (default) keeps the header pinned with the sidebars; unlocked lets it scroll away
   function lockSVG(locked) {
