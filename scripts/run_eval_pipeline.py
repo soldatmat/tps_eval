@@ -58,6 +58,7 @@ the config is JSON on purpose.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -130,11 +131,42 @@ def _slurm_fanout_ids(driver_stdout: str) -> List[str]:
     return re.findall(r"\d+", m.group(1))
 
 
+def _pbs_dep(job_ids: List[str]) -> List[str]:
+    # PBS Pro ANDs colon-separated job ids in a single -W depend=afterok:… argument.
+    # The ids carry their full `<num>.pbs-m1.metacentrum.cz` form (qstat/qsub accept the
+    # full id in depend lists; see _pbs_jobid for why we keep the full id, not the prefix).
+    return ["-W", "depend=afterok:" + ":".join(job_ids)] if job_ids else []
+
+
+def _pbs_log(log_dir: str) -> List[str]:
+    # PBS has no %x/%j expansion in -o/-e; point both streams at the run's log dir and
+    # let PBS name them <jobname>.o<seq>/<jobname>.e<seq> inside it.
+    return ["-o", log_dir + "/", "-e", log_dir + "/"]
+
+
+def _pbs_jobid(submit_stdout: str) -> str:
+    # qsub prints the full job id on its own line, e.g. `12345.pbs-m1.metacentrum.cz`.
+    # Keep the FULL id (not just the numeric prefix): PBS depend=afterok: accepts the
+    # full id, and on MetaCentrum the bare number can be ambiguous across servers.
+    m = re.search(r"^\s*(\d+\.[\w.\-]+)\s*$", submit_stdout, re.MULTILINE)
+    if not m:
+        # Fall back to a bare numeric id if the server suffix is absent.
+        m = re.search(r"^\s*(\d+)\s*$", submit_stdout, re.MULTILINE)
+    if not m:
+        raise RuntimeError(f"could not parse a PBS job id from:\n{submit_stdout}")
+    return m.group(1)
+
+
 CLUSTERS: Dict[str, dict] = {
     "aurum": {"submit": "sbatch", "dep": _slurm_dep, "log": _slurm_log,
               "jobid": _slurm_jobid, "fanout_ids": _slurm_fanout_ids, "caps": {"alphafold"}},
     "karolina": {"submit": "sbatch", "dep": _slurm_dep, "log": _slurm_log,
                  "jobid": _slurm_jobid, "fanout_ids": _slurm_fanout_ids, "caps": set()},  # AF3 Aurum-only
+    # MetaCentrum runs PBS Pro, not SLURM. AF3 is Aurum-only (caps empty -> no alphafold).
+    # PBS job scripts read their argv from $args (qsub -v "args=…"), not positionally;
+    # the Engine branches its cmd assembly on submit=="qsub" (see Engine.run).
+    "metacentrum": {"submit": "qsub", "dep": _pbs_dep, "log": _pbs_log,
+                    "jobid": _pbs_jobid, "fanout_ids": _slurm_fanout_ids, "caps": set()},
 }
 
 
@@ -467,8 +499,22 @@ class Engine:
                 print(f"[MISS] {s.name}: job script not found ({job_path}) -- skipping")
                 continue
 
-            cmd = ([self.cfg["submit"]] + self.cfg["dep"](dep_ids)
-                   + self.cfg["log"](self.log_dir) + [job_path] + s.args)
+            # Argv model branch: SLURM scripts take args positionally
+            # (`sbatch script.sh --fasta_path X`); MetaCentrum's PBS scripts read $args
+            # via `qsub -v "args=…"` (and source paths.sh from $tps_eval_root). Both job
+            # ids and dep flags differ too, but those are already adapter-driven above.
+            if self.cfg["submit"] == "qsub":
+                # PBS -v is a comma-separated VAR=value list, and some step args legitimately
+                # contain commas (e.g. the dashboard --designs glob list). Base64-encode the
+                # whole argv so it survives -v intact regardless of commas/spaces/quotes; the
+                # PBS job script decodes $args_b64 -> $args. tps_eval_root has no commas.
+                args_b64 = base64.b64encode(" ".join(s.args).encode()).decode()
+                env = f"args_b64={args_b64},tps_eval_root={REPO}"
+                cmd = ([self.cfg["submit"]] + self.cfg["dep"](dep_ids)
+                       + self.cfg["log"](self.log_dir) + ["-v", env, job_path])
+            else:
+                cmd = ([self.cfg["submit"]] + self.cfg["dep"](dep_ids)
+                       + self.cfg["log"](self.log_dir) + [job_path] + s.args)
             if self.dry_run:
                 wait = f" [after {':'.join(dep_ids)}]" if dep_ids else ""
                 print(f"[dry ] {s.name}{wait}: {' '.join(cmd)}")
@@ -1080,8 +1126,11 @@ def main() -> None:
 
     # Resolve + export the SLURM account so every submitted sbatch inherits it via
     # $SBATCH_ACCOUNT. The per-install grant id lives in scripts/<cluster>/config.local.sh.
-    account = resolve_sbatch_account(args.cluster, args.account)
-    if not account and not args.dry_run:
+    # MetaCentrum is PBS with no per-project budget/account — skip account resolution
+    # entirely (no $SBATCH_ACCOUNT, no config.local.sh).
+    account = "" if CLUSTERS[args.cluster]["submit"] == "qsub" \
+        else resolve_sbatch_account(args.cluster, args.account)
+    if not account and CLUSTERS[args.cluster]["submit"] != "qsub" and not args.dry_run:
         print(f"[warn] No SLURM account resolved for '{args.cluster}' — jobs will use your default "
               f"SLURM account, which may lack a partition association and be rejected. Set it in "
               f"scripts/{args.cluster}/config.local.sh (see config.local.sh.example), or pass "

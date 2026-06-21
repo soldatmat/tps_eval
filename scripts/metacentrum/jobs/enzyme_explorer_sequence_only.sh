@@ -8,8 +8,13 @@
 module add mambaforge # run_enzyme_explorer_sequence_only.sh activates the conda environment set in paths.sh
 
 
-# TODO remove absolute path
-. /storage/brno2/home/soldatmat/documents/terpene_synthases/tps_eval/paths.sh # load TPS_EVAL_ROOT, ENZYME_EXPLORER_PATH variables
+# run_eval_pipeline.py passes the runner argv base64-encoded as $args_b64 (so commas in
+# args survive PBS -v); decode to $args. $args (plain) is the manual-submission fallback.
+[ -n "$args_b64" ] && args="$(printf %s "$args_b64" | base64 -d)"
+# $tps_eval_root is passed by run_eval_pipeline.py via `qsub -v`; fall back to
+# $PBS_O_WORKDIR for manual submit_job.sh submission from the repo root.
+TPS_EVAL_ROOT="${tps_eval_root:-$PBS_O_WORKDIR}"
+. "$TPS_EVAL_ROOT/paths.sh" # load TPS_EVAL_ROOT, ENZYME_EXPLORER_PATH variables
 
 
 test -n "$SCRATCHDIR" || { echo >&2 "Variable SCRATCHDIR is not set!"; exit 1; }
