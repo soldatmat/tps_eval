@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH -J max_sequence_identity
+#SBATCH --constraint=gen-a
 #SBATCH --time=0-3:59:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -7,7 +8,6 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
-#SBATCH --partition=a36_96
 
 # Usage: sbatch max_sequence_identity.sh --fasta_path <fasta_path> [--train_path <train_path> --train]
 

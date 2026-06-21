@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH -J embESM1b
+#SBATCH --constraint=gen-b
 #SBATCH --time=0-04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=32G
-#SBATCH --gres=gpu:1
-#SBATCH --partition=b32_128_gpu
+#SBATCH --gres=gpu:geforce_rtx_3090:1
 
 # Usage: sbatch esm_embedding.sh --fasta_path <fasta_path>
 

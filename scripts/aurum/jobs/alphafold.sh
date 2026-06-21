@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --time=04:00:00
 #SBATCH --ntasks=8
-#SBATCH -p b32_128_gpu
 #SBATCH --constraint=alphafold3
 #SBATCH --mem=100G
 #SBATCH --gres=gpu:1

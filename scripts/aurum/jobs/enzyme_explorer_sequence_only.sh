@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH -J EnzymeExplorer_sequence_only
+#SBATCH --constraint=gen-b
 #SBATCH --time=0-02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=20G
-#SBATCH --gres=gpu:1
-#SBATCH --partition=b32_128_gpu
+#SBATCH --gres=gpu:geforce_rtx_3090:1
 
 # Usage: sbatch enzyme_explorer_sequence_only.sh --fasta_path <fasta_path>
 

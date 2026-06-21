@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -J min_embedding_distance
+#SBATCH --constraint=gen-a
 #SBATCH --time=0-00:10:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=16G
-#SBATCH --partition=a36_96
 
 # Usage: sbatch min_embedding_distance.sh --embeddings_path <embeddings_path> [--train_embeddings_path <train_embeddings_path> --train]
 
