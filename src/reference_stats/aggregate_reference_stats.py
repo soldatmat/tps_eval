@@ -141,22 +141,41 @@ METRIC_SUFFIXES: Dict[str, str] = {
     "substrate_positioning": "substrate_positioning",
 }
 
-# Inherently COMPARATIVE metrics: each measures similarity to a SEPARATE reference
-# set (a train set, the known-TPS set, or Swiss-Prot), or is a leave-one-out
-# prediction/transfer. A "natural band" is ill-defined for them on the reference set
-# itself (the reference set IS the natural set), so they are excluded from banding
-# even if a CSV is present. Matched as a metric name OR a trailing ``_<suffix>``.
-_COMPARATIVE_SUFFIXES = {
+# Comparative metrics fall into two groups.
+#
+# (1) EXTERNAL / non-banding: each measures similarity to a SEPARATE reference set
+# (Swiss-Prot, the AFDB proteome) or is a prediction / transfer / divergence flag /
+# self-consistency. A natural band is genuinely ill-defined on the reference set for
+# these — there is no "self" to omit (the comparison is against an external corpus),
+# or the output is a class label / boolean rather than a per-sequence distance. They
+# are excluded from banding even if a CSV is present.
+_EXTERNAL_COMPARATIVE_SUFFIXES = {
+    "embedding_esm1b",          # the raw 1280-dim ESM feature matrix, not a metric
+    "swissprot_search", "foldseek_swissprot_search",   # vs external Swiss-Prot / AFDB
+    "knn_label_transfer", "substrate_class",           # predicted labels, not distances
+    "sdr_divergence",                                  # threshold-gated active-site flag
+    "self_consistency",                                # designability vs own refold
+}
+#
+# (2) LEAVE-ONE-OUT BANDABLE: per-sequence/per-structure similarity or distance to the
+# nearest member of the SAME (internal) TPS set. On the reference set itself the trivial
+# self-match (identity 1.0 / distance 0 / TM≈1.0) must be dropped; with the self-hit
+# excluded these become a well-defined within-set nearest-OTHER-neighbour distribution —
+# a valid natural "novelty" band. local_sequence_search self mode is the canonical
+# example. IMPORTANT: feed the SELF-EXCLUDED CSV (the tool's `_self` / self-mode output);
+# a plain all-vs-self run that keeps the diagonal degenerates to all-1.0 and is useless.
+_LEAVE_ONE_OUT_BANDABLE = {
     "max_sequence_identity", "max_sequence_identity_self",
     "local_sequence_search", "local_sequence_search_self",
-    "embedding_esm1b", "embedding_esm1b_min_embedding_distance",
-    "embedding_esm1b_min_embedding_distance_self",
     "min_embedding_distance", "min_embedding_distance_self",
-    "swissprot_search", "foldseek_swissprot_search",
+    "embedding_esm1b_min_embedding_distance",
+    "embedding_esm1b_min_embedding_distance_self",
     "structural_identity", "domain_structural_identity",
-    "knn_label_transfer", "sdr_divergence", "substrate_class",
-    "self_consistency",
 }
+# Only the external group is excluded from banding (matched as a metric name OR a
+# trailing ``_<suffix>``); the leave-one-out group is banded when its self-excluded CSV
+# is present.
+_COMPARATIVE_SUFFIXES = _EXTERNAL_COMPARATIVE_SUFFIXES
 
 # Input-name prefixes the tools prepend; stripped to name an UNKNOWN (newly-added)
 # metric's CSV when it isn't in METRIC_SUFFIXES, so new tools band with no code change.
