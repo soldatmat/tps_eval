@@ -202,12 +202,20 @@ def detect_domains_to_dir(
 def _reduce_alignments(
     raw_hits_csv: str,
     domain_counts: Dict[str, int],
+    *,
+    exclude_self: bool = False,
 ) -> pd.DataFrame:
     """Reduce per-detected-domain foldseek hits to one row per design ID.
 
     `raw_hits_csv` is the full per-hit table from ``domain_alignment`` (one row per
     query-domain × reference-domain hit). `domain_counts` maps every input ID to
     its number of detected domains (so zero-domain designs become NaN rows).
+
+    `exclude_self`: searching a domain set against itself (leave-one-out). Drop hits
+    to a reference domain originating from the query's OWN source structure (the
+    reference domain stem ``<id>_<type>_<index>`` parses to the same design id),
+    BEFORE the best-hit reduction, so each design's best hit is its nearest OTHER
+    known-TPS domain instead of the trivial self-match TM~1.0.
     """
     hits = pd.read_csv(raw_hits_csv)
 
@@ -217,6 +225,13 @@ def _reduce_alignments(
     hits["__target_stem"] = hits["target"].map(_stem)
     hits["__design_id"] = hits["__query_stem"].map(lambda s: _parse_module_id(s)[0])
     hits["__ref_type"] = hits["__target_stem"].map(lambda s: _parse_module_id(s)[1])
+    if exclude_self:
+        # "self" == the reference domain comes from this design's own source
+        # structure (same source id as the query domain's design id).
+        hits["__ref_source_id"] = hits["__target_stem"].map(
+            lambda s: _parse_module_id(s)[0]
+        )
+        hits = hits[hits["__ref_source_id"] != hits["__design_id"]]
     # alntmscore is the symmetric domain-level TM-score (LARGER = closer).
     hits["alntmscore"] = pd.to_numeric(hits["alntmscore"], errors="coerce")
     hits["lddt"] = pd.to_numeric(hits["lddt"], errors="coerce")
@@ -264,12 +279,18 @@ def extract_domain_structural_identity_dir(
     n_jobs: int = 10,
     n_iters: int = 3,
     keep_detected_domains: Optional[str] = None,
+    exclude_self: bool = False,
 ) -> pd.DataFrame:
     """Domain-level structural identity for every design in `structs_dir`.
 
     Detects TPS domains, foldseek-aligns them against the known-TPS reference
     domains under `known_domain_structures_root`, reduces to one row per design ID,
     writes ``<structs_dir>_domain_structural_identity.csv`` and returns the df.
+
+    `exclude_self`: self-search (leave-one-out). Before the best-hit reduction, drop
+    hits to a reference domain originating from the query's own source structure, so
+    a domain set searched against itself yields the nearest OTHER known-TPS domain
+    instead of the trivial self-match TM~1.0. Defaults OFF (gen-vs-reference runs).
     """
     if not os.path.isdir(known_domain_structures_root):
         raise NotADirectoryError(
@@ -327,7 +348,7 @@ def extract_domain_structural_identity_dir(
                 )
             )
             raw_hits = os.path.join(tmp_align, "domain_alignments.csv")
-            df = _reduce_alignments(raw_hits, domain_counts)
+            df = _reduce_alignments(raw_hits, domain_counts, exclude_self=exclude_self)
     finally:
         shutil.rmtree(tmp_align, ignore_errors=True)
         shutil.rmtree(flat_align, ignore_errors=True)

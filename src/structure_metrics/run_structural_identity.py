@@ -99,6 +99,12 @@ def main() -> None:
                         help="Output CSV path (default: <structs_dir>_structural_identity.csv).")
     parser.add_argument("--top_k", type=int, default=None,
                         help="If >= 1, also emit the top-k nearest reference structures per query.")
+    parser.add_argument("--self_mode", action="store_true", default=False,
+                        help="Searching a structure set against itself: drop self-hits "
+                        "(target stem == query stem) before the single-best reduction, so "
+                        "each query's best hit is its nearest OTHER neighbour (leave-one-out) "
+                        "instead of the trivial self-match TM~1.0. The top-k path already "
+                        "excludes self-hits unconditionally.")
     args = parser.parse_args()
 
     want_topk = args.top_k is not None and args.top_k >= 1
@@ -112,6 +118,7 @@ def main() -> None:
             # Keep the raw per-hit table so top-k can be derived from it.
             store_intermediate_results=want_topk,
             random_run_id=False,
+            exclude_self=args.self_mode,
         ))
         scores = pd.read_csv(os.path.join(tmp, "structure_alignment_scores.csv"))
 

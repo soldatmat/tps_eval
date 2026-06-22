@@ -23,7 +23,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_root", type=str, required=True, help="Path to output CSV file.")
     parser.add_argument("--store_intermediate_results", action="store_true", help="Flag to keep files with intermediate results.", default=False)
     parser.add_argument("--random_run_id", action="store_true", default=False, help="Flag to add random uuid4 to output files to avoid overwriting.")
+    parser.add_argument("--exclude_self", action="store_true", default=False, help="Drop self-hits (target structure stem == query structure stem) before the best-hit reduction, for searching a structure set against itself (leave-one-out).")
     return parser.parse_args()
+
+
+def _structure_stem(name: str) -> str:
+    """Structure stem: drop any path and a trailing structure extension (mirrors
+    run_structural_identity._stem / _write_topk's self-hit convention)."""
+    base = os.path.basename(str(name))
+    for ext in (".pdb.gz", ".cif.gz", ".pdb", ".cif", ".ent"):
+        if base.endswith(ext):
+            return base[: -len(ext)]
+    return base
 
 
 def main(args: argparse.Namespace):
@@ -62,6 +73,14 @@ def main(args: argparse.Namespace):
                      'ttmscore', 'lddt']:
         df_foldseek[_num_col] = pd.to_numeric(df_foldseek[_num_col], errors='coerce')
     df_foldseek.to_csv(tsv_path.with_suffix('.csv'), index=False)
+    # In self mode, drop self-hits (target stem == query stem) BEFORE the best-hit
+    # reduction, so a structure set searched against itself yields the nearest
+    # OTHER neighbour (leave-one-out) instead of the trivial self-match TM~1.0.
+    if getattr(args, "exclude_self", False):
+        df_foldseek = df_foldseek[
+            df_foldseek["query"].map(_structure_stem)
+            != df_foldseek["target"].map(_structure_stem)
+        ]
     dfg = df_foldseek.groupby('query')
     dfg.groups.keys(), dfg['alntmscore'].max(), dfg['alntmscore'].idxmax()
     best_scores = pd.DataFrame({

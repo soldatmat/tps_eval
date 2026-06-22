@@ -39,6 +39,15 @@ def main() -> None:
         help="If given, write the per-design detected domain .pdb files into this "
         "directory and keep them (default: a temp dir, removed after).",
     )
+    parser.add_argument(
+        "--self_mode",
+        action="store_true",
+        default=False,
+        help="Searching a domain set against itself: drop hits to a reference domain "
+        "originating from the query's own source structure before the best-hit "
+        "reduction, so each design's best hit is its nearest OTHER known-TPS domain "
+        "(leave-one-out) instead of the trivial self-match TM~1.0.",
+    )
     args = parser.parse_args()
 
     extract_domain_structural_identity_dir(
@@ -48,6 +57,7 @@ def main() -> None:
         n_jobs=args.n_jobs,
         n_iters=args.n_iters,
         keep_detected_domains=args.keep_detected_domains,
+        exclude_self=args.self_mode,
     )
 
 
