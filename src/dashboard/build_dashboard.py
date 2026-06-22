@@ -24,12 +24,20 @@ requests) so it is portable and viewable as a local file or a published artifact
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import glob
 import json
 import math
 import os
+import struct
 from typing import Dict, List, Optional, Tuple
+
+# Above this many designs (summed across sets) the dashboard auto-switches to "large mode":
+# the per-design values are shipped as compact base64 typed arrays, the middle column draws an
+# aggregate density instead of one needle per design, and the funnel filters via typed arrays.
+# Small batches are unaffected (plain per-design needles + JSON value lists).
+DEFAULT_LARGE_THRESHOLD = 20000
 
 try:
     from metric_info import METRIC_INFO, METRIC_CATEGORY, CATEGORY_ORDER
@@ -113,6 +121,10 @@ KNOWN_SUFFIXES = sorted(
 )
 
 _MISSING = ("", "nan", "NA", "NaN", "None", "null")
+
+# Deterministic seed for the optional per-set row subsample (--sample-per-set). Fixed so
+# the same production batch always yields the same overlay needles across rebuilds.
+SAMPLE_SEED = 20260622
 
 # Identifier / per-design annotation columns that are never a banded metric (mirrors the
 # aggregator's _DROP_COLUMNS). Dropped from design CSVs before overlay.
@@ -238,13 +250,19 @@ def _band_column_kinds(sources: Dict[str, dict]) -> Dict[str, str]:
 
 
 def load_design_batch(
-    entries: List[str], sources: Dict[str, dict], name: Optional[str] = None
+    entries: List[str], sources: Dict[str, dict], name: Optional[str] = None,
+    sample_per_set: Optional[int] = None,
 ) -> Optional[dict]:
     """Load a generated-design batch as raw per-column value lists.
 
     Returns ``None`` if no usable CSVs are found. Columns are kept raw (floats for
     numeric, strings for categorical); ``col_tool`` records which tool each column
     came from so design-only columns (no reference band) can be grouped sensibly.
+
+    ``sample_per_set`` caps the set to that many designs (deterministic random
+    subsample, seeded by ``SAMPLE_SEED``) — the dashboard draws one needle per design,
+    so very large production batches (~10^5) must be thinned to stay browser-renderable.
+    All metric columns are still loaded; only the row count is reduced.
     """
     csv_paths = _resolve_csv_paths(entries)
     if not csv_paths:
@@ -272,8 +290,16 @@ def load_design_batch(
                       f"(> {_MAX_DESIGN_COLUMNS_PER_FILE}) — looks like a raw feature matrix, "
                       f"not a metric table")
                 continue
+            # Self-comparison tools (gen-vs-self, e.g. local_sequence_search_self,
+            # max_sequence_identity_self) share column names with their gen-vs-train
+            # sibling, so a raw merge silently clobbers one with the other. Suffix the
+            # self-file's columns with `_self` to keep them distinct — mirrors the
+            # convention in plot/constants.py and data/load_results.py.
+            self_tool = tool.endswith("_self")
+            col_rename = {c: (f"{c}_self" if self_tool and not c.endswith("_self") else c)
+                          for c in data_cols}
             for c in data_cols:
-                col_tool.setdefault(c, tool)
+                col_tool.setdefault(col_rename[c], tool)
             for r in reader:
                 rid = r.get(id_col)
                 if rid is None:
@@ -282,11 +308,21 @@ def load_design_batch(
                     merged[rid] = {}
                     order.append(rid)
                 for c in data_cols:
-                    if c not in merged[rid]:
-                        merged[rid][c] = r.get(c)
+                    rc = col_rename[c]
+                    if rc not in merged[rid]:
+                        merged[rid][rc] = r.get(c)
 
     if not order:
         return None
+
+    n_total = len(order)
+    if sample_per_set and n_total > sample_per_set:
+        import random
+        rng = random.Random(SAMPLE_SEED)
+        keep_idx = sorted(rng.sample(range(n_total), sample_per_set))
+        order = [order[i] for i in keep_idx]
+        print(f"  subsampled '{name or csv_paths[0]}': {n_total} -> {len(order)} designs "
+              f"(--sample-per-set {sample_per_set}, seed {SAMPLE_SEED})")
 
     all_cols = list(col_tool.keys())
     # Decide each column's kind (band kind wins; else infer numeric-vs-categorical).
@@ -309,6 +345,7 @@ def load_design_batch(
     return {
         "name": name or (os.path.basename(os.path.dirname(os.path.abspath(csv_paths[0]))) or "designs"),
         "n": len(order),
+        "n_total": n_total,
         "synthetic": False,
         "ids": order,
         "values": values,
@@ -363,6 +400,27 @@ def synthetic_design_batch(sources: Dict[str, dict], n: int = 28) -> dict:
                 out.append(round(v, 4))
             values[cname] = out
             col_kind[cname] = "numeric"
+
+    # a couple of categorical columns (matching real categorical bands) so the categorical
+    # bar + filter path is exercised by the demo / large-mode validation too.
+    cat_headline = {
+        "diphosphate_sensor": ["has_RY_pair"],
+        "domain_composition": ["domain_architecture"],
+    }
+    for mname, cols in cat_headline.items():
+        m = ref["metrics"].get(mname)
+        if not m:
+            continue
+        for cname in cols:
+            col = m["columns"].get(cname)
+            if not col or col.get("kind") != "categorical":
+                continue
+            freqs = col.get("frequencies") or {}
+            cats = [k for k, _ in sorted(freqs.items(), key=lambda kv: -kv[1])] or ["True", "False"]
+            weights = [max(freqs.get(k, 1), 1) for k in cats]
+            values[cname] = rng.choices(cats, weights=weights, k=n)
+            col_kind[cname] = "categorical"
+
     return {
         "name": "synthetic demo batch", "n": n, "synthetic": True,
         "ids": ids, "values": values, "col_tool": {}, "col_kind": col_kind, "n_files": 0,
@@ -409,9 +467,54 @@ def _design_only_groups(union_cols: Dict[str, Tuple[Optional[str], str]],
     return ordered
 
 
+_NULL_CODE = 0xFFFF   # categorical sentinel for "no value" in the Uint16 code stream
+
+
+def _encode_large_values(design_sets: List[dict]) -> None:
+    """In large mode, replace each set's per-design ``values`` lists with compact base64 typed
+    arrays (``values_enc``) so 10^5+ designs stay shippable in a single self-contained file.
+    Numeric -> little-endian Float32 (null -> NaN); categorical -> a category table + Uint16
+    codes (null / overflow -> 0xFFFF). The browser decodes these back to typed arrays."""
+    for ds in design_sets:
+        values = ds.pop("values")
+        kinds = ds.get("col_kind", {})
+        enc: Dict[str, dict] = {}
+        for c, arr in values.items():
+            if kinds.get(c, "numeric") == "numeric":
+                packed = struct.pack(
+                    "<%df" % len(arr),
+                    *[(float(v) if v is not None else float("nan")) for v in arr],
+                )
+                enc[c] = {"t": "f32", "n": len(arr),
+                          "b64": base64.b64encode(packed).decode("ascii")}
+            else:
+                cats: List[str] = []
+                index: Dict[str, int] = {}
+                codes: List[int] = []
+                for v in arr:
+                    if v is None:
+                        codes.append(_NULL_CODE)
+                        continue
+                    s = str(v)
+                    j = index.get(s)
+                    if j is None:
+                        if len(cats) >= _NULL_CODE:
+                            codes.append(_NULL_CODE)   # absurd cardinality -> drop to null
+                            continue
+                        j = len(cats); index[s] = j; cats.append(s)
+                    codes.append(j)
+                packed = struct.pack("<%dH" % len(codes), *codes)
+                enc[c] = {"t": "cat", "n": len(codes), "cats": cats,
+                          "b64": base64.b64encode(packed).decode("ascii")}
+        ds["values_enc"] = enc
+
+
 def build_data(source_paths: List[str],
                design_specs: Optional[List[Tuple[Optional[str], List[str]]]],
-               demo: bool) -> dict:
+               demo: bool, sample_per_set: Optional[int] = None,
+               large_mode: Optional[bool] = None,
+               large_threshold: int = DEFAULT_LARGE_THRESHOLD,
+               demo_n: int = 28) -> dict:
     sources: Dict[str, dict] = {}
     for p in source_paths:
         src = load_band_source(p)
@@ -425,11 +528,11 @@ def build_data(source_paths: List[str],
     design_sets: List[dict] = []
     if design_specs:
         for name, entries in design_specs:
-            ds = load_design_batch(entries, sources, name=name)
+            ds = load_design_batch(entries, sources, name=name, sample_per_set=sample_per_set)
             if ds:
                 design_sets.append(ds)
     elif demo and sources:
-        design_sets.append(synthetic_design_batch(sources))
+        design_sets.append(synthetic_design_batch(sources, n=demo_n))
 
     # Append design-only metric cards (columns with no band) to every source so the
     # batch is always inspectable, even where bands are missing.
@@ -461,12 +564,20 @@ def build_data(source_paths: List[str],
                         for c, spec in cols.items():
                             existing["columns"].setdefault(c, spec)
 
+    total_designs = sum(d["n"] for d in design_sets)
+    large = bool(design_sets) and (large_mode if large_mode is not None
+                                   else total_designs >= large_threshold)
+    if large:
+        _encode_large_values(design_sets)
+
     return {
         "reference_set": reference_set,
         "release": release,
         "labelings": ["substrate", "first_cyclization", "domain_architecture"],
         "sources": sources,
         "design_sets": design_sets,
+        "large_mode": large,
+        "large_threshold": large_threshold,
         "metric_info": METRIC_INFO,
         "category_order": CATEGORY_ORDER,
         "metric_category": METRIC_CATEGORY,
@@ -522,6 +633,32 @@ def main(argv: Optional[List[str]] = None) -> None:
         help="Overlay a synthetic demo batch (ignored if --designs is given).",
     )
     ap.add_argument(
+        "--demo-n", type=int, default=28, metavar="N",
+        help="Number of synthetic designs for --demo (default 28). Use a large value "
+             "(e.g. 300000) together with large mode to validate the large-batch path.",
+    )
+    lg = ap.add_mutually_exclusive_group()
+    lg.add_argument(
+        "--large-mode", dest="large_mode", action="store_true", default=None,
+        help="Force large mode (compact typed-array payload + density overlay + typed-array "
+             f"funnel). Auto-engages above {DEFAULT_LARGE_THRESHOLD} total designs.",
+    )
+    lg.add_argument(
+        "--no-large-mode", dest="large_mode", action="store_false",
+        help="Force the classic per-design-needle mode even for large batches.",
+    )
+    ap.add_argument(
+        "--large-threshold", type=int, default=DEFAULT_LARGE_THRESHOLD, metavar="N",
+        help=f"Auto-engage large mode at/above this many total designs (default {DEFAULT_LARGE_THRESHOLD}).",
+    )
+    ap.add_argument(
+        "--sample-per-set", type=int, default=None, metavar="N",
+        help="Cap each design set to N designs (deterministic random subsample). The "
+             "dashboard draws one needle per design, so large production batches (~10^5) "
+             "must be thinned to stay browser-renderable. All metric columns are still "
+             "loaded; only the row count is reduced.",
+    )
+    ap.add_argument(
         "--output", default=os.path.join(REPO_ROOT, "data", "dashboard", "marts_db_dashboard.html"),
         help="Output HTML path (default: data/dashboard/marts_db_dashboard.html).",
     )
@@ -534,7 +671,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     if not source_paths and not design_specs and not args.demo:
         ap.error("no band JSONs found and no --designs given; nothing to render.")
 
-    data = build_data(source_paths, design_specs, demo=args.demo)
+    data = build_data(source_paths, design_specs, demo=args.demo,
+                      sample_per_set=args.sample_per_set,
+                      large_mode=args.large_mode, large_threshold=args.large_threshold,
+                      demo_n=args.demo_n)
     if not data["sources"]:
         ap.error("nothing to render: no bands resolved and no design columns found.")
     data = _sanitize_for_json(data)
@@ -550,7 +690,13 @@ def main(argv: Optional[List[str]] = None) -> None:
     print(f"  sources: {', '.join(data['sources']) or '(none)'}  ({n_sources} sources, {n_metrics} metric-tables)")
     for ds in data.get("design_sets", []):
         tag = " [synthetic demo]" if ds.get("synthetic") else f" from {ds.get('n_files', 0)} csv(s)"
-        print(f"  design set '{ds['name']}': {ds['n']} designs{tag}")
+        n_total = ds.get("n_total")
+        sampled = f" (subsampled from {n_total})" if n_total and n_total != ds["n"] else ""
+        print(f"  design set '{ds['name']}': {ds['n']} designs{sampled}{tag}")
+    if data.get("large_mode"):
+        total = sum(d["n"] for d in data.get("design_sets", []))
+        print(f"  LARGE MODE: {total} designs shipped as base64 typed arrays "
+              f"(density overlay + typed-array funnel; threshold {data.get('large_threshold')})")
     print(f"  size: {os.path.getsize(args.output) / 1e6:.2f} MB")
 
 

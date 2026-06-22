@@ -67,6 +67,9 @@
   .toggle-designs .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); transition: background .15s; }
   .toggle-designs[aria-pressed="true"] .pip { background: var(--design); box-shadow: 0 0 10px 1px var(--design-soft); }
   .toggle-designs.disabled { opacity: 0.4; cursor: not-allowed; }
+  /* the header designs box is now a passive note (inclusion is per-set in the Distributions column) */
+  .toggle-designs.note { cursor: default; }
+  .toggle-designs.note:hover { color: var(--mist); border-color: var(--line); }
 
   .legend { border-top: 1px solid var(--line); display: flex; gap: 24px; flex-wrap: wrap; align-items: center; padding: 10px 0 12px;
     font-family: var(--mono); font-size: 11px; color: var(--mist); }
@@ -103,12 +106,13 @@
   /* drag-to-reorder */
   .grip { color: var(--mist-dim); cursor: grab; font-size: 12px; line-height: 1; user-select: none; padding-right: 4px; }
   .grip:active { cursor: grabbing; }
-  .ov-row .rgrip, .ov-headrow .rgrip, .ov-catrow .rgrip, .ov-arrow-row .rgrip, .ov-total .rgrip { width: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mist-dim); font-size: 8px; line-height: 1; }
-  .ov-row .rgrip { cursor: grab; margin-left: 12px; } .ov-row .rgrip:active { cursor: grabbing; }   /* indent grip + name together under the category */
+  .ov-row .rgrip, .ov-headrow .rgrip, .ov-catrow .rgrip, .ov-subrow .rgrip, .ov-arrow-row .rgrip, .ov-total .rgrip { width: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mist-dim); font-size: 8px; line-height: 1; }
+  .ov-subrow .rgrip { cursor: grab; margin-left: 12px; } .ov-subrow .rgrip:active { cursor: grabbing; }   /* metric subgroup: one level under the category */
+  .ov-row .rgrip { cursor: grab; margin-left: 24px; } .ov-row .rgrip:active { cursor: grabbing; }         /* column: one level under its metric subgroup */
   .ov-catrow .rgrip { cursor: grab; color: var(--nature); } .ov-catrow .rgrip:active { cursor: grabbing; }
-  .metric.dragging, .ov-row.dragging, .ov-catrow.dragging { opacity: 0.45; }
+  .metric.dragging, .ov-row.dragging, .ov-catrow.dragging, .ov-subrow.dragging { opacity: 0.45; }
   .metric.drop-target { box-shadow: 0 -2px 0 0 var(--design); }
-  .ov-row.drop-target, .ov-catrow.drop-target { box-shadow: inset 0 2px 0 0 var(--design); }
+  .ov-row.drop-target, .ov-catrow.drop-target, .ov-subrow.drop-target { box-shadow: inset 0 2px 0 0 var(--design); }
   .card-hide { margin-left: auto; align-self: center; background: none; border: 0; color: var(--mist-dim);
     cursor: pointer; padding: 2px 5px; display: flex; align-items: center; border-radius: 5px; }
   .card-hide:hover { color: var(--bone); }
@@ -117,6 +121,7 @@
   .src-note { font-family: var(--mono); font-size: 11.5px; color: var(--mist); margin: -2px 0 16px; }
   .src-note b { color: var(--bone); }
   .cat-divider { display: flex; align-items: center; gap: 12px; margin: 26px 0 12px; }
+  .metric.is-hidden, .cat-divider.is-hidden { display: none; }   /* hide/search toggle — no DOM rebuild */
   .cat-divider:first-child { margin-top: 4px; }
   .cat-divider .ctitle { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--nature); font-weight: 600; white-space: nowrap; }
   .cat-divider .rule { height: 1px; background: var(--line); flex: 1; }
@@ -152,6 +157,20 @@
   .thresh input:focus { outline: none; border-color: var(--design); }
   .thresh input.set { border-color: var(--design); color: var(--design); }
   .thresh .dash { color: var(--mist-dim); }
+  .thresh-reset { display: inline-flex; align-items: center; justify-content: center; margin-left: 2px; padding: 3px; background: none;
+    border: 1px solid var(--line); border-radius: 6px; color: var(--mist); cursor: pointer; }
+  .thresh-reset:hover { color: var(--design-out); border-color: var(--design-out); }
+  .thresh-reset svg { display: block; }
+  /* categorical filter — toggle pills (allowed = lit, excluded = dimmed + struck) */
+  .catfilter { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; font-family: var(--mono); font-size: 10.5px; }
+  .catpill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 6px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--ink-2); color: var(--mist); cursor: pointer; transition: opacity .12s, border-color .12s, color .12s; }
+  .catpill .cp-sw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .catpill .cp-lbl { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catpill.on { color: var(--bone); border-color: var(--line-2); }
+  .catpill:not(.on) { opacity: 0.42; }
+  .catpill:not(.on) .cp-lbl { text-decoration: line-through; }
+  .catpill:hover { border-color: var(--design); }
 
   /* numeric track rows */
   .axis-row, .track-row { display: grid; grid-template-columns: var(--labw, 124px) 1fr; align-items: center; }
@@ -176,7 +195,9 @@
   /* ---------- design-set key (top of the Distributions column) ---------- */
   .design-sets { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 4px 0 18px; }
   .ds-chip { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--line-2); border-radius: 999px;
-    background: var(--ink-2); font-family: var(--mono); font-size: 11px; color: var(--bone); }
+    background: var(--ink-2); font-family: var(--mono); font-size: 11px; color: var(--bone); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .ds-chip.on { border-color: var(--design); box-shadow: 0 0 9px -3px var(--design-soft); }   /* included = yellow outline (default) */
+  .ds-chip:focus-visible { outline: 2px solid var(--design); outline-offset: 2px; }
   .ds-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ink); flex: none; }
   .ds-nm { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ds-cnt { color: var(--mist-dim); }
@@ -188,13 +209,20 @@
   .ov-pass { font-family: var(--mono); font-size: 11px; color: var(--mist); margin: 4px 0 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); }
   .ov-pass b { color: var(--design); }
   /* funnel: NAME | PASS · [ KEPT | pipe | CUT ] — flush rows so the pipe is continuous */
-  .ov-headrow, .ov-row, .ov-catrow { display: flex; align-items: stretch; height: 21px; padding: 0 6px; }
+  .ov-headrow, .ov-row, .ov-catrow, .ov-subrow { display: flex; align-items: stretch; height: 21px; padding: 0 6px; }
   .ov-headrow { height: auto; padding: 7px 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-dim); }
   .ov-row { font-family: var(--mono); font-size: 11px; color: var(--mist); cursor: pointer; }
-  .ov-row:hover { background: rgba(255,255,255,0.03); }
-  .ov-headrow .name, .ov-row .name, .ov-catrow .name, .ov-arrow-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
+  .ov-row:hover, .ov-subrow:hover { background: rgba(255,255,255,0.03); }
+  .ov-headrow .name, .ov-row .name, .ov-catrow .name, .ov-subrow .name, .ov-arrow-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 21px; }
   .ov-catrow .name { color: var(--nature); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
   .ov-row.thr .name { color: var(--design); }
+  /* metric subgroup header: chevron + bold metric name, between the category header and its columns */
+  .ov-subrow { font-family: var(--mono); font-size: 11.5px; color: var(--bone); cursor: pointer; }
+  .ov-subrow .name { display: flex; align-items: center; gap: 6px; line-height: normal; }
+  .ov-subrow .name .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .ov-subrow .subchev { flex: none; color: var(--mist-dim); font-size: 8px; line-height: 1; transition: transform .15s; }
+  .ov-subrow.collapsed .subchev { transform: rotate(-90deg); }
+  .ov-subrow:hover .ov-remove { opacity: 1; }
   .ovc-pass, .ovc-kept, .ovc-cut { display: flex; align-items: center; font-variant-numeric: tabular-nums; color: var(--mist-dim); }
   .ovc-pass { width: 38px; justify-content: flex-end; }
   .ovc-kept { width: 44px; justify-content: center; }
@@ -222,6 +250,29 @@
   .ov-extract:disabled { opacity: 0.4; cursor: default; }
   .ov-extract svg { display: block; }
   .ov-hint { font-family: var(--mono); font-size: 11px; color: var(--mist-dim); line-height: 1.5; }
+
+  /* unused-filters tray (above the funnel) + per-row remove control */
+  .ov-unused { margin: 0 0 14px; padding: 9px 10px; border: 1px dashed var(--line-2); border-radius: 8px; background: rgba(255,255,255,0.014); }
+  .ov-unused.drop-target { border-color: var(--design); box-shadow: inset 0 0 0 1px var(--design); }
+  .ov-unused-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mist-dim); }
+  .ov-unused-empty { font-family: var(--mono); font-size: 10.5px; color: var(--mist-dim); line-height: 1.5; }
+  .ov-unused-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ov-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 4px 3px 9px; border: 1px solid var(--line);
+    border-radius: 999px; background: var(--ink-2); font-family: var(--mono); font-size: 10.5px; color: var(--mist); cursor: grab; }
+  .ov-chip:hover { color: var(--bone); border-color: var(--line-2); }
+  .ov-chip.dragging { opacity: 0.45; }
+  .ov-chip .nm { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-chip .add { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: none;
+    border: 0; border-radius: 50%; background: var(--design-soft); color: var(--design); cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
+  .ov-chip .add:hover { background: var(--design); color: var(--ink); }
+  .ov-funnel.drop-target { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--design); }
+  .ov-row .name { display: flex; align-items: center; gap: 5px; line-height: normal; }
+  .ov-row .name .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ov-remove { flex: none; background: none; border: 0; color: var(--mist-dim); cursor: pointer; padding: 0 1px;
+    font-size: 11px; line-height: 1; opacity: 0; transition: opacity .12s, color .12s; }
+  .ov-row:hover .ov-remove { opacity: 1; }
+  .ov-remove:hover { color: var(--design-out); }
 
   /* tooltip */
   #tip { position: fixed; left: 50%; top: 0; z-index: 60; pointer-events: none; opacity: 0; transform: translate(-50%, -100%) translateY(-10px);
@@ -287,11 +338,83 @@
   const D = window.__DATA__;
   const SOURCE_KEYS = Object.keys(D.sources);
   const SETS = D.design_sets || [];
+  // ---------- large mode (10^5+ designs) ----------
+  // In large mode the builder ships per-design values as base64 typed arrays and we draw an
+  // aggregate density (not one needle per design) + filter via typed arrays. Small batches are
+  // untouched: D.large_mode is false, ds.values are plain JS arrays, every classic path runs.
+  const LARGE = !!D.large_mode;
+  const HIST_BINS = 256;          // resolution for the cached per-column count histogram (chips)
+  const DENSITY_BINS = 64;        // resolution for the drawn density curve
+  const SAMPLE_DOTS = 240;        // tiny scatter drawn over the density for texture
+  (function decodeLarge() {
+    if (!LARGE) return;
+    const b64ToBytes = (b64) => { const bin = atob(b64), n = bin.length, u = new Uint8Array(n);
+      for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i); return u; };
+    SETS.forEach((ds) => {
+      const enc = ds.values_enc || {}; const out = {};
+      Object.keys(enc).forEach((c) => {
+        const e = enc[c];
+        if (e.t === "f32") {
+          out[c] = new Float32Array(b64ToBytes(e.b64).buffer, 0, e.n);   // NaN encodes null
+        } else {                                                          // categorical -> string|null array
+          const codes = new Uint16Array(b64ToBytes(e.b64).buffer, 0, e.n);
+          const cats = e.cats || [], arr = new Array(e.n);
+          for (let i = 0; i < e.n; i++) { const k = codes[i]; arr[i] = k === 0xFFFF ? null : cats[k]; }
+          out[c] = arr;
+        }
+      });
+      ds.values = out; delete ds.values_enc;
+    });
+  })();
+  // per-(setIndex, column) aggregate caches, built once (values are static); used in large mode so
+  // we never rescan 300k on a redraw. Keyed "si|cname".
+  const _statCache = {}, _histCache = {}, _densCache = {}, _catFreqCache = {};
+  function colStats(si, cname) {                  // {min,max,count} over finite values
+    const key = si + "|" + cname; let s = _statCache[key]; if (s) return s;
+    const a = SETS[si].values[cname]; let mn = Infinity, mx = -Infinity, n = 0;
+    if (a) for (let i = 0; i < a.length; i++) { const v = a[i]; if (v === v && v !== Infinity && v !== -Infinity) { if (v < mn) mn = v; if (v > mx) mx = v; n++; } }
+    s = n ? { min: mn, max: mx, count: n } : { min: 0, max: 1, count: 0 };
+    _statCache[key] = s; return s;
+  }
+  function colHist(si, cname) {                   // {min,max,count,bins:Float64Array} over [min,max]
+    const key = si + "|" + cname; let h = _histCache[key]; if (h) return h;
+    const a = SETS[si].values[cname], st = colStats(si, cname);
+    const bins = new Float64Array(HIST_BINS), span = st.max - st.min || 1;
+    if (a) for (let i = 0; i < a.length; i++) { const v = a[i]; if (v === v && v !== Infinity && v !== -Infinity) {
+      let b = Math.floor((v - st.min) / span * HIST_BINS); if (b < 0) b = 0; else if (b >= HIST_BINS) b = HIST_BINS - 1; bins[b]++; } }
+    h = { min: st.min, max: st.max, count: st.count, bins }; _histCache[key] = h; return h;
+  }
+  function histCountLE(h, x) {                     // approx count of finite values <= x (interpolated)
+    if (x <= h.min) return 0; if (x >= h.max) return h.count;
+    const span = h.max - h.min || 1, pos = (x - h.min) / span * HIST_BINS, b = Math.floor(pos);
+    let c = 0; for (let i = 0; i < b; i++) c += h.bins[i];
+    return c + h.bins[b] * (pos - b);             // linear within the edge bin
+  }
+  const histCountBetween = (h, lo, hi) => Math.max(0, Math.round(histCountLE(h, hi) - histCountLE(h, lo)));
+  function densityBins(si, cname, dom) {          // counts over `dom` for the drawn curve, cached by domain
+    const key = si + "|" + cname + "|" + dom[0].toFixed(4) + "_" + dom[1].toFixed(4);
+    let d = _densCache[key]; if (d) return d;
+    const a = SETS[si].values[cname], bins = new Float64Array(DENSITY_BINS), span = dom[1] - dom[0] || 1;
+    let max = 0;
+    if (a) for (let i = 0; i < a.length; i++) { const v = a[i]; if (v === v && v !== Infinity && v !== -Infinity) {
+      let b = Math.floor((v - dom[0]) / span * DENSITY_BINS); if (b < 0) b = 0; else if (b >= DENSITY_BINS) b = DENSITY_BINS - 1; bins[b]++; } }
+    for (let i = 0; i < DENSITY_BINS; i++) if (bins[i] > max) max = bins[i];
+    d = { bins, max: max || 1 }; _densCache[key] = d; return d;
+  }
+  function catFreqCached(si, cname) {             // {freq:{cat:n}, nonNull} cached
+    const key = si + "|" + cname; let f = _catFreqCache[key]; if (f) return f;
+    const a = SETS[si].values[cname], freq = {}; let nn = 0;
+    if (a) for (let i = 0; i < a.length; i++) { const v = a[i]; if (v != null && v !== "") { const k = String(v); freq[k] = (freq[k] || 0) + 1; nn++; } }
+    f = { freq, nonNull: nn }; _catFreqCache[key] = f; return f;
+  }
   const INFO = D.metric_info || {};
   const CAT_OF = D.metric_category || {};
   const CAT_ORDER = D.category_order || ["Other"];
   const STRATS = [["none", "none"], ["substrate", "substrate"], ["first_cyclization", "1st cyclization"], ["domain_architecture", "domain arch."]];
   const MAX_STRATA = 8, MAX_CATS = 8;
+  // a categorical column is offered as a filter only if its distinct design values fit this many
+  // pills — above it the column is a free-form identifier (hit IDs etc.), not a useful category set.
+  const MAX_CAT_FILTER_VALUES = 12;
   const CAT_RAMP = ["#7fc6b6", "#26565b", "#4fa39a", "#1f4347", "#9bd7c6", "#33707a", "#163035", "#5fb0a6"];
   const BOOL_COLORS = { "True": "#7fc6b6", "true": "#7fc6b6", "False": "#274b50", "false": "#274b50" };
   // distinct fill colours for multiple design sets (with >1 set the dot IS the set colour;
@@ -305,13 +428,16 @@
 
   const state = {
     source: SOURCE_KEYS[0], labeling: "none", query: "",
-    designs: SETS.length > 0,                       // on by default if any set loaded
+    excludedSets: new Set(),                        // set indices toggled OFF in the Distributions column (default: all included)
     thresholds: {},                                 // "metric::col" -> {min,max}
     setColors: {},                                  // set index -> hex override
     hidden: new Set(),                              // hidden metric names
     collapsed: new Set(),                           // collapsed metric cards (main view)
     mainOrder: null,                                // custom metric order for the main view
     filterOrder: null,                              // custom colKey order for the pipeline
+    disabledFilters: new Set(),                     // colKeys removed from the pipeline (kept in the unused list)
+    filterCollapsed: new Set(),                     // metric names whose pipeline subgroup is collapsed to one line
+    catExcluded: {},                                // "metric::col" -> Set of disallowed categories (categorical filters)
   };
 
   const $ = (s, r) => (r || document).querySelector(s);
@@ -325,13 +451,16 @@
   function defaultMetricOrder() {                    // category-grouped metric names
     const out = []; groupedMetricsAll().forEach(([, names]) => names.forEach((m) => out.push(m))); return out;
   }
-  function defaultFilterKeys() {                     // numeric columns that have design data, in default order, minus hidden
+  function defaultFilterKeys() {                     // numeric + low-cardinality categorical columns with design data
     const metrics = metricsOf(state.source), out = [];
     defaultMetricOrder().forEach((m) => {
       if (state.hidden.has(m)) return;
       Object.entries(metrics[m].columns).forEach(([c, col]) => {
-        if (col.kind === "categorical") return;
         if (!SETS.some((ds) => ds.values[c])) return;
+        if (col.kind === "categorical") {
+          const n = designCatValues(c).length;       // distinct categories the designs actually take
+          if (n < 1 || n > MAX_CAT_FILTER_VALUES) return;
+        }
         out.push(colKey(m, c));
       });
     });
@@ -355,6 +484,12 @@
 
   // ---------- drag-to-reorder (HTML5 DnD, via a grip handle) ----------
   let dragId = null, dragKind = null;
+  function makeDropTarget(item, id, kind, onDrop) {   // the drop half — also usable on plain containers
+    item.addEventListener("dragover", (e) => { if (dragKind !== kind || dragId === id) return; e.preventDefault(); item.classList.add("drop-target"); });
+    item.addEventListener("dragleave", () => item.classList.remove("drop-target"));
+    item.addEventListener("drop", (e) => { item.classList.remove("drop-target");
+      if (dragKind !== kind || dragId == null || dragId === id) return; e.preventDefault(); e.stopPropagation(); onDrop(dragId, id); });
+  }
   function makeDraggable(handle, item, id, kind, onDrop) {
     handle.setAttribute("draggable", "true");
     handle.addEventListener("click", (e) => e.stopPropagation());
@@ -362,30 +497,51 @@
       try { e.dataTransfer.setData("text/plain", id); } catch (_) {} item.classList.add("dragging"); });
     handle.addEventListener("dragend", () => { dragId = dragKind = null; item.classList.remove("dragging");
       document.querySelectorAll(".drop-target").forEach((e) => e.classList.remove("drop-target")); });
-    item.addEventListener("dragover", (e) => { if (dragKind !== kind || dragId === id) return; e.preventDefault(); item.classList.add("drop-target"); });
-    item.addEventListener("dragleave", () => item.classList.remove("drop-target"));
-    item.addEventListener("drop", (e) => { item.classList.remove("drop-target");
-      if (dragKind !== kind || dragId == null || dragId === id) return; e.preventDefault(); onDrop(dragId, id); });
+    makeDropTarget(item, id, kind, onDrop);
   }
   function onMainDrop(from, to) { state.mainOrder = reorderArr(applyOrder(state.mainOrder, defaultMetricOrder()), from, to); renderCards(); }
+  // pipeline drag ids are prefixed by section: bare colKey = active row, "CAT::"<key> = a whole
+  // category block, "UNUSED::"<key|""> = the unused list (or its drop zone), "PIPE::" = the funnel
+  // drop zone. A drop into the unused section removes the filter; a drop into the pipeline re-adds it.
+  function parseDrag(s) {
+    if (s.indexOf("CAT::") === 0) return { t: "cat", key: s.slice(5) };
+    if (s.indexOf("SUB::") === 0) return { t: "sub", key: s.slice(5) };
+    if (s.indexOf("UNUSED::") === 0) return { t: "unused", key: s.slice(8) };
+    if (s.indexOf("PIPE::") === 0) return { t: "pipe", key: s.slice(6) };
+    return { t: "row", key: s };
+  }
+  const metricOfKey = (k) => k.slice(0, k.indexOf("::"));
+  function categoryBlock(active, firstKey) {       // contiguous active keys sharing firstKey's category
+    const cat = catOf(metricOfKey(firstKey));
+    const start = active.indexOf(firstKey); if (start < 0) return [];
+    let end = start; while (end + 1 < active.length && catOf(metricOfKey(active[end + 1])) === cat) end++;
+    return active.slice(start, end + 1);
+  }
+  function metricBlock(active, firstKey) {         // contiguous active keys sharing firstKey's metric
+    const mname = metricOfKey(firstKey);
+    const start = active.indexOf(firstKey); if (start < 0) return [];
+    let end = start; while (end + 1 < active.length && metricOfKey(active[end + 1]) === mname) end++;
+    return active.slice(start, end + 1);
+  }
+  function moveBlock(order, block, d) {            // re-insert `block` near drop target d (or disable on unused)
+    if (!block.length) { renderOverview(); return; }
+    if (d.t === "unused") { block.forEach((k) => state.disabledFilters.add(k)); renderOverview(); return; }
+    if (block.indexOf(d.key) !== -1) { renderOverview(); return; }   // dropped within itself
+    const rest = order.filter((k) => block.indexOf(k) === -1);
+    let ti = d.key ? rest.indexOf(d.key) : -1; if (ti < 0) ti = rest.length;
+    rest.splice(ti, 0, ...block);
+    state.filterOrder = rest; renderOverview();
+  }
   function onFilterDrop(from, to) {
     const order = applyOrder(state.filterOrder, defaultFilterKeys());
-    const toKey = to.indexOf("CAT::") === 0 ? to.slice(5) : to;
-    if (from.indexOf("CAT::") === 0) {            // moving a whole category block
-      const firstKey = from.slice(5), start = order.indexOf(firstKey);
-      if (start < 0) return;
-      const cat = catOf(firstKey.split("::")[0]);
-      let end = start;
-      while (end + 1 < order.length && catOf(order[end + 1].split("::")[0]) === cat) end++;
-      const block = order.slice(start, end + 1);
-      if (block.indexOf(toKey) !== -1) return;    // dropped within itself -> no-op
-      const rest = order.filter((k) => block.indexOf(k) === -1);
-      let ti = rest.indexOf(toKey); if (ti < 0) ti = rest.length;
-      rest.splice(ti, 0, ...block);
-      state.filterOrder = rest;
-    } else {
-      state.filterOrder = reorderArr(order, from, toKey);
-    }
+    const f = parseDrag(from), d = parseDrag(to);
+    const active = order.filter((k) => !state.disabledFilters.has(k));
+    if (f.t === "cat") { moveBlock(order, categoryBlock(active, f.key), d); return; }   // whole category block
+    if (f.t === "sub") { moveBlock(order, metricBlock(active, f.key), d); return; }      // whole metric subgroup
+    const srcKey = f.key; if (!srcKey) { renderOverview(); return; }
+    if (d.t === "unused") state.disabledFilters.add(srcKey);   // remove from the pipeline
+    else state.disabledFilters.delete(srcKey);                 // (re)add to the pipeline
+    state.filterOrder = (d.key && d.key !== srcKey) ? reorderArr(order, srcKey, d.key) : order;
     renderOverview();
   }
   const GRIP = "⠿";
@@ -399,6 +555,12 @@
     if (a >= 1) return v.toFixed(2);
     if (a >= 0.01) return v.toFixed(3);
     return v.toPrecision(2);
+  }
+  // compact integer for the narrow funnel cells in large mode (1234567 -> "1.2M", 295000 -> "295k")
+  function fcount(n) {
+    if (!LARGE || n < 10000) return String(n);
+    if (n < 1e6) return (n / 1000).toFixed(n < 1e5 ? 1 : 0) + "k";
+    return (n / 1e6).toFixed(2) + "M";
   }
 
   // redraw registry (SVGs are pixel-space; re-measure on resize) + chip updaters
@@ -422,24 +584,59 @@
     const inp = (threshInputs[dragState.key] || {})[dragState.which];
     if (inp) { inp.value = fmt(v); inp.classList.add("set"); }
     if (dragRaf) cancelAnimationFrame(dragRaf);
-    dragRaf = requestAnimationFrame(() => { chipUpdaters.forEach((f) => f()); drawers.forEach((f) => f()); renderOverview(); });
+    dragRaf = requestAnimationFrame(() => { const m = dragState && dragState.key ? dragState.key.slice(0, dragState.key.indexOf("::")) : null;
+      chipUpdaters.forEach((f) => f()); if (m) redrawMetric(m); else drawers.forEach((d) => d.fn()); renderOverview(); });
   }
   function endDrag() { dragState = null; window.removeEventListener("pointermove", onDrag); window.removeEventListener("pointerup", endDrag); }
   // keep the sticky sidebars sized to the real header height (it wraps at narrow widths)
   function syncHeaderH() { const h = document.querySelector("header.top"); if (h) document.documentElement.style.setProperty("--header-h", h.offsetHeight + "px"); }
-  window.addEventListener("resize", () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { syncHeaderH(); drawers.forEach((f) => f()); }); });
+  window.addEventListener("resize", () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { syncHeaderH(); drawers.forEach((d) => d.fn()); }); });
 
   // ---------- design-set helpers ----------
   const multiSet = () => SETS.length > 1;
+  const setIncluded = (i) => !state.excludedSets.has(i);                 // per-set include toggle (Distributions column)
+  const designsActive = () => SETS.some((ds, i) => setIncluded(i));      // any set still included → designs are shown
   function setColor(i) { return multiSet() ? (state.setColors[i] || SET_PALETTE[i % SET_PALETTE.length]) : null; }
   function designSetsFor(cname) {
-    if (!state.designs) return [];
     const out = [];
-    SETS.forEach((ds, i) => { const v = ds.values[cname]; if (v) out.push({ vals: v, color: setColor(i), name: ds.name }); });
+    SETS.forEach((ds, i) => { if (!setIncluded(i)) return; const v = ds.values[cname]; if (v) out.push({ vals: v, color: setColor(i), name: ds.name, idx: i }); });
     return out;
   }
-  function hasDesign(cname) { return state.designs && SETS.some((ds) => ds.values[cname]); }
-  function allDesignVals(cname) { return designSetsFor(cname).reduce((a, s) => a.concat(s.vals), []); }
+  function hasDesign(cname) { return SETS.some((ds, i) => setIncluded(i) && ds.values[cname]); }
+  // materialised list of every design value (small mode only — in large mode use the cached
+  // aggregates instead; this would build a 10^5-element array). .concat-free so typed arrays work.
+  function allDesignVals(cname) { const out = []; designSetsFor(cname).forEach((s) => { const a = s.vals; for (let i = 0; i < a.length; i++) out.push(a[i]); }); return out; }
+  // ---------- categorical-filter helpers ----------
+  // distinct categories the loaded designs take in a column, frequency-sorted (across ALL sets, so
+  // the pipeline's filter list stays stable when sets are toggled). These are the pill choices.
+  const _designCatCache = {};   // cname -> distinct design categories (independent of set inclusion)
+  function designCatValues(cname) {
+    let cached = _designCatCache[cname]; if (cached) return cached;
+    const f = {};
+    SETS.forEach((ds, i) => { const arr = ds.values[cname]; if (!arr) return;
+      if (LARGE && ds.col_kind && ds.col_kind[cname] !== "numeric") {
+        const cf = catFreqCached(i, cname); for (const k in cf.freq) f[k] = (f[k] || 0) + cf.freq[k];
+      } else { arr.forEach((v) => { if (v != null && v !== "") { const s = String(v); f[s] = (f[s] || 0) + 1; } }); }
+    });
+    cached = Object.entries(f).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    _designCatCache[cname] = cached; return cached;
+  }
+  // the displayed bar categories (reference top-N + any design categories) — used to colour pills so
+  // a pill's swatch matches its slice in the stacked bar below.
+  function barCatNames(cname, col) {
+    const names = topCats(col.frequencies).map(([k]) => k);
+    designSetsFor(cname).forEach((ds) => {
+      const keys = LARGE ? Object.keys(catFreqCached(ds.idx, cname).freq) : Object.keys(freqFromVals(ds.vals));
+      keys.forEach((k) => { if (!names.includes(k) && !names.includes("other")) names.push(k); });
+    });
+    return names;
+  }
+  // current categorical filter for a column: the disallowed set, whether it's active, and a test.
+  function catFilterState(mname, cname) {
+    const key = colKey(mname, cname);
+    const ex = state.catExcluded[key];
+    return { key, custom: !!(ex && ex.size), allowed: (v) => !(ex && ex.has(String(v))) };
+  }
 
   // effective filter band for a numeric column: custom threshold if set, else p1–p99.
   function effBand(mname, cname, col) {
@@ -481,22 +678,30 @@
       L.append(dz, dzo);
     }
   }
-  // design-set key + colour pickers — a legend strip at the top of the Distributions column,
-  // where the dots are read (not in the filter pipeline, which it has nothing to do with).
+  // design-set key + include toggle + colour pickers — a legend strip at the top of the
+  // Distributions column, where the dots are read. Clicking a chip includes/excludes that set
+  // from the cards & funnel (yellow outline = included; default all included); the colour
+  // swatches stay independent (a swatch click picks the dot colour without toggling inclusion).
   function renderDesignSets() {
     const box = $("#design-sets"); if (!box) return;
     box.innerHTML = "";
-    if (!SETS.length || !state.designs) { box.style.display = "none"; return; }
+    if (!SETS.length) { box.style.display = "none"; return; }
     box.style.display = "";
     SETS.forEach((ds, i) => {
-      const chip = el("div", "ds-chip");
+      const on = setIncluded(i);
+      const chip = el("div", "ds-chip" + (on ? " on" : ""));
+      chip.setAttribute("role", "button"); chip.setAttribute("aria-pressed", on); chip.tabIndex = 0;
+      chip.title = on ? "included — click to exclude this set from the cards & funnel" : "excluded — click to include this set";
+      const toggle = () => { if (on) state.excludedSets.add(i); else state.excludedSets.delete(i); renderAll(); };
+      chip.onclick = toggle;
+      chip.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
       const dot = el("span", "ds-dot"); dot.style.background = setColor(i) || "var(--design)";
       chip.append(dot); chip.append(el("span", "ds-nm", ds.name)); chip.append(el("span", "ds-cnt", ds.n.toLocaleString()));
       if (multiSet()) {
         const sw = el("div", "ds-swatches");
-        SET_PALETTE.forEach((hex) => { const b = el("button"); b.type = "button"; b.style.background = hex; b.style.color = hex; b.title = hex;
+        SET_PALETTE.forEach((hex) => { const b = el("button"); b.type = "button"; b.style.background = hex; b.style.color = hex; b.title = "set dot colour " + hex;
           b.setAttribute("aria-pressed", setColor(i) === hex);
-          b.onclick = () => { state.setColors[i] = hex; renderAll(); }; sw.append(b); });
+          b.onclick = (e) => { e.stopPropagation(); state.setColors[i] = hex; renderAll(); }; sw.append(b); });
         chip.append(sw);
       }
       box.append(chip);
@@ -510,16 +715,17 @@
     STRATS.forEach(([k, lab]) => { const b = el("button", null, lab); b.setAttribute("aria-pressed", k === state.labeling);
       b.onclick = () => { state.labeling = k; renderAll(); }; st.append(b); });
   }
-  function setupDesignToggle() {
+  // passive note (no longer a toggle — per-set include/exclude lives on the chips in the
+  // Distributions column). Just reports the loaded totals.
+  function setupDesignNote() {
     const t = $("#toggle-designs"), lab = $("#design-label");
-    if (!SETS.length) { t.classList.add("disabled"); t.setAttribute("aria-disabled", "true"); lab.textContent = "none loaded"; return; }
+    t.classList.add("note"); t.setAttribute("aria-pressed", "false"); t.onclick = null;
+    if (!SETS.length) { t.classList.add("disabled"); lab.textContent = "none loaded"; return; }
     const total = SETS.reduce((a, s) => a + s.n, 0);
     const demo = SETS.length === 1 && SETS[0].synthetic ? " · demo" : "";
     lab.textContent = multiSet() ? `${total} designs · ${SETS.length} sets` : `${total} designs${demo}`;
-    t.setAttribute("aria-pressed", state.designs);
-    t.onclick = () => { state.designs = !state.designs; t.setAttribute("aria-pressed", state.designs); renderAll(); };
   }
-  $("#search").addEventListener("input", (e) => { state.query = e.target.value.trim().toLowerCase(); renderAll(); });
+  $("#search").addEventListener("input", (e) => { state.query = e.target.value.trim().toLowerCase(); applySearchChange(); });
 
   // ---------- data helpers ----------
   function metricsOf(srcKey) { return D.sources[srcKey].metrics; }
@@ -561,8 +767,33 @@
     if (col.median != null) svg.append(svgEl("line", { x1: x(col.median), y1: cy - hCore / 2 - 3, x2: x(col.median), y2: cy + hCore / 2 + 3, stroke: "var(--median)", "stroke-width": 2, "stroke-linecap": "round" }));
     // recompute the effective band on every draw so dragging a threshold moves the line
     const eff = opts.effCol ? effBand(opts.mname, opts.cname, opts.effCol) : null;
-    // design needles, per set (outline = set colour), fill = in/out of effective band
-    if (opts.dsets && opts.dsets.length) {
+    // design overlay. LARGE: a cached per-set density curve + a tiny in/out-coloured sample (so the
+    // distribution + live filtering are visible without 10^5 SVG nodes). SMALL: one needle per design.
+    if (opts.dsets && opts.dsets.length && LARGE) {
+      const totalN = opts.dsets.reduce((a, s) => a + s.vals.length, 0) || 1;
+      const amp = (big ? H * 0.40 : H * 0.34);
+      opts.dsets.forEach((ds) => {
+        const dens = densityBins(ds.idx, opts.cname, dom), col0 = ds.color || "var(--design)";
+        let d = "";
+        for (let i = 0; i < DENSITY_BINS; i++) {
+          const cx = x(dom[0] + (i + 0.5) / DENSITY_BINS * (dom[1] - dom[0]));
+          const yy = cy - (dens.bins[i] / dens.max) * amp;
+          d += (i === 0 ? `M${cx.toFixed(1)} ${cy} L${cx.toFixed(1)} ${yy.toFixed(1)}` : ` L${cx.toFixed(1)} ${yy.toFixed(1)}`);
+        }
+        d += ` L${x(dom[0] + (DENSITY_BINS - 0.5) / DENSITY_BINS * (dom[1] - dom[0])).toFixed(1)} ${cy} Z`;
+        svg.append(svgEl("path", { d, fill: col0, "fill-opacity": 0.16, stroke: col0, "stroke-width": 1.1, "stroke-opacity": 0.85, "stroke-linejoin": "round" }));
+        // small representative sample, coloured in/out of the live band for filter feedback
+        const budget = Math.max(20, Math.round(SAMPLE_DOTS * ds.vals.length / totalN));
+        const stride = Math.max(1, Math.floor(ds.vals.length / budget)); let gi = 0;
+        for (let ri = 0; ri < ds.vals.length; ri += stride) {
+          const v = ds.vals[ri]; if (v !== v || v === Infinity || v === -Infinity) continue;
+          const out = eff && (v < eff.min || v > eff.max);
+          const fill = ds.color ? (out ? dimColor(ds.color) : ds.color) : (out ? "var(--design-out)" : "var(--design)");
+          svg.append(svgEl("circle", { cx: x(v), cy: cy + ((gi % 5) - 2) * (big ? 3.0 : 2.2), r: 2, fill,
+            stroke: "var(--ink)", "stroke-width": 0.6, opacity: ds.color ? (out ? 0.6 : 0.9) : 0.85 })); gi++;
+        }
+      });
+    } else if (opts.dsets && opts.dsets.length) {
       const total = opts.dsets.reduce((a, s) => a + s.vals.filter((v) => v != null && isFinite(v)).length, 0);
       let gi = 0;
       opts.dsets.forEach((ds) => ds.vals.forEach((v) => {
@@ -621,15 +852,35 @@
   }
   function hideTip() { tip.style.opacity = "0"; }
   function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+  // a hoverable "?" badge with a title + explanation tooltip (used on metric cards and each column)
+  function makeQmark(title, explanation) {
+    const q = el("span", "qmark", "?"); q.setAttribute("tabindex", "0");
+    const html = `<div class="t-title">${esc(title)}</div><div class="t-expl">${esc(explanation)}</div>`;
+    const show = (e) => showTip(html, e);
+    q.addEventListener("mousemove", show); q.addEventListener("mouseleave", hideTip);
+    q.addEventListener("click", (e) => e.stopPropagation());
+    q.addEventListener("focus", () => { const r = q.getBoundingClientRect(); show({ clientX: r.left + r.width / 2, clientY: r.top }); });
+    q.addEventListener("blur", hideTip);
+    return q;
+  }
 
+  // [min,max] of a column's design values across included sets (large mode: from cached stats,
+  // so we never materialise 10^5 values just to size the axis).
+  function designExtent(cname) {
+    let mn = Infinity, mx = -Infinity, any = false;
+    SETS.forEach((ds, i) => { if (!setIncluded(i) || !ds.values[cname]) return; const s = colStats(i, cname);
+      if (s.count) { any = true; if (s.min < mn) mn = s.min; if (s.max > mx) mx = s.max; } });
+    return any ? [mn, mx] : null;
+  }
   function numericColumn(colWrap, mname, cname, col) {
     const dsets = designSetsFor(cname), has = hasDesign(cname);
     if (col.band_missing && !has) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; }
-    const dom = axisDomain(col, (state.designs || col.band_missing) ? allDesignVals(cname) : null);
+    const showDesign = designsActive() || col.band_missing;
+    const dom = axisDomain(col, showDesign ? (LARGE ? designExtent(cname) : allDesignVals(cname)) : null);
     const strata = strataFor(col);
     const axisRow = el("div", "axis-row"); axisRow.append(el("div"));
     const axisHold = el("div", "track"); const asvg = svgEl("svg"); axisHold.append(asvg); axisRow.append(axisHold); colWrap.append(axisRow);
-    registerDraw(() => drawAxis(asvg, dom));
+    registerDraw(mname, () => drawAxis(asvg, dom));
 
     const addTrack = (label, count, statCol, isOverall, withDesign) => {
       const showDesign = withDesign != null ? withDesign : has;
@@ -638,7 +889,7 @@
       if (count != null) lab.append(el("span", "ct", count.toLocaleString())); row.append(lab);
       const hold = el("div", "track"); const s = svgEl("svg"); hold.append(s); row.append(hold); colWrap.append(row);
       const big = isOverall && !strata, h = big ? 38 : 30;
-      registerDraw(() => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, mname, cname, effCol: col, key: colKey(mname, cname), interactive: isOverall }));
+      registerDraw(mname, () => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, mname, cname, effCol: col, key: colKey(mname, cname), interactive: isOverall }));
       row.addEventListener("mousemove", (e) => { if (dragState) return; showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol), e); });
       row.addEventListener("mouseleave", hideTip);
     };
@@ -662,9 +913,8 @@
       s.style.background = colorMap[k] || "var(--line-2)"; s.title = `${k}: ${n} (${(100 * n / (total || 1)).toFixed(1)}%)`; bar.append(s); }); return bar; }
 
   function categoricalColumn(colWrap, mname, cname, col) {
-    const refTop = topCats(col.frequencies); const catNames = refTop.map(([k]) => k);
+    const catNames = barCatNames(cname, col);
     const dsets = designSetsFor(cname);
-    dsets.forEach((ds) => Object.keys(freqFromVals(ds.vals)).forEach((k) => { if (!catNames.includes(k) && !catNames.includes("other")) catNames.push(k); }));
     const colorMap = colorForCats(catNames);
     const wrap = el("div", "catbar-wrap"); const strata = strataFor(col);
     const allowed = new Set(catNames);
@@ -678,7 +928,10 @@
     else if (strata) { strata.slice(0, MAX_STRATA).forEach(([name, s]) => addCatRow(name, s.count, s.frequencies || {}));
       if (strata.length > MAX_STRATA) wrap.append(el("div", "more-note", `+ ${strata.length - MAX_STRATA} smaller strata not shown`)); }
     else addCatRow("all", col.count, col.frequencies || {});
-    dsets.forEach((ds) => { const dv = ds.vals.filter((v) => v != null); addCatRow(multiSet() ? ds.name : "designs", dv.length, freqFromVals(dv), true); });
+    dsets.forEach((ds) => {
+      if (LARGE) { const f = catFreqCached(ds.idx, cname); addCatRow(multiSet() ? ds.name : "designs", f.nonNull, f.freq, true); }
+      else { const dv = ds.vals.filter((v) => v != null); addCatRow(multiSet() ? ds.name : "designs", dv.length, freqFromVals(dv), true); }
+    });
     colWrap.append(wrap);
     const lg = el("div", "catlegend");
     catNames.forEach((c) => { const it = el("div", "item"); const sw = el("span", "sw"); sw.style.background = colorMap[c]; it.append(sw); it.append(el("span", null, c)); lg.append(it); });
@@ -700,14 +953,70 @@
         const t = state.thresholds[key] || (state.thresholds[key] = {});
         t[which] = (raw !== "" && isFinite(num)) ? num : null;
         inp.classList.toggle("set", t[which] != null);
-        applyFilters();
+        applyFiltersFor(mname);
       });
       inputs[which] = inp;
       return inp;
     };
     wrap.append(el("span", null, "min")); wrap.append(mk("min", col.p1 != null ? fmt(col.p1) : "−∞"));
     wrap.append(el("span", "dash", "–")); wrap.append(mk("max", col.p99 != null ? fmt(col.p99) : "∞")); wrap.append(el("span", null, "max"));
+    // reset — clears a custom threshold back to the default p1–p99 band. Sits to the LEFT of the
+    // inputs and always reserves its slot (visibility toggle, not display), so neither the value
+    // boxes nor the in-band chip shift when it appears/disappears.
+    const reset = el("button", "thresh-reset"); reset.type = "button"; reset.title = "reset to the default p1–p99 band";
+    reset.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 1 1 1.6 3.6"/><path d="M3 4.8V8h3.2"/></svg>';
+    reset.onclick = (e) => {
+      e.stopPropagation();
+      delete state.thresholds[key];
+      ["min", "max"].forEach((w) => { if (inputs[w]) { inputs[w].value = ""; inputs[w].classList.remove("set"); } });
+      applyFiltersFor(mname);
+    };
+    wrap.prepend(reset);
+    const syncReset = () => {
+      const t = state.thresholds[key] || {};
+      reset.style.visibility = ((t.min != null && isFinite(t.min)) || (t.max != null && isFinite(t.max))) ? "visible" : "hidden";
+    };
+    syncReset();
+    chipUpdaters.push(syncReset);   // re-evaluated on every input + threshold-line drag (via applyFilters)
     threshInputs[key] = inputs;
+    head.append(wrap);
+  }
+  // categorical analogue of buildThreshold: a row of toggle pills (one per design category, coloured
+  // to match the stacked bar). Selected = allowed; clicking a pill excludes that category. A reset
+  // (left, reserved slot — same as the numeric reset) re-allows everything once anything is excluded.
+  function buildCategoryFilter(head, mname, cname, col) {
+    const key = colKey(mname, cname);
+    const cats = designCatValues(cname);
+    if (!cats.length) return;
+    const colorMap = colorForCats(barCatNames(cname, col));
+    const wrap = el("div", "catfilter");
+    const reset = el("button", "thresh-reset"); reset.type = "button"; reset.title = "allow all categories again";
+    reset.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 1 1 1.6 3.6"/><path d="M3 4.8V8h3.2"/></svg>';
+    reset.onclick = (e) => { e.stopPropagation(); delete state.catExcluded[key]; applyFiltersFor(mname); };
+    wrap.append(reset);
+    const pills = [];
+    cats.forEach((c) => {
+      const pill = el("button", "catpill"); pill.type = "button";
+      const sw = el("span", "cp-sw"); sw.style.background = colorMap[c] || "var(--line-2)"; pill.append(sw);
+      pill.append(el("span", "cp-lbl", c));
+      pill.onclick = (e) => {
+        e.stopPropagation();
+        const ex = state.catExcluded[key] || (state.catExcluded[key] = new Set());
+        if (ex.has(c)) ex.delete(c); else ex.add(c);
+        if (!ex.size) delete state.catExcluded[key];
+        applyFiltersFor(mname);
+      };
+      wrap.append(pill); pills.push([c, pill]);
+    });
+    const sync = () => {
+      const ex = state.catExcluded[key];
+      pills.forEach(([c, pill]) => { const on = !(ex && ex.has(c));
+        pill.classList.toggle("on", on); pill.setAttribute("aria-pressed", on);
+        pill.title = on ? `allowed — click to exclude “${c}”` : `excluded — click to allow “${c}”`; });
+      reset.style.visibility = (ex && ex.size) ? "visible" : "hidden";
+    };
+    sync();
+    chipUpdaters.push(sync);
     head.append(wrap);
   }
   function renderColumn(metricBox, mname, cname, col) {
@@ -715,6 +1024,8 @@
     const head = el("div", "colhead");
     const left = el("div", "cname-wrap");
     left.append(el("span", "cname", cname));
+    const info = INFO[mname];
+    if (info && info.explanation) left.append(makeQmark(cname, info.explanation));   // "?" per column → the metric's explanation
     left.append(el("span", "kind", col.kind === "categorical" ? "categorical" : "numeric"));
     const rng = ((INFO[mname] || {}).columns || {})[cname];
     if (col.kind !== "categorical" && rng) { const r = el("span", "range"); r.innerHTML = "range&nbsp;<b>" + esc(rng) + "</b>"; left.append(r); }
@@ -726,23 +1037,49 @@
     if (col.kind !== "categorical") {
       chipEl = el("div", "chip"); right.append(chipEl);
       const update = () => {
-        const vals = allDesignVals(cname).filter((x) => x != null && isFinite(x));
-        if (!vals.length) { chipEl.style.display = "none"; return; }
-        chipEl.style.display = "";
         const eff = effBand(mname, cname, col);
-        const inb = vals.filter((x) => x >= eff.min && x <= eff.max).length;
+        let inb, total;
+        if (LARGE) {   // cached histogram across included sets — no 10^5 rescan per redraw
+          inb = 0; total = 0;
+          SETS.forEach((ds, i) => { if (!setIncluded(i) || !ds.values[cname]) return; const h = colHist(i, cname);
+            total += h.count; inb += histCountBetween(h, eff.min, eff.max); });
+        } else {
+          const vals = allDesignVals(cname).filter((x) => x != null && isFinite(x));
+          total = vals.length; inb = vals.filter((x) => x >= eff.min && x <= eff.max).length;
+        }
+        if (!total) { chipEl.style.display = "none"; return; }
+        chipEl.style.display = "";
         const lab = eff.custom ? "in range" : (col.band_missing ? "loaded" : "in p1–p99");
-        chipEl.textContent = `${inb}/${vals.length} ${lab}`;
+        chipEl.textContent = `${inb.toLocaleString()}/${total.toLocaleString()} ${lab}`;
         chipEl.classList.toggle("warn", inb === 0);   // ember only when nothing is in-band
       };
       chipUpdaters.push(update); update();
     } else if (hasDesign(cname)) {
-      const n = allDesignVals(cname).filter((v) => v != null).length; right.append(el("div", "chip", `${n} designs`));
+      chipEl = el("div", "chip"); right.append(chipEl);
+      const update = () => {
+        const cf = catFilterState(mname, cname);
+        let total, inb;
+        if (LARGE) {
+          total = 0; inb = 0;
+          SETS.forEach((ds, i) => { if (!setIncluded(i) || !ds.values[cname]) return; const f = catFreqCached(i, cname);
+            total += f.nonNull; Object.keys(f.freq).forEach((k) => { if (cf.allowed(k)) inb += f.freq[k]; }); });
+        } else {
+          const vals = allDesignVals(cname).filter((v) => v != null && v !== "");
+          total = vals.length; inb = vals.filter(cf.allowed).length;
+        }
+        if (!total) { chipEl.style.display = "none"; return; }
+        chipEl.style.display = "";
+        if (!cf.custom) { chipEl.textContent = `${total.toLocaleString()} designs`; chipEl.classList.remove("warn"); return; }
+        chipEl.textContent = `${inb.toLocaleString()}/${total.toLocaleString()} allowed`;
+        chipEl.classList.toggle("warn", inb === 0);
+      };
+      chipUpdaters.push(update); update();
     }
     head.append(right);
     colWrap.append(head);
-    // threshold inputs (numeric only, second row of header)
+    // filter controls (second row of header): min/max for numeric, category pills for categorical
     if (col.kind !== "categorical") buildThreshold(head, mname, cname, col);
+    else if (hasDesign(cname)) buildCategoryFilter(head, mname, cname, col);
     if (col.kind === "categorical") categoricalColumn(colWrap, mname, cname, col); else numericColumn(colWrap, mname, cname, col);
     metricBox.append(colWrap);
   }
@@ -756,23 +1093,15 @@
     head.append(el("span", "chevron", "▾"));
     const nm = el("div", "mname"); nm.append(document.createTextNode(mname)); head.append(nm);
     const info = INFO[mname];
-    if (info && info.explanation) {
-      const q = el("span", "qmark", "?"); q.setAttribute("tabindex", "0");
-      const show = (e) => showTip(`<div class="t-title">${esc(mname)}</div><div class="t-expl">${esc(info.explanation)}</div>`, e);
-      q.addEventListener("mousemove", show); q.addEventListener("mouseleave", hideTip);
-      q.addEventListener("click", (e) => e.stopPropagation());
-      q.addEventListener("focus", (e) => { const r = q.getBoundingClientRect(); show({ clientX: r.left + r.width / 2, clientY: r.top }); });
-      q.addEventListener("blur", hideTip);
-      head.append(q);
-    }
+    if (info && info.explanation) head.append(makeQmark(mname, info.explanation));
     head.append(el("div", "mmeta", `${Object.keys(m.columns).length} columns · ${m.design_only ? "design-only (no band)" : "n=" + (m.n_rows || 0).toLocaleString()}`));
     const hideBtn = el("button", "card-hide"); hideBtn.innerHTML = eyeSVG(false); hideBtn.title = "hide metric";
-    hideBtn.onclick = (e) => { e.stopPropagation(); state.hidden.add(mname); renderAll(); };
+    hideBtn.onclick = (e) => { e.stopPropagation(); state.hidden.add(mname); applyHiddenChange(); };
     head.append(hideBtn);
     head.addEventListener("click", () => {                  // collapse / expand the card
       const collapsed = box.classList.toggle("collapsed");
       if (collapsed) state.collapsed.add(mname);
-      else { state.collapsed.delete(mname); requestAnimationFrame(() => drawers.forEach((f) => f())); }
+      else { state.collapsed.delete(mname); requestAnimationFrame(() => redrawMetric(mname)); }
     });
     box.append(head);
     Object.entries(m.columns).forEach(([cname, col]) => renderColumn(box, mname, cname, col));
@@ -780,24 +1109,53 @@
   }
 
   // ---------- main + nav ----------
+  // Build EVERY metric card once (in order); hide/search just toggle a CSS class via
+  // applyCardVisibility() — no DOM rebuild. Only order changes (drag) / source / stratify / set
+  // toggles rebuild here. This keeps hide / show / search instant even with 10^5 designs.
   function renderCards() {
     drawers = []; chipUpdaters = []; threshInputs = {};
     const cards = $("#cards"); cards.innerHTML = "";
     const metrics = metricsOf(state.source);
-    const order = applyOrder(state.mainOrder, defaultMetricOrder())
-      .filter((m) => !state.hidden.has(m) && matchesQuery(m, metrics[m].columns));
-    if (!order.length) {
-      cards.append(el("div", "empty-state", state.query ? `no metric or column matches “${state.query}”.` : "all metrics hidden — use “show all” in the left column."));
-      return;
-    }
+    const order = applyOrder(state.mainOrder, defaultMetricOrder());
     let idx = 0, lastCat = null;
     order.forEach((mname) => {                       // category dividers re-derived from the (possibly custom) order
       const cat = catOf(mname);
-      if (cat !== lastCat) { const div = el("div", "cat-divider"); div.append(el("span", "ctitle", cat)); div.append(el("span", "rule")); cards.append(div); lastCat = cat; }
+      if (cat !== lastCat) { const div = el("div", "cat-divider"); div.dataset.cat = cat; div.append(el("span", "ctitle", cat)); div.append(el("span", "rule")); cards.append(div); lastCat = cat; }
       cards.append(metricCard(mname, metrics[mname], idx++));
     });
-    requestAnimationFrame(() => { animate = true; drawers.forEach((f) => f()); animate = false; });
+    const es = el("div", "empty-state"); es.id = "cards-empty"; es.style.display = "none"; cards.append(es);
+    applyCardVisibility();
+    requestAnimationFrame(() => { animate = true; drawers.forEach((d) => d.fn()); animate = false; });
   }
+  // toggle .is-hidden on cards (hidden metric OR search miss) + their category dividers + empty state.
+  // Cheap: no rebuild, no SVG redraw. Called on every hide/show/search change.
+  function applyCardVisibility() {
+    const metrics = metricsOf(state.source);
+    const cardsEl = $("#cards"); const kids = cardsEl.children;
+    let anyVisible = false;
+    for (let i = 0; i < kids.length; i++) {
+      const node = kids[i]; if (!node.classList.contains("metric")) continue;
+      const m = node.id.slice(2);
+      const vis = !state.hidden.has(m) && matchesQuery(m, metrics[m].columns);
+      node.classList.toggle("is-hidden", !vis);
+      if (vis) anyVisible = true;
+    }
+    for (let i = 0; i < kids.length; i++) {            // a divider is shown only if a visible card follows it in its block
+      if (!kids[i].classList.contains("cat-divider")) continue;
+      let has = false;
+      for (let j = i + 1; j < kids.length && !kids[j].classList.contains("cat-divider"); j++) {
+        if (kids[j].classList.contains("metric") && !kids[j].classList.contains("is-hidden")) { has = true; break; }
+      }
+      kids[i].classList.toggle("is-hidden", !has);
+    }
+    const es = $("#cards-empty");
+    if (es) { es.style.display = anyVisible ? "none" : "";
+      if (!anyVisible) es.textContent = state.query ? `no metric or column matches “${state.query}”.` : "all metrics hidden — use “show all” in the left column."; }
+  }
+  // hidden-metric changed: revisibility + nav + funnel (filter rows depend on state.hidden). No rebuild.
+  function applyHiddenChange() { applyCardVisibility(); buildNav(); renderOverview(); }
+  // search changed: only affects which cards show + nav dimming — NOT the funnel. No rebuild, no funnel.
+  function applySearchChange() { applyCardVisibility(); buildNav(); }
   function eyeSVG(hidden) {
     return hidden
       ? '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 8s2.2-3.6 5.5-3.6S13.5 8 13.5 8"/><line x1="3" y1="13" x2="13" y2="3"/></svg>'
@@ -808,14 +1166,19 @@
     const metrics = metricsOf(state.source);
     // bulk hide controls
     const ctrls = el("div", "nav-controls");
+    if (Object.keys(metrics).some((m) => !state.hidden.has(m))) {
+      const h = el("button", "navbtn", "hide all"); h.title = "hide every metric";
+      h.onclick = () => { Object.keys(metrics).forEach((m) => state.hidden.add(m)); applyHiddenChange(); };
+      ctrls.append(h);
+    }
     if (SETS.length && Object.keys(metrics).some((m) => !state.hidden.has(m) && !hasData(m))) {
       const b = el("button", "navbtn", "hide no-data"); b.title = "hide metrics with no design data in the loaded batch";
-      b.onclick = () => { Object.keys(metrics).forEach((m) => { if (!hasData(m)) state.hidden.add(m); }); renderAll(); };
+      b.onclick = () => { Object.keys(metrics).forEach((m) => { if (!hasData(m)) state.hidden.add(m); }); applyHiddenChange(); };
       ctrls.append(b);
     }
     if (state.hidden.size) {
       const s = el("button", "navbtn", `show all (${state.hidden.size})`);
-      s.onclick = () => { state.hidden.clear(); renderAll(); }; ctrls.append(s);
+      s.onclick = () => { state.hidden.clear(); applyHiddenChange(); }; ctrls.append(s);
     }
     if (ctrls.childNodes.length) nav.append(ctrls);
 
@@ -831,7 +1194,7 @@
         a.onclick = (e) => { if (hidden) { e.preventDefault(); return; } const t = document.getElementById("m-" + mname); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); } };
         li.append(a);
         const eye = el("button", "eye"); eye.innerHTML = eyeSVG(hidden); eye.title = hidden ? "show metric" : "hide metric";
-        eye.onclick = (e) => { e.stopPropagation(); e.preventDefault(); if (hidden) state.hidden.delete(mname); else state.hidden.add(mname); renderAll(); };
+        eye.onclick = (e) => { e.stopPropagation(); e.preventDefault(); if (hidden) state.hidden.delete(mname); else state.hidden.add(mname); applyHiddenChange(); };
         li.append(eye); ul.append(li);
       });
       nav.append(ul);
@@ -844,53 +1207,161 @@
     return Array.from(groups.entries()).filter(([, ms]) => ms.length);
   }
 
+  // the "unused filters" tray above the funnel: filters removed from the pipeline live here and
+  // can be re-added with their "+" button or by dragging them back onto the funnel. The tray is
+  // itself a drop zone, so a pipeline row dragged onto it is removed.
+  function renderUnused(ov, unusedRows) {
+    const box = el("div", "ov-unused");
+    const head = el("div", "ov-unused-head");
+    head.append(el("span", null, unusedRows.length ? `unused filters · ${unusedRows.length}` : "unused filters"));
+    if (unusedRows.length) {
+      const useAll = el("button", "navbtn", "use all");
+      useAll.title = "add every unused filter back to the pipeline";
+      useAll.onclick = () => { unusedRows.forEach((r) => state.disabledFilters.delete(r.key)); renderOverview(); };
+      head.append(useAll);
+    }
+    box.append(head);
+    if (!unusedRows.length) {
+      box.append(el("div", "ov-unused-empty", "Drop a filter here (drag a row's grip, or click its ✕) to take it out of the funnel."));
+    } else {
+      const chips = el("div", "ov-unused-chips");
+      unusedRows.forEach((r) => {
+        const chip = el("div", "ov-chip"); chip.title = `${r.mname} · ${r.cname} — drag onto the funnel or click + to re-add`;
+        chip.append(el("span", "nm", r.cname));
+        const add = el("button", "add"); add.type = "button"; add.innerHTML = "+"; add.title = "add back to the pipeline";
+        add.onclick = (e) => { e.stopPropagation(); state.disabledFilters.delete(r.key); renderOverview(); };
+        chip.append(add);
+        makeDraggable(chip, chip, "UNUSED::" + r.key, "filter", onFilterDrop);
+        chips.append(chip);
+      });
+      box.append(chips);
+    }
+    makeDropTarget(box, "UNUSED::", "filter", onFilterDrop);
+    ov.append(box);
+  }
+
   // ---------- right overview (filter cut counts + design-set colours) ----------
   function renderOverview() {
     const ov = $("#overview"); ov.innerHTML = "";
     if (!SETS.length) { ov.append(el("div", "ov-hint", "Load a design batch (--designs) to overlay it and see how many designs fall outside each metric.")); return; }
-    if (!state.designs) { ov.append(el("div", "ov-hint", "Designs hidden. Toggle Designs on to view per-metric filter counts.")); return; }
+    if (!designsActive()) { ov.append(el("div", "ov-hint", "All design sets excluded. Click a set chip in the Distributions column to include it and see per-metric filter counts.")); return; }
 
-    // filter rows in pipeline order (drag-reorderable); funnel applies them in this order
+    // filter rows in pipeline order (drag-reorderable); funnel applies them in this order.
+    // disabled filters are pulled out into the "unused" list above and skipped by the funnel.
     const metrics = metricsOf(state.source);
-    const rows = applyOrder(state.filterOrder, defaultFilterKeys()).map((k) => {
+    const toRow = (k) => {
       const i = k.indexOf("::"); const mname = k.slice(0, i), cname = k.slice(i + 2);
       const mm = metrics[mname]; const col = mm && mm.columns[cname];
       return col ? { cat: catOf(mname), mname, cname, col, key: k } : null;
-    }).filter(Boolean);
-    if (!rows.length) { ov.append(el("div", "ov-hint", "No numeric design values for the current source (or all hidden).")); return; }
+    };
+    const fullOrder = applyOrder(state.filterOrder, defaultFilterKeys());
+    const rows = fullOrder.filter((k) => !state.disabledFilters.has(k)).map(toRow).filter(Boolean);
+    const unusedRows = fullOrder.filter((k) => state.disabledFilters.has(k)).map(toRow).filter(Boolean);
+    if (!rows.length && !unusedRows.length) { ov.append(el("div", "ov-hint", "No filterable design values for the current source (or all hidden).")); return; }
+
+    renderUnused(ov, unusedRows);   // the removable-filters tray, above the funnel
 
     // For each row compute: PASS = in this metric's band alone (inb/evaluable);
     // KEPT = cumulative survivors applying every filter top→bottom; CUT = removed at THIS
     // step only (survivors_before − survivors_after). Design key = "setIndex:rowIndex".
-    const total = SETS.reduce((a, s) => a + s.n, 0);
-    const unionFailed = new Set();
-    let prevCum = 0;
-    rows.forEach((r) => {
-      const eff = effBand(r.mname, r.cname, r.col);
-      let evaluable = 0, inb = 0;
-      SETS.forEach((ds, si) => {
-        const vals = ds.values[r.cname]; if (!vals) return;
-        for (let ri = 0; ri < ds.n; ri++) {
-          const v = vals[ri];
-          if (v == null || !isFinite(v)) continue;
-          evaluable++;
-          const out = v < eff.min || v > eff.max;
-          if (out) unionFailed.add(si + ":" + ri); else inb++;   // funnel applies the band (p1/p99 or custom)
-        }
+    const total = SETS.reduce((a, s, i) => a + (setIncluded(i) ? s.n : 0), 0);   // only included sets count
+    let keptTotal, keptList;   // keptList() -> [{si,ri,set,id}] of full survivors (lazy in large mode)
+    if (LARGE) {
+      // typed-array funnel: ONE pass over designs, no per-design string Set. Per-row band-alone
+      // counts (inb/evaluable) + a first-failing-row histogram give exact cumulative survivors.
+      const R = rows.length;
+      // flatten row params into primitive parallel arrays — the hot per-design loop then avoids
+      // object-property lookups (rows[k].lo etc.), which dominate at 10^5 designs x ~150 rows.
+      const rowIsCat = new Uint8Array(R), rowLo = new Float64Array(R), rowHi = new Float64Array(R), rowEx = new Array(R);
+      rows.forEach((r, k) => {
+        r.isCat = r.col.kind === "categorical";
+        if (r.isCat) { const ex = state.catExcluded[r.key]; r.ex = ex; r.custom = !!(ex && ex.size); rowIsCat[k] = 1; rowEx[k] = r.custom ? ex : null; }
+        else { const eff = effBand(r.mname, r.cname, r.col); r.lo = rowLo[k] = eff.min; r.hi = rowHi[k] = eff.max; r.custom = eff.custom; rowEx[k] = null; }
+        r.arrs = SETS.map((ds, si) => (setIncluded(si) && ds.values[r.cname]) ? ds.values[r.cname] : null);
       });
-      r.inb = inb; r.evaluable = evaluable; r.custom = eff.custom;
-      r.survBefore = total - prevCum;
-      r.cum = unionFailed.size;
-      r.survivors = total - r.cum;
-      r.stepCut = r.cum - prevCum;        // designs cut at THIS step only
-      prevCum = r.cum;
-    });
-    const keptTotal = total - unionFailed.size;
-    // the surviving designs (passed every filter) — for the extract button
-    const keptDesigns = [];
-    SETS.forEach((ds, si) => { for (let ri = 0; ri < ds.n; ri++) {
-      if (!unionFailed.has(si + ":" + ri)) keptDesigns.push({ si, ri, set: ds.name, id: (ds.ids && ds.ids[ri]) || (ds.name + ":" + ri) });
-    } });
+      const inbA = new Int32Array(R), evalA = new Int32Array(R), failAt = new Int32Array(R);
+      let never = 0;
+      for (let si = 0; si < SETS.length; si++) {
+        if (!setIncluded(si)) continue;
+        const n = SETS[si].n;
+        const arrs = new Array(R);            // this set's per-row value array (typed/string), hoisted out of the ri loop
+        for (let k = 0; k < R; k++) arrs[k] = rows[k].arrs[si];
+        for (let ri = 0; ri < n; ri++) {
+          let ff = -1;
+          for (let k = 0; k < R; k++) {
+            const a = arrs[k]; if (!a) continue;
+            const v = a[ri];
+            if (rowIsCat[k]) {
+              if (v == null || v === "") continue;
+              evalA[k]++;
+              const ex = rowEx[k];
+              if (ex && ex.has(v)) { if (ff < 0) ff = k; } else inbA[k]++;
+            } else {
+              if (v !== v || v === Infinity || v === -Infinity) continue;
+              evalA[k]++;
+              if (v < rowLo[k] || v > rowHi[k]) { if (ff < 0) ff = k; } else inbA[k]++;
+            }
+          }
+          if (ff < 0) never++; else failAt[ff]++;
+        }
+      }
+      let prevCum = 0;
+      for (let k = 0; k < R; k++) {
+        const r = rows[k];
+        r.inb = inbA[k]; r.evaluable = evalA[k];
+        r.survBefore = total - prevCum; prevCum += failAt[k];
+        r.cum = prevCum; r.survivors = total - prevCum; r.stepCut = failAt[k];
+      }
+      keptTotal = never;
+      keptList = () => {            // recomputed on demand (extract); early-break keeps it cheap
+        const out = [];
+        for (let si = 0; si < SETS.length; si++) {
+          if (!setIncluded(si)) continue; const ds = SETS[si], n = ds.n;
+          for (let ri = 0; ri < n; ri++) {
+            let ok = true;
+            for (let k = 0; k < R; k++) {
+              const r = rows[k], a = r.arrs[si]; if (!a) continue; const v = a[ri];
+              if (r.isCat) { if (v != null && v !== "" && r.ex && r.ex.has(v)) { ok = false; break; } }
+              else if (v === v && v !== Infinity && v !== -Infinity && (v < r.lo || v > r.hi)) { ok = false; break; }
+            }
+            if (ok) out.push({ si, ri, set: ds.name, id: (ds.ids && ds.ids[ri]) || (ds.name + ":" + ri) });
+          }
+        }
+        return out;
+      };
+    } else {
+      const unionFailed = new Set();
+      let prevCum = 0;
+      rows.forEach((r) => {
+        r.isCat = r.col.kind === "categorical";
+        const eff = r.isCat ? null : effBand(r.mname, r.cname, r.col);
+        const cf = r.isCat ? catFilterState(r.mname, r.cname) : null;
+        let evaluable = 0, inb = 0;
+        SETS.forEach((ds, si) => {
+          if (!setIncluded(si)) return;
+          const vals = ds.values[r.cname]; if (!vals) return;
+          for (let ri = 0; ri < ds.n; ri++) {
+            const v = vals[ri];
+            if (r.isCat ? (v == null || v === "") : (v == null || !isFinite(v))) continue;
+            evaluable++;
+            const out = r.isCat ? !cf.allowed(v) : (v < eff.min || v > eff.max);
+            if (out) unionFailed.add(si + ":" + ri); else inb++;   // funnel applies the band / allowed set
+          }
+        });
+        r.inb = inb; r.evaluable = evaluable; r.custom = r.isCat ? cf.custom : eff.custom;
+        r.survBefore = total - prevCum;
+        r.cum = unionFailed.size;
+        r.survivors = total - r.cum;
+        r.stepCut = r.cum - prevCum;        // designs cut at THIS step only
+        prevCum = r.cum;
+      });
+      keptTotal = total - unionFailed.size;
+      const arr = [];
+      SETS.forEach((ds, si) => { if (!setIncluded(si)) return; for (let ri = 0; ri < ds.n; ri++) {
+        if (!unionFailed.has(si + ":" + ri)) arr.push({ si, ri, set: ds.name, id: (ds.ids && ds.ids[ri]) || (ds.name + ":" + ri) });
+      } });
+      keptList = () => arr;
+    }
 
     // the KEPT·pipe·CUT cluster: kept number, the narrowing pipe (∝ survivors/total), cut number
     const grp = (keptHTML, surv, cutText, cutHit) => {
@@ -907,28 +1378,76 @@
     const hg = el("div", "ov-grp"); hg.append(el("span", "ovc-kept", "kept")); hg.append(el("span", "ovc-pipe")); hg.append(el("span", "ovc-cut", "cut"));
     hd.append(hg); ov.append(hd);
 
+    // group active rows into metric subgroups (consecutive rows sharing a metric) — mirrors the
+    // category › metric › column nesting of the left/main columns. Each subgroup carries its own
+    // aggregate funnel state so it can collapse to a single line.
+    const segs = [];
+    rows.forEach((r) => {
+      const last = segs[segs.length - 1];
+      if (last && last.mname === r.mname && last.cat === r.cat) last.rows.push(r);
+      else segs.push({ cat: r.cat, mname: r.mname, key: r.key, rows: [r] });
+    });
+    segs.forEach((s) => {
+      s.survBefore = s.rows[0].survBefore;
+      s.survAfter = s.rows[s.rows.length - 1].survivors;
+      s.cut = s.survBefore - s.survAfter;
+    });
+
     const funnel = el("div", "ov-funnel");
     let lastCat = null;
-    rows.forEach((r) => {
-      if (r.cat !== lastCat) {   // category header — draggable (moves the whole category block)
+    segs.forEach((seg) => {
+      if (seg.cat !== lastCat) {   // category header — draggable (moves the whole category block)
         const ch = el("div", "ov-catrow");
         const cg = el("span", "rgrip", GRIP); cg.title = "drag to move the whole category"; ch.append(cg);
-        ch.append(el("span", "name", r.cat));
-        ch.append(el("span", "ovc-pass")); ch.append(grp(null, r.survBefore, null, false));
-        funnel.append(ch); lastCat = r.cat;
-        makeDraggable(cg, ch, "CAT::" + r.key, "filter", onFilterDrop);
+        ch.append(el("span", "name", seg.cat));
+        ch.append(el("span", "ovc-pass")); ch.append(grp(null, seg.survBefore, null, false));
+        funnel.append(ch); lastCat = seg.cat;
+        makeDraggable(cg, ch, "CAT::" + seg.key, "filter", onFilterDrop);
       }
-      const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
-      row.title = `${r.mname} · ${r.cname} — BAND ${r.inb}/${r.evaluable} in ${r.custom ? "set range" : "p1–p99"} (alone); `
-        + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
-      const rgrip = el("span", "rgrip", GRIP); rgrip.title = "drag to reorder filter"; row.append(rgrip);
-      row.append(el("span", "name", r.cname));
-      const pass = el("span", "ovc-pass"); pass.innerHTML = `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
-      row.append(grp(`<b>${r.survivors}</b>/${total}`, r.survivors, `${r.stepCut}`, r.stepCut > 0));
-      row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
-      makeDraggable(rgrip, row, r.key, "filter", onFilterDrop);
-      funnel.append(row);
+      // metric subgroup header — collapsible, removable (whole group), draggable (moves the group)
+      const collapsed = state.filterCollapsed.has(seg.mname);
+      const sh = el("div", "ov-subrow" + (collapsed ? " collapsed" : ""));
+      const sg = el("span", "rgrip", GRIP); sg.title = `drag to move the whole ${seg.mname} group`; sh.append(sg);
+      const sName = el("span", "name");
+      sName.append(el("span", "subchev", "▾"));
+      sName.append(el("span", "nm", seg.mname));
+      const srm = el("button", "ov-remove"); srm.type = "button"; srm.innerHTML = "✕";
+      srm.title = `remove the whole ${seg.mname} group from the pipeline`;
+      srm.onclick = (e) => { e.stopPropagation(); seg.rows.forEach((r) => state.disabledFilters.add(r.key)); renderOverview(); };
+      sName.append(srm); sh.append(sName);
+      sh.append(el("span", "ovc-pass"));
+      if (collapsed) {   // one line for the whole group: survivors after the group + total cut by it
+        sh.append(grp(LARGE ? `<b>${fcount(seg.survAfter)}</b>` : `<b>${seg.survAfter}</b>/${total}`, seg.survAfter, `${fcount(seg.cut)}`, seg.cut > 0));
+        sh.title = `${seg.mname} — ${seg.rows.length} filter${seg.rows.length === 1 ? "" : "s"} · KEPT ${seg.survAfter}/${total} after the group, CUT ${seg.cut} across it · click to expand`;
+      } else {           // entering-the-group pipe state; the per-column detail follows below
+        sh.append(grp(null, seg.survBefore, null, false));
+        sh.title = `${seg.mname} — ${seg.rows.length} filter${seg.rows.length === 1 ? "" : "s"} · click to collapse to one line`;
+      }
+      sh.onclick = () => { if (collapsed) state.filterCollapsed.delete(seg.mname); else state.filterCollapsed.add(seg.mname); renderOverview(); };
+      makeDraggable(sg, sh, "SUB::" + seg.key, "filter", onFilterDrop);
+      funnel.append(sh);
+      if (collapsed) return;   // hide the per-column rows
+
+      seg.rows.forEach((r) => {
+        const row = el("div", "ov-row" + (r.custom ? " thr" : ""));
+        const bandDesc = r.isCat ? (r.custom ? "allowed categories" : "any category") : (r.custom ? "set range" : "p1–p99");
+        row.title = `${r.mname} · ${r.cname} — BAND ${r.inb}/${r.evaluable} in ${bandDesc} (alone); `
+          + `KEPT ${r.survivors}/${total} after filters above; CUT ${r.stepCut} at this step`;
+        const rgrip = el("span", "rgrip", GRIP); rgrip.title = "drag to reorder filter (or onto the unused tray to remove it)"; row.append(rgrip);
+        const nameWrap = el("span", "name"); nameWrap.append(el("span", "nm", r.cname));
+        const rm = el("button", "ov-remove"); rm.type = "button"; rm.innerHTML = "✕";
+        rm.title = "remove this filter from the pipeline";
+        rm.onclick = (e) => { e.stopPropagation(); state.disabledFilters.add(r.key); renderOverview(); };
+        nameWrap.append(rm); row.append(nameWrap);
+        const pass = el("span", "ovc-pass"); pass.innerHTML = LARGE ? `<b>${fcount(r.inb)}</b>` : `<b>${r.inb}</b>/${r.evaluable}`; row.append(pass);
+        row.append(grp(LARGE ? `<b>${fcount(r.survivors)}</b>` : `<b>${r.survivors}</b>/${total}`, r.survivors, `${fcount(r.stepCut)}`, r.stepCut > 0));
+        row.onclick = () => { const t = document.getElementById("m-" + r.mname); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+        makeDraggable(rgrip, row, r.key, "filter", onFilterDrop);
+        funnel.append(row);
+      });
     });
+    if (!rows.length) funnel.append(el("div", "ov-hint", "No active filters — every loaded design is kept. Add one back from the tray above."));
+    makeDropTarget(funnel, "PIPE::", "filter", onFilterDrop);   // drop an unused filter here to re-add it
     ov.append(funnel);
 
     // arrow from the pipe tip down into the kept box, placed in the pipe column
@@ -947,11 +1466,11 @@
     exBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8"/><path d="M4.5 7L8 10.5 11.5 7"/><path d="M3 13h10"/></svg><span>extract</span>';
     exBtn.title = "Download the kept designs (set, ID + all metric values) as CSV";
     exBtn.disabled = keptTotal === 0;
-    exBtn.onclick = (e) => { e.stopPropagation(); extractKeptDesigns(keptDesigns); };
+    exBtn.onclick = (e) => { e.stopPropagation(); extractKeptDesigns(keptList()); };
     totName.append(exBtn); tot.append(totName);
     tot.append(el("span", "ovc-pass"));
     const tg = el("div", "ov-grp"); tg.append(el("span", "ovc-kept"));
-    const tn = el("span", "ovc-pipe ov-total-num"); tn.innerHTML = `<b>${keptTotal}</b>/${total}`;
+    const tn = el("span", "ovc-pipe ov-total-num"); tn.innerHTML = `<b>${fcount(keptTotal)}</b>/${fcount(total)}`;
     tg.append(tn); tg.append(el("span", "ovc-cut")); tot.append(tg); ov.append(tot);
   }
 
@@ -961,7 +1480,8 @@
     if (!kept || !kept.length) return;
     const cols = [], seen = new Set();
     SETS.forEach((ds) => Object.keys(ds.values).forEach((c) => { if (!seen.has(c)) { seen.add(c); cols.push(c); } }));
-    const csvEsc = (v) => { if (v == null) return ""; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const csvEsc = (v) => { if (v == null || (typeof v === "number" && !isFinite(v))) return "";
+      const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const header = (multiSet() ? ["set"] : []).concat(["ID"], cols);
     const lines = [header.map(csvEsc).join(",")];
     kept.forEach((k) => {
@@ -969,20 +1489,31 @@
       const row = (multiSet() ? [k.set] : []).concat([k.id], cols.map((c) => { const a = ds.values[c]; return a ? a[k.ri] : null; }));
       lines.push(row.map(csvEsc).join(","));
     });
-    const href = "data:text/csv;charset=utf-8," + encodeURIComponent(lines.join("\n"));
-    const a = el("a"); a.href = href; a.download = `designs_kept_${state.source}_${kept.length}of${SETS.reduce((s, d) => s + d.n, 0)}.csv`;
+    // Blob (not a data: URI) so huge large-mode exports don't choke encodeURIComponent.
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const a = el("a"); a.href = href;
+    a.download = `designs_kept_${state.source}_${kept.length}of${SETS.reduce((s, d, i) => s + (setIncluded(i) ? d.n : 0), 0)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
 
   // re-apply thresholds without rebuilding the DOM (keeps input focus)
-  function applyFilters() { chipUpdaters.forEach((f) => f()); drawers.forEach((f) => f()); renderOverview(); }
-  function registerDraw(fn) { drawers.push(fn); }
+  function applyFilters() { chipUpdaters.forEach((f) => f()); drawers.forEach((d) => d.fn()); renderOverview(); }
+  function redrawMetric(m) { drawers.forEach((d) => { if (d.m === m) d.fn(); }); }
+  // a single metric's threshold/category changed → only its own card visuals change; redraw just
+  // that card (cheap), refresh all chips, and recompute the funnel. Matters at 10^5 designs / 150
+  // cards, where redrawing every card per keystroke/drag would dominate.
+  function applyFiltersFor(m) { chipUpdaters.forEach((f) => f()); redrawMetric(m); renderOverview(); }
+  function registerDraw(m, fn) { drawers.push({ m, fn }); }
 
   function renderSrcNote() {
     const src = D.sources[state.source]; const note = $("#src-note");
     const strat = state.labeling === "none" ? "pooled" : `stratified by ${state.labeling.replace("_", " ")}`;
-    const total = SETS.reduce((a, s) => a + s.n, 0);
-    const overlay = state.designs && SETS.length ? ` Overlaying <b style="color:var(--design)">${total}</b> design${total === 1 ? "" : "s"}${multiSet() ? ` across ${SETS.length} sets` : ""}.` : "";
+    const total = SETS.reduce((a, s, i) => a + (setIncluded(i) ? s.n : 0), 0);
+    const inclSets = SETS.filter((s, i) => setIncluded(i)).length;
+    const big = LARGE ? ` <b style="color:var(--nature)">large mode</b> — aggregate density + sampled dots in the cards; the funnel filters all designs exactly.` : "";
+    const overlay = designsActive() ? ` Overlaying <b style="color:var(--design)">${total.toLocaleString()}</b> design${total === 1 ? "" : "s"}${multiSet() ? ` across ${inclSets} of ${SETS.length} sets` : ""}.${big}` : "";
     if (src.no_bands) note.innerHTML = `No reference bands loaded — showing <b style="color:var(--design)">${(src.n_rows || 0).toLocaleString()}</b> designs only.`;
     else note.innerHTML = `Reference bands from <b>${src.label}</b> structures of <b>${(src.n_rows || 0).toLocaleString()}</b> ${(D.reference_set || "reference").toUpperCase()} reference proteins, ${strat}.` + overlay;
   }
@@ -1007,7 +1538,8 @@
     apply();
   })();
 
-  renderLegend(); setupDesignToggle(); renderAll();
+  renderLegend(); setupDesignNote(); renderAll();
   syncHeaderH(); requestAnimationFrame(syncHeaderH);   // measure header after initial layout
+  if (location.hash === "#bench") window.__bench = { renderAll, renderCards, renderOverview, buildNav, applyHiddenChange, applyCardVisibility, applySearchChange, state };  // inert profiling hook
 })();
 </script>
