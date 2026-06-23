@@ -84,6 +84,12 @@ from active_site_geometry import (
     _parser_for,
 )
 from plddt import _collect_structures
+from sequence_metrics.motif_localization import (
+    DDXXD_PATTERN,
+    NSE_DTE_PATTERN,
+    DDXXD_COORDINATING_OFFSETS,
+    NSE_DTE_COORDINATING_OFFSETS,
+)
 
 # --------------------------------------------------------------------------- #
 # Defaults (CLI-overridable)
@@ -124,6 +130,10 @@ COLUMNS = [
     "max_coordinating_contacts",
     "n_ions_coordinated",
     "well_placed",
+    "mg_canonical_motif_coordination",
+    "n_motif_coord_asp",
+    "n_motif_coord_nse",
+    "mg_to_motif_dist",
     "n_diphosphate_atoms",
     "diphosphate_to_cage_dist",
     "n_residues",
@@ -178,6 +188,51 @@ def read_ion_hetatms(
     return ion_arr, diphos_arr
 
 
+def _motif_coordination(sequence, residues, ion_coords, coord_cutoff):
+    """Reference-INDEPENDENT site-assembly check: is the cofolded Mg/Mn cluster coordinated by
+    carboxylates of BOTH real metal-binding motifs (DDXXD-family AND NSE/DTE), scanning ALL motif
+    occurrences (not just the first) and the ACTUAL ions -- so it does not depend on the apo
+    metal_point, which mislocalizes for two-domain folds. Motif definitions come from the shared
+    sequence_metrics.motif_localization (single source of truth). Returns the canonical flag, the
+    per-motif count of coordinating residues, and the ion-centroid -> DDXXD-oxygen-centroid distance."""
+    res = {
+        "mg_canonical_motif_coordination": False,
+        "n_motif_coord_asp": 0,
+        "n_motif_coord_nse": 0,
+        "mg_to_motif_dist": np.nan,
+    }
+    if not len(ion_coords):
+        return res
+    cutoff2 = coord_cutoff * coord_cutoff
+
+    def _coordinating_residue_set(pattern, offsets):
+        coord = set()
+        for m in pattern.finditer(sequence):
+            for off in offsets:
+                i = m.start() + off
+                ox = _coordinating_oxygens([i], residues)
+                if len(ox) and (((ox[:, None, :] - ion_coords[None, :, :]) ** 2).sum(2).min() <= cutoff2):
+                    coord.add(i)
+        return coord
+
+    n_asp = len(_coordinating_residue_set(DDXXD_PATTERN, DDXXD_COORDINATING_OFFSETS))
+    n_nse = len(_coordinating_residue_set(NSE_DTE_PATTERN, NSE_DTE_COORDINATING_OFFSETS))
+    res["n_motif_coord_asp"] = n_asp
+    res["n_motif_coord_nse"] = n_nse
+    res["mg_canonical_motif_coordination"] = bool(n_asp >= 1 and n_nse >= 1)
+
+    ion_centroid = ion_coords.mean(axis=0)
+    best = np.nan
+    for m in DDXXD_PATTERN.finditer(sequence):
+        idx = [m.start() + off for off in DDXXD_COORDINATING_OFFSETS]
+        ox = _coordinating_oxygens(idx, residues)
+        if len(ox):
+            d = float(np.sqrt(((ion_centroid - ox.mean(axis=0)) ** 2).sum()))
+            best = d if (isinstance(best, float) and np.isnan(best)) else min(best, d)
+    res["mg_to_motif_dist"] = best
+    return res
+
+
 def ion_site_check(
     structure_path: str,
     *,
@@ -199,6 +254,10 @@ def ion_site_check(
         "max_coordinating_contacts": 0,
         "n_ions_coordinated": 0,
         "well_placed": False,
+        "mg_canonical_motif_coordination": False,
+        "n_motif_coord_asp": 0,
+        "n_motif_coord_nse": 0,
+        "mg_to_motif_dist": np.nan,
         "n_diphosphate_atoms": 0,
         "diphosphate_to_cage_dist": np.nan,
         "n_residues": len(sequence),
@@ -209,6 +268,10 @@ def ion_site_check(
     )
     result["n_ions_modelled"] = int(len(ion_coords))
     result["n_diphosphate_atoms"] = int(len(diphos_coords))
+
+    # Reference-independent assembly: Mg coordinated by the actual DDXXD + NSE/DTE motif
+    # carboxylates (computed regardless of the apo metal_point, which can mislocalize).
+    result.update(_motif_coordination(sequence, residues, ion_coords, coord_cutoff))
 
     # Expected apo cage point (canonical relaxed coordinating-oxygen centroid).
     cage = _cage_metal_point(sequence, residues)
@@ -308,6 +371,10 @@ def ion_site_check_dir(
                 "max_coordinating_contacts": 0,
                 "n_ions_coordinated": 0,
                 "well_placed": False,
+                "mg_canonical_motif_coordination": False,
+                "n_motif_coord_asp": 0,
+                "n_motif_coord_nse": 0,
+                "mg_to_motif_dist": np.nan,
                 "n_diphosphate_atoms": 0,
                 "diphosphate_to_cage_dist": np.nan,
                 "n_residues": 0,

@@ -93,6 +93,9 @@ COLUMNS = [
     "diphosphate_to_cage_dist",
     "min_diphosphate_to_cage_oxygen",
     "diphosphate_to_nearest_ion",
+    "diphosphate_to_ion_centroid",
+    "reactive_carbon_to_nearest_ion",
+    "reactive_carbon_to_ion_centroid",
     "reactive_carbon_to_cage_dist",
     "substrate_in_site",
     "n_residues",
@@ -188,6 +191,9 @@ def substrate_positioning(
         "diphosphate_to_cage_dist": np.nan,
         "min_diphosphate_to_cage_oxygen": np.nan,
         "diphosphate_to_nearest_ion": np.nan,
+        "diphosphate_to_ion_centroid": np.nan,
+        "reactive_carbon_to_nearest_ion": np.nan,
+        "reactive_carbon_to_ion_centroid": np.nan,
         "reactive_carbon_to_cage_dist": np.nan,
         "substrate_in_site": False,
         "n_residues": len(sequence),
@@ -205,6 +211,19 @@ def substrate_positioning(
         if len(diphos) and len(ions):
             result["diphosphate_to_nearest_ion"] = float(
                 np.sqrt(((diphos[:, None, :] - ions[None, :, :]) ** 2).sum(2)).min())
+
+    # Ion-anchored substrate geometry (reference-independent: measured against the cofolded
+    # Mg cluster, NOT the apo metal_point which mislocalizes for two-domain folds). Reactive
+    # carbon = ligand carbon nearest the diphosphate (same definition as the cage version).
+    if len(ions):
+        ion_centroid = ions.mean(axis=0)
+        if len(diphos):
+            result["diphosphate_to_ion_centroid"] = float(np.sqrt(((diphos.mean(axis=0) - ion_centroid) ** 2).sum()))
+        if len(carbons) and len(diphos):
+            _d_c = np.sqrt(((carbons[:, None, :] - diphos[None, :, :]) ** 2).sum(2)).min(1)
+            _reactive_c = carbons[int(np.argmin(_d_c))]
+            result["reactive_carbon_to_nearest_ion"] = float(np.sqrt(((_reactive_c[None, :] - ions) ** 2).sum(1)).min())
+            result["reactive_carbon_to_ion_centroid"] = float(np.sqrt(((_reactive_c - ion_centroid) ** 2).sum()))
 
     cage = _cage_metal_point(sequence, residues)
     if cage is None or not len(diphos):

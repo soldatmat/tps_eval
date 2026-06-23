@@ -141,9 +141,11 @@ def test_read_ion_hetatms_selects_by_resname():
         ions, diphos = read_ion_hetatms(p)
         assert ions.shape == (1, 3)
         assert diphos.shape == (0, 3)
-        # An empty ion set finds nothing (configurable resnames respected).
+        # A non-matching resname filter still detects the MG by its ELEMENT (the element-based
+        # fallback for AF3 'MG' / Boltz2 'LIG2'): resname filtering only ADDS resnames, it cannot
+        # exclude a true Mg/Mn element atom.
         ions2, _ = read_ion_hetatms(p, ion_resnames=("ZN",))
-        assert ions2.shape == (0, 3)
+        assert ions2.shape == (1, 3)
 
 
 def test_well_placed_ion_at_centroid():
@@ -163,6 +165,10 @@ def test_well_placed_ion_at_centroid():
         assert r["max_coordinating_contacts"] >= 2
         assert r["n_ions_coordinated"] == 1
         assert r["well_placed"] is True
+        assert r["mg_canonical_motif_coordination"] is True
+        assert r["n_motif_coord_asp"] >= 1
+        assert r["n_motif_coord_nse"] >= 1
+        assert r["mg_to_motif_dist"] < 2.0
         assert r["n_diphosphate_atoms"] == 0
         assert np.isnan(r["diphosphate_to_cage_dist"])
 
@@ -182,6 +188,9 @@ def test_misplaced_ion_far_away():
         assert r["max_coordinating_contacts"] == 0
         assert r["n_ions_coordinated"] == 0
         assert r["well_placed"] is False
+        assert r["mg_canonical_motif_coordination"] is False
+        assert r["n_motif_coord_asp"] == 0
+        assert r["n_motif_coord_nse"] == 0
 
 
 def test_apo_structure_not_applicable():
@@ -197,6 +206,7 @@ def test_apo_structure_not_applicable():
         assert r["n_ions_in_site"] == 0
         assert r["ion_in_site"] is False
         assert r["well_placed"] is False
+        assert r["mg_canonical_motif_coordination"] is False
         assert np.isnan(r["diphosphate_to_cage_dist"])
 
 
