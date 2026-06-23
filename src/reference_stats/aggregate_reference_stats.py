@@ -128,6 +128,7 @@ METRIC_SUFFIXES: Dict[str, str] = {
     "pocket_descriptors": "pocket_descriptors",
     "aromatic_lining": "aromatic_lining",
     "diphosphate_sensor": "diphosphate_sensor",
+    "cyclization_geometry": "cyclization_geometry",
     # PAE-derived fold-confidence (intrinsic; needs a saved PAE npz)
     "global_confidence": "global_confidence",
     "interdomain_pae": "interdomain_pae",

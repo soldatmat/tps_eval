@@ -261,6 +261,7 @@ def out_aromatic_lining(d): return d.rstrip(os.sep) + "_aromatic_lining.csv"
 def out_diphosphate_sensor(d): return d.rstrip(os.sep) + "_diphosphate_sensor.csv"
 def out_ion_site_check(d): return d.rstrip(os.sep) + "_ion_site_check.csv"
 def out_substrate_positioning(d): return d.rstrip(os.sep) + "_substrate_positioning.csv"
+def out_cyclization_geometry(d): return d.rstrip(os.sep) + "_cyclization_geometry.csv"
 def out_domain_structural_identity(d): return d.rstrip(os.sep) + "_domain_structural_identity.csv"
 # substrate_class is keyed off the gen FASTA (it fuses sequence + structure signals).
 def out_substrate_class(f): return _base(f) + "_substrate_class.csv"
@@ -296,6 +297,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "diphosphate_sensor":   {"default": True,  "branch": "structure", "description": "Diphosphate-sensor basic residues (Arg/Lys + RY pair) at the metal site."},
     "ion_site":             {"default": True,  "branch": "structure", "description": "Ion-placement check: do AF3 co-folded Mg/Mn ions land in the carboxylate cage? Only carries signal for AF3 holo folds (--af3_cofold mg*); apo/ESMFold report n_ions_modelled=0. Gated on a holo co-fold / --no_holo_tools."},
     "substrate_positioning":{"default": True,  "branch": "structure", "description": "Substrate positioning: is the AF3 co-folded prenyl-PP substrate poised in the catalytic cage (diphosphate->FARM/Mg, reactive C1->cage)? Auto-detects the ligand per design (--af3_cofold mg_<sub>|mg_ee); apo / no substrate -> NaN. Gated on a holo co-fold / --no_holo_tools."},
+    "cyclization_geometry": {"default": True,  "branch": "structure", "description": "Cyclization-relevant holo geometry: is the co-folded prenyl-PP substrate folded for cyclization (rgyr, C1->distal fold-back) and lined by an aromatic cation-pi track? Reference-independent (no apo metal_point); necessary-not-sufficient for product. apo / no substrate -> NaN. Gated on a holo co-fold / --no_holo_tools."},
     "radius_of_gyration":   {"default": True,  "branch": "structure", "description": "Radius of gyration / compactness over Ca atoms."},
     "pocket_descriptors":   {"default": True,  "branch": "structure", "description": "Active-site pocket descriptors (fpocket volume/hydrophobicity/enclosure + P2Rank ligandability cross-check)."},
     "domain_composition":   {"default": True,  "branch": "structure", "description": "TPS structural-domain composition (EE CPU detector)."},
@@ -739,6 +741,12 @@ def build_steps(args, enabled: set) -> List[Step]:
             steps.append(Step("substrate_positioning_gen", "substrate_positioning.sh",
                               ["--structs_dir", structs], out_substrate_positioning(structs),
                               tool="substrate_positioning"))
+            # Cyclization-relevant geometry: is the co-folded substrate folded for
+            # cyclization (rgyr / C1->distal fold-back) and lined by an aromatic cation-pi
+            # track? Reference-independent; NaN when no substrate.
+            steps.append(Step("cyclization_geometry_gen", "cyclization_geometry.sh",
+                              ["--structs_dir", structs], out_cyclization_geometry(structs),
+                              tool="cyclization_geometry"))
         # Radius of gyration / compactness: raw geometric shape numbers (Rg, asphericity,
         # principal radii) over the Cα atoms; no expected-Rg band (compared downstream).
         steps.append(Step("radius_of_gyration_gen", "radius_of_gyration.sh",
