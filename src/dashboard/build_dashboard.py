@@ -137,8 +137,10 @@ _DROP_DESIGN_COLUMNS = {
 # 1280-dim ESM embedding `*_embedding_esm1b.csv`), not a per-design metric table.
 # Ingesting one turns every dimension into a design-only metric card, exploding the
 # rendered SVG count (~dims x designs needles) and making the dashboard unusable.
-# Real metric tables are narrow (<= ~15 columns), so skip anything far above that.
-_MAX_DESIGN_COLUMNS_PER_FILE = 64
+# Per-tool CSVs are narrow, but a single MERGED metric table (e.g. a stage-2
+# `*_structure_metrics.csv`) legitimately carries ~50-100 columns — so the cutoff sits
+# well above that yet still below embedding dims (320/480/640/1280).
+_MAX_DESIGN_COLUMNS_PER_FILE = 256
 
 
 def _compact_numeric(col: dict) -> dict:
