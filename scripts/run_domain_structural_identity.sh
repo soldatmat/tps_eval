@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--structs_dir <structs_dir> [--known_domain_structures_root <dir>] [--save_path <csv>] [--n_jobs <n>] [--n_iters <n>] [--keep_detected_domains <dir>]"
+USAGE="--structs_dir <structs_dir> [--known_domain_structures_root <dir>] [--save_path <csv>] [--n_jobs <n>] [--n_iters <n>] [--keep_detected_domains <dir>] [--self_mode]"
 
 Help()
 {
@@ -14,6 +14,8 @@ Help()
     echo "  --n_jobs                        Parallel jobs for detection (optional; default 10)"
     echo "  --n_iters                       EnzymeExplorer detection iterations (optional; default 3)"
     echo "  --keep_detected_domains         If given, keep the per-design detected domain .pdb files here (optional)"
+    echo "  --self_mode                     Searching a domain set against itself: drop hits to a reference domain"
+    echo "                                  from the query's own source structure (leave-one-out band; optional)"
     echo "  -h, --help                      Show this help message and exit"
     echo
 }
@@ -27,6 +29,7 @@ while [[ $# -gt 0 ]]; do
         --n_jobs) n_jobs="$2"; shift 2 ;;
         --n_iters) n_iters="$2"; shift 2 ;;
         --keep_detected_domains) keep_detected_domains="$2"; shift 2 ;;
+        --self_mode) self_mode=1; shift ;;
         -h|--help) Help; exit 0 ;;
         *) echo "Unknown option: $1"; Help; exit 1 ;;
     esac
@@ -84,5 +87,6 @@ args=("$structs_dir" "$known_domain_structures_root")
 [[ -n "$n_jobs" ]] && args+=(--n_jobs "$n_jobs")
 [[ -n "$n_iters" ]] && args+=(--n_iters "$n_iters")
 [[ -n "$keep_detected_domains" ]] && args+=(--keep_detected_domains "$keep_detected_domains")
+[[ -n "$self_mode" ]] && args+=(--self_mode)
 
 python run_domain_structural_identity.py "${args[@]}"
