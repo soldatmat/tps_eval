@@ -33,8 +33,11 @@ auto-switches to large mode** (override with `--large-mode` / `--no-large-mode`,
   *exact* "how many pass" counts stay live while you drag thresholds; counts render compact (`234k`).
 - Adjusting one metric's threshold redraws only that card (the funnel still recomputes fully).
 - Hide / show / search toggle a CSS class on already-built cards (no DOM rebuild); search does not
-  touch the funnel at all. The funnel hot loop uses flattened typed arrays. So the only
-  full rebuilds left are source / stratify / set-include changes.
+  touch the funnel at all. The funnel hot loop uses flattened typed arrays.
+- De/selecting a design set (the chips) and recolouring a set redraw only the *visible* cards'
+  overlays + the funnel (no card rebuild) — at draw time the bands recompute their axis domain and
+  density/needles from the currently-included sets. So the only full rebuilds left are source /
+  stratify changes.
 
 Small batches are untouched: plain JSON value lists, per-design needles, classic funnel.
 

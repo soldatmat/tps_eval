@@ -122,6 +122,9 @@
   .src-note b { color: var(--bone); }
   .cat-divider { display: flex; align-items: center; gap: 12px; margin: 26px 0 12px; }
   .metric.is-hidden, .cat-divider.is-hidden { display: none; }   /* hide/search toggle — no DOM rebuild */
+  .ov-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 0 0 10px 2px; }
+  .ov-head .eyebrow { padding: 0; }
+  .ov-tools { display: flex; gap: 6px; }
   .cat-divider:first-child { margin-top: 4px; }
   .cat-divider .ctitle { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--nature); font-weight: 600; white-space: nowrap; }
   .cat-divider .rule { height: 1px; background: var(--line); flex: 1; }
@@ -324,7 +327,17 @@
 <div class="shell">
   <nav class="side"><div class="eyebrow col-title">Metrics</div><div id="nav"></div></nav>
   <main><div class="eyebrow col-title">Distributions</div><div class="src-note" id="src-note"></div><div class="design-sets" id="design-sets"></div><div id="cards"></div></main>
-  <aside class="overview"><div class="eyebrow col-title">Filter pipeline</div><div id="overview"></div></aside>
+  <aside class="overview">
+    <div class="ov-head">
+      <span class="eyebrow col-title">Filter pipeline</span>
+      <span class="ov-tools">
+        <button class="navbtn" id="export-settings" type="button" title="Download the current filter setup (hidden metrics, removed filters, thresholds, category selections, sets) as JSON">save filters</button>
+        <button class="navbtn" id="import-settings" type="button" title="Load a saved filter-setup JSON and apply it">load filters</button>
+        <input id="import-file" type="file" accept=".json,application/json" style="display:none">
+      </span>
+    </div>
+    <div id="overview"></div>
+  </aside>
 </div>
 
 <div id="tip" role="tooltip"></div>
@@ -692,7 +705,7 @@
       const chip = el("div", "ds-chip" + (on ? " on" : ""));
       chip.setAttribute("role", "button"); chip.setAttribute("aria-pressed", on); chip.tabIndex = 0;
       chip.title = on ? "included — click to exclude this set from the cards & funnel" : "excluded — click to include this set";
-      const toggle = () => { if (on) state.excludedSets.add(i); else state.excludedSets.delete(i); renderAll(); };
+      const toggle = () => { if (on) state.excludedSets.add(i); else state.excludedSets.delete(i); applySetToggle(); };
       chip.onclick = toggle;
       chip.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
       const dot = el("span", "ds-dot"); dot.style.background = setColor(i) || "var(--design)";
@@ -701,7 +714,7 @@
         const sw = el("div", "ds-swatches");
         SET_PALETTE.forEach((hex) => { const b = el("button"); b.type = "button"; b.style.background = hex; b.style.color = hex; b.title = "set dot colour " + hex;
           b.setAttribute("aria-pressed", setColor(i) === hex);
-          b.onclick = (e) => { e.stopPropagation(); state.setColors[i] = hex; renderAll(); }; sw.append(b); });
+          b.onclick = (e) => { e.stopPropagation(); state.setColors[i] = hex; applySetToggle(); }; sw.append(b); });
         chip.append(sw);
       }
       box.append(chip);
@@ -872,29 +885,36 @@
       if (s.count) { any = true; if (s.min < mn) mn = s.min; if (s.max > mx) mx = s.max; } });
     return any ? [mn, mx] : null;
   }
-  function numericColumn(colWrap, mname, cname, col) {
-    const dsets = designSetsFor(cname), has = hasDesign(cname);
-    if (col.band_missing && !has) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; }
+  // axis domain for a numeric column, evaluated against the CURRENTLY-included sets — called at
+  // draw time so de/selecting a design set reshapes the axis without rebuilding the card.
+  function domFor(cname, col) {
     const showDesign = designsActive() || col.band_missing;
-    const dom = axisDomain(col, showDesign ? (LARGE ? designExtent(cname) : allDesignVals(cname)) : null);
+    return axisDomain(col, showDesign ? (LARGE ? designExtent(cname) : allDesignVals(cname)) : null);
+  }
+  function numericColumn(colWrap, mname, cname, col) {
+    const everHas = SETS.some((ds) => ds.values[cname]);   // stable across set toggles → card structure is fixed
+    if (col.band_missing && !everHas) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; }
     const strata = strataFor(col);
     const axisRow = el("div", "axis-row"); axisRow.append(el("div"));
     const axisHold = el("div", "track"); const asvg = svgEl("svg"); axisHold.append(asvg); axisRow.append(axisHold); colWrap.append(axisRow);
-    registerDraw(mname, () => drawAxis(asvg, dom));
+    registerDraw(mname, () => drawAxis(asvg, domFor(cname, col)));
 
     const addTrack = (label, count, statCol, isOverall, withDesign) => {
-      const showDesign = withDesign != null ? withDesign : has;
+      const wantsDesign = withDesign != null ? withDesign : true;   // overall track shows the overlay; strata rows don't
       const row = el("div", "track-row");
       const lab = el("div", "strat-label" + (isOverall ? " overall" : "")); lab.append(el("span", null, label));
       if (count != null) lab.append(el("span", "ct", count.toLocaleString())); row.append(lab);
       const hold = el("div", "track"); const s = svgEl("svg"); hold.append(s); row.append(hold); colWrap.append(row);
       const big = isOverall && !strata, h = big ? 38 : 30;
-      registerDraw(mname, () => drawNumericBand(s, statCol, dom, { height: h, big, dsets: showDesign ? dsets : null, mname, cname, effCol: col, key: colKey(mname, cname), interactive: isOverall }));
+      registerDraw(mname, () => {           // dom + dsets recomputed here so set toggles need no rebuild
+        const dsets = wantsDesign ? designSetsFor(cname) : null;
+        drawNumericBand(s, statCol, domFor(cname, col), { height: h, big, dsets: (dsets && dsets.length) ? dsets : null, mname, cname, effCol: col, key: colKey(mname, cname), interactive: isOverall });
+      });
       row.addEventListener("mousemove", (e) => { if (dragState) return; showTip(statsTip(`${cname}${isOverall ? "" : " · " + label}`, statCol), e); });
       row.addEventListener("mouseleave", hideTip);
     };
     if (strata) {
-      if (has) addTrack("all", col.count, col, true, true);
+      if (everHas) addTrack("all", col.count, col, true, true);
       strata.slice(0, MAX_STRATA).forEach(([name, s]) => addTrack(name, s.count, s, false, false));
       if (strata.length > MAX_STRATA) { const rest = strata.length - MAX_STRATA;
         const restN = strata.slice(MAX_STRATA).reduce((a, [, s]) => a + (s.count || 0), 0);
@@ -913,26 +933,30 @@
       s.style.background = colorMap[k] || "var(--line-2)"; s.title = `${k}: ${n} (${(100 * n / (total || 1)).toFixed(1)}%)`; bar.append(s); }); return bar; }
 
   function categoricalColumn(colWrap, mname, cname, col) {
-    const catNames = barCatNames(cname, col);
-    const dsets = designSetsFor(cname);
-    const colorMap = colorForCats(catNames);
-    const wrap = el("div", "catbar-wrap"); const strata = strataFor(col);
-    const allowed = new Set(catNames);
+    const everHas = SETS.some((ds) => ds.values[cname]);   // stable across set toggles
+    if (col.band_missing && !everHas) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; }
+    // category names + colours fixed at build (stable palette); only the per-set rows are dynamic.
+    const catNames = barCatNames(cname, col), colorMap = colorForCats(catNames), allowed = new Set(catNames);
+    const strata = strataFor(col);
+    const wrap = el("div", "catbar-wrap"); colWrap.append(wrap);
     const addCatRow = (label, count, freq, isDesign) => {
       const row = el("div", "catrow"); const rl = el("div", "rl" + (isDesign ? " designs" : "")); rl.append(el("span", null, label));
       if (count != null) rl.append(el("span", "ct", count.toLocaleString())); row.append(rl);
       const folded = {}; Object.entries(freq).forEach(([k, n]) => { const key = allowed.has(k) ? k : "other"; folded[key] = (folded[key] || 0) + n; });
       row.append(stackBar(folded, colorMap)); wrap.append(row);
     };
-    if (col.band_missing) { if (!dsets.length) { colWrap.append(el("div", "more-note", "no reference band · enable Designs to view the batch values")); return; } }
-    else if (strata) { strata.slice(0, MAX_STRATA).forEach(([name, s]) => addCatRow(name, s.count, s.frequencies || {}));
-      if (strata.length > MAX_STRATA) wrap.append(el("div", "more-note", `+ ${strata.length - MAX_STRATA} smaller strata not shown`)); }
-    else addCatRow("all", col.count, col.frequencies || {});
-    dsets.forEach((ds) => {
-      if (LARGE) { const f = catFreqCached(ds.idx, cname); addCatRow(multiSet() ? ds.name : "designs", f.nonNull, f.freq, true); }
-      else { const dv = ds.vals.filter((v) => v != null); addCatRow(multiSet() ? ds.name : "designs", dv.length, freqFromVals(dv), true); }
+    // bar rows rebuilt at draw time → a set toggle drops/restores its row with no card rebuild
+    registerDraw(mname, () => {
+      wrap.innerHTML = "";
+      if (col.band_missing) { /* design-only: no reference/strata rows */ }
+      else if (strata) { strata.slice(0, MAX_STRATA).forEach(([name, s]) => addCatRow(name, s.count, s.frequencies || {}));
+        if (strata.length > MAX_STRATA) wrap.append(el("div", "more-note", `+ ${strata.length - MAX_STRATA} smaller strata not shown`)); }
+      else addCatRow("all", col.count, col.frequencies || {});
+      designSetsFor(cname).forEach((ds) => {
+        if (LARGE) { const f = catFreqCached(ds.idx, cname); addCatRow(multiSet() ? ds.name : "designs", f.nonNull, f.freq, true); }
+        else { const dv = ds.vals.filter((v) => v != null); addCatRow(multiSet() ? ds.name : "designs", dv.length, freqFromVals(dv), true); }
+      });
     });
-    colWrap.append(wrap);
     const lg = el("div", "catlegend");
     catNames.forEach((c) => { const it = el("div", "item"); const sw = el("span", "sw"); sw.style.background = colorMap[c]; it.append(sw); it.append(el("span", null, c)); lg.append(it); });
     colWrap.append(lg);
@@ -1037,12 +1061,19 @@
     if (col.kind !== "categorical") {
       chipEl = el("div", "chip"); right.append(chipEl);
       const update = () => {
+        // skip the rescan when this card isn't visible (chip not seen); refreshed on reshow. Keeps the
+        // exact O(N) count affordable when most metrics are hidden.
+        if (state.hidden.has(mname) || !matchesQuery(mname, metricsOf(state.source)[mname].columns)) return;
         const eff = effBand(mname, cname, col);
-        let inb, total;
-        if (LARGE) {   // cached histogram across included sets — no 10^5 rescan per redraw
-          inb = 0; total = 0;
-          SETS.forEach((ds, i) => { if (!setIncluded(i) || !ds.values[cname]) return; const h = colHist(i, cname);
-            total += h.count; inb += histCountBetween(h, eff.min, eff.max); });
+        let inb = 0, total = 0;
+        if (LARGE) {   // EXACT per-design count over included sets — must match the funnel. (A histogram
+          // estimate interpolates within a bin and is badly wrong next to a spike, e.g. p≈1.0.)
+          for (let i = 0; i < SETS.length; i++) {
+            if (!setIncluded(i)) continue; const a = SETS[i].values[cname]; if (!a) continue;
+            for (let r = 0; r < a.length; r++) { const v = a[r];
+              if (v !== v || v === Infinity || v === -Infinity) continue;
+              total++; if (v >= eff.min && v <= eff.max) inb++; }
+          }
         } else {
           const vals = allDesignVals(cname).filter((x) => x != null && isFinite(x));
           total = vals.length; inb = vals.filter((x) => x >= eff.min && x <= eff.max).length;
@@ -1132,14 +1163,17 @@
   function applyCardVisibility() {
     const metrics = metricsOf(state.source);
     const cardsEl = $("#cards"); const kids = cardsEl.children;
-    let anyVisible = false;
+    let anyVisible = false; const becameVisible = [];
     for (let i = 0; i < kids.length; i++) {
       const node = kids[i]; if (!node.classList.contains("metric")) continue;
       const m = node.id.slice(2);
       const vis = !state.hidden.has(m) && matchesQuery(m, metrics[m].columns);
+      const wasHidden = node.classList.contains("is-hidden");
       node.classList.toggle("is-hidden", !vis);
-      if (vis) anyVisible = true;
+      if (vis) { anyVisible = true; if (wasHidden) becameVisible.push(m); }   // re-shown → may be stale (a set toggle skipped it)
     }
+    becameVisible.forEach((m) => redrawMetric(m));
+    if (becameVisible.length) chipUpdaters.forEach((f) => f());   // re-shown cards' chips were skipped while hidden
     for (let i = 0; i < kids.length; i++) {            // a divider is shown only if a visible card follows it in its block
       if (!kids[i].classList.contains("cat-divider")) continue;
       let has = false;
@@ -1506,6 +1540,17 @@
   // cards, where redrawing every card per keystroke/drag would dominate.
   function applyFiltersFor(m) { chipUpdaters.forEach((f) => f()); redrawMetric(m); renderOverview(); }
   function registerDraw(m, fn) { drawers.push({ m, fn }); }
+  // a design set was de/selected (or recoloured): only the chip strip, src note, chips, the VISIBLE
+  // cards' overlays, and the funnel change — NOT the card DOM. Redraw those, skipping hidden cards
+  // (which is most of them in production use), instead of a full renderAll() rebuild of every card.
+  function applySetToggle() {
+    renderDesignSets(); renderSrcNote();
+    chipUpdaters.forEach((f) => f());
+    const vis = new Set();
+    document.querySelectorAll("#cards .metric:not(.is-hidden)").forEach((c) => vis.add(c.id.slice(2)));
+    drawers.forEach((d) => { if (vis.has(d.m)) d.fn(); });
+    renderOverview();
+  }
 
   function renderSrcNote() {
     const src = D.sources[state.source]; const note = $("#src-note");
@@ -1519,6 +1564,69 @@
   }
 
   function renderAll() { buildSegs(); renderIdent(); renderSrcNote(); renderDesignSets(); buildNav(); renderCards(); renderOverview(); }
+
+  // ---------- save / load filter setup ----------
+  // A portable snapshot of every filter choice, keyed by metric::column (stable across rebuilds /
+  // design sets). Sets are referenced by NAME, metrics by name — so a file saved on one batch loads
+  // onto another. Unknown keys are ignored on load.
+  const SETTINGS_FORMAT = "tps-dashboard-filters";
+  function collectSettings() {
+    const thresholds = {};
+    Object.keys(state.thresholds).forEach((k) => {
+      const o = state.thresholds[k] || {};
+      const min = (o.min != null && isFinite(o.min)) ? o.min : null;
+      const max = (o.max != null && isFinite(o.max)) ? o.max : null;
+      if (min != null || max != null) thresholds[k] = { min, max };
+    });
+    const categorical = {};
+    Object.keys(state.catExcluded).forEach((k) => { const s = state.catExcluded[k]; if (s && s.size) categorical[k] = { excluded: Array.from(s) }; });
+    return {
+      format: SETTINGS_FORMAT, version: 1,
+      reference_set: D.reference_set || null,
+      source: state.source, stratify: state.labeling, search: state.query,
+      excludedSets: SETS.filter((d, i) => state.excludedSets.has(i)).map((d) => d.name),
+      hiddenMetrics: Array.from(state.hidden),
+      disabledFilters: Array.from(state.disabledFilters),
+      collapsedSubgroups: Array.from(state.filterCollapsed),
+      thresholds: thresholds,
+      categorical: categorical,
+      filterOrder: state.filterOrder ? state.filterOrder.slice() : null,
+      mainOrder: state.mainOrder ? state.mainOrder.slice() : null,
+    };
+  }
+  function downloadSettings() {
+    const blob = new Blob([JSON.stringify(collectSettings(), null, 2)], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
+    const a = el("a"); a.href = href;
+    a.download = `${D.reference_set || "dashboard"}_${state.source}_filter_settings.json`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(href), 1000);
+  }
+  function applySettings(s) {
+    if (!s || typeof s !== "object") { alert("Not a valid filter-settings file."); return; }
+    if (s.format && s.format !== SETTINGS_FORMAT) { if (!confirm("This file isn't a tps-dashboard filter setup. Try to apply anyway?")) return; }
+    if (s.source && D.sources[s.source]) state.source = s.source;
+    if (typeof s.stratify === "string") state.labeling = s.stratify;
+    state.query = typeof s.search === "string" ? s.search : "";
+    const sb = $("#search"); if (sb) sb.value = state.query;
+    state.excludedSets = new Set();
+    if (Array.isArray(s.excludedSets)) SETS.forEach((d, i) => { if (s.excludedSets.indexOf(d.name) >= 0) state.excludedSets.add(i); });
+    state.hidden = new Set(Array.isArray(s.hiddenMetrics) ? s.hiddenMetrics : []);
+    state.disabledFilters = new Set(Array.isArray(s.disabledFilters) ? s.disabledFilters : []);
+    state.filterCollapsed = new Set(Array.isArray(s.collapsedSubgroups) ? s.collapsedSubgroups : []);
+    state.thresholds = {};
+    if (s.thresholds) Object.keys(s.thresholds).forEach((k) => {
+      const o = s.thresholds[k] || {}, r = {}, mn = parseFloat(o.min), mx = parseFloat(o.max);
+      if (o.min != null && isFinite(mn)) r.min = mn;
+      if (o.max != null && isFinite(mx)) r.max = mx;
+      if (r.min != null || r.max != null) state.thresholds[k] = r;
+    });
+    state.catExcluded = {};
+    if (s.categorical) Object.keys(s.categorical).forEach((k) => { const ex = (s.categorical[k] || {}).excluded;
+      if (Array.isArray(ex) && ex.length) state.catExcluded[k] = new Set(ex.map(String)); });
+    if (Array.isArray(s.filterOrder)) state.filterOrder = s.filterOrder.slice();
+    if (Array.isArray(s.mainOrder)) state.mainOrder = s.mainOrder.slice();
+    renderAll();
+  }
 
   // header pin/unpin: locked (default) keeps the header pinned with the sidebars; unlocked lets it scroll away
   function lockSVG(locked) {
@@ -1538,8 +1646,23 @@
     apply();
   })();
 
+  // save / load filter setup buttons
+  (function () {
+    const ex = $("#export-settings"), im = $("#import-settings"), file = $("#import-file");
+    if (ex) ex.onclick = downloadSettings;
+    if (im && file) {
+      im.onclick = () => file.click();
+      file.onchange = (e) => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        const r = new FileReader();
+        r.onload = () => { try { applySettings(JSON.parse(r.result)); } catch (err) { alert("Could not read filter-settings JSON:\n" + err.message); } e.target.value = ""; };
+        r.readAsText(f);
+      };
+    }
+  })();
+
   renderLegend(); setupDesignNote(); renderAll();
   syncHeaderH(); requestAnimationFrame(syncHeaderH);   // measure header after initial layout
-  if (location.hash === "#bench") window.__bench = { renderAll, renderCards, renderOverview, buildNav, applyHiddenChange, applyCardVisibility, applySearchChange, state };  // inert profiling hook
+  if (location.hash === "#bench") window.__bench = { renderAll, renderCards, renderOverview, buildNav, applyHiddenChange, applyCardVisibility, applySearchChange, applySetToggle, collectSettings, applySettings, state };  // inert profiling hook
 })();
 </script>
