@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Sequence, Tuple
+from concurrent.futures import ProcessPoolExecutor
+from typing import List, Optional, Sequence, Tuple
 
 import os
 import numpy as np
@@ -41,6 +41,84 @@ def _build_blosum_lut(matrix) -> np.ndarray:
 
 _BLOSUM_LUT = _build_blosum_lut(SUBSTITUTION_MATRIX)
 _GAP_BYTE = ord("-")
+
+
+# --- Parallel execution across CPU cores -------------------------------------
+# Bio.Align.PairwiseAligner is GIL-bound (C-impl that does not release the GIL),
+# so a ThreadPoolExecutor serializes and runs effectively single-threaded. We use
+# *processes* instead to actually saturate the node's cores. The (read-only) train
+# set is shared into each worker once via an initializer rather than being pickled
+# per task. The aligner / BLOSUM LUT module globals are recreated per worker on
+# spawn (or inherited on fork) — either way they exist at module import.
+_WORKER_TRAIN: Optional[List[str]] = None
+_WORKER_SELF: bool = False
+
+# Pin to a fork context: workers inherit the parent's sys.path + the aligner/LUT
+# module globals (no re-import, no per-task repickling of the train set). This is
+# the Linux default today but Python plans to change it, so request it explicitly.
+# Fall back to the platform default where fork is unavailable (e.g. macOS spawn /
+# Windows) — the logic is identical, only the bootstrap differs.
+import multiprocessing as _multiprocessing
+
+try:
+    _MP_CONTEXT = _multiprocessing.get_context("fork")
+except ValueError:  # pragma: no cover - non-fork platforms
+    _MP_CONTEXT = None
+
+
+def _available_cpus() -> int:
+    """CPUs actually allocated to this process (respects SLURM/PBS cpusets)."""
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except AttributeError:  # not available on all platforms (e.g. macOS)
+        return max(1, os.cpu_count() or 1)
+
+
+def _init_identity_worker(train: List[str], self_comparison: bool) -> None:
+    global _WORKER_TRAIN, _WORKER_SELF
+    _WORKER_TRAIN = train
+    _WORKER_SELF = self_comparison
+
+
+def _worker_max(item: Tuple[int, str]):
+    """Per-query max identity/similarity against the worker's shared train set."""
+    i, generated_seq = item
+    local_max_identity = 0.0
+    local_max_similarity = 0.0
+    local_max_identity_idx = 0
+    local_max_similarity_idx = 0
+    for j, train_seq in enumerate(_WORKER_TRAIN):
+        if _WORKER_SELF and i == j:
+            continue
+        sequence_identity, sequence_similarity = _pair_metrics(generated_seq, train_seq)
+        if sequence_identity > local_max_identity:
+            local_max_identity = sequence_identity
+            local_max_identity_idx = j
+        if sequence_similarity > local_max_similarity:
+            local_max_similarity = sequence_similarity
+            local_max_similarity_idx = j
+    return (
+        i,
+        local_max_identity,
+        local_max_similarity,
+        local_max_identity_idx,
+        local_max_similarity_idx,
+    )
+
+
+def _worker_topk(item: Tuple[int, str, int]):
+    """Per-query top-k reference hits (identity desc) against the shared train set."""
+    i, generated_seq, top_k = item
+    scored = []
+    for j, train_seq in enumerate(_WORKER_TRAIN):
+        if _WORKER_SELF and i == j:
+            continue
+        sequence_identity, _ = _pair_metrics(generated_seq, train_seq)
+        scored.append((sequence_identity, j))
+    # Sort by identity desc; tie-break on train index asc for determinism.
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    # Emit identity as PERCENT (native metric for this tool's top-k contract).
+    return i, [(j, identity * 100.0) for identity, j in scored[:top_k]]
 
 
 def evaluate_max_sequence_identity(
@@ -135,24 +213,18 @@ def get_topk_sequence_identity(
     generated = [str(seq) for seq in generated]
 
     results = [[] for _ in generated]
+    if not generated:
+        return results
 
-    def process_generated(i: int, generated_seq: str):
-        scored = []
-        for j, train_seq in enumerate(train):
-            if self_comparison and i == j:
-                continue
-            sequence_identity, _ = _pair_metrics(generated_seq, train_seq)
-            scored.append((sequence_identity, j))
-        # Sort by identity desc; tie-break on train index asc for determinism.
-        scored.sort(key=lambda t: (-t[0], t[1]))
-        # Emit identity as PERCENT (native metric for this tool's top-k contract).
-        return i, [(j, identity * 100.0) for identity, j in scored[:top_k]]
-
-    max_workers = max(1, min(len(generated), os.cpu_count() or 1))
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for i, ranked in executor.map(
-            lambda item: process_generated(*item), enumerate(generated)
-        ):
+    max_workers = max(1, min(len(generated), _available_cpus()))
+    items = [(i, seq, top_k) for i, seq in enumerate(generated)]
+    with ProcessPoolExecutor(
+        max_workers=max_workers,
+        mp_context=_MP_CONTEXT,
+        initializer=_init_identity_worker,
+        initargs=(train, self_comparison),
+    ) as executor:
+        for i, ranked in executor.map(_worker_topk, items, chunksize=8):
             results[i] = ranked
 
     return results
@@ -236,43 +308,29 @@ def get_max_sequence_identity_two_sets(
     max_sequence_identity_index = [0 for _ in generated]
     max_sequence_similarity_index = [0 for _ in generated]
 
-    def process_generated(i: int, generated_seq: str):
-        local_max_identity = 0.0
-        local_max_similarity = 0.0
-        local_max_identity_idx = 0
-        local_max_similarity_idx = 0
-
-        for j, train_seq in enumerate(train):
-            if self_comparison and i == j:
-                continue
-
-            sequence_identity, sequence_similarity = _pair_metrics(generated_seq, train_seq)
-
-            if sequence_identity > local_max_identity:
-                local_max_identity = sequence_identity
-                local_max_identity_idx = j
-
-            if sequence_similarity > local_max_similarity:
-                local_max_similarity = sequence_similarity
-                local_max_similarity_idx = j
-
+    if not generated:
         return (
-            i,
-            local_max_identity,
-            local_max_similarity,
-            local_max_identity_idx,
-            local_max_similarity_idx,
+            max_sequence_identity,
+            max_sequence_similarity,
+            max_sequence_identity_index,
+            max_sequence_similarity_index,
         )
 
-    max_workers = max(1, min(len(generated), os.cpu_count() or 1))
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    max_workers = max(1, min(len(generated), _available_cpus()))
+    items = list(enumerate(generated))
+    with ProcessPoolExecutor(
+        max_workers=max_workers,
+        mp_context=_MP_CONTEXT,
+        initializer=_init_identity_worker,
+        initargs=(train, self_comparison),
+    ) as executor:
         for (
             i,
             local_max_identity,
             local_max_similarity,
             local_max_identity_idx,
             local_max_similarity_idx,
-        ) in executor.map(lambda item: process_generated(*item), enumerate(generated)):
+        ) in executor.map(_worker_max, items, chunksize=8):
             max_sequence_identity[i] = local_max_identity
             max_sequence_similarity[i] = local_max_similarity
             max_sequence_identity_index[i] = local_max_identity_idx
