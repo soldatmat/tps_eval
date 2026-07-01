@@ -106,6 +106,16 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   a `git submodule update`/reset on that submodule de-registers it (the `aggrescan` launcher
   then dies with `DistributionNotFound`). After any submodule reset, re-run
   `pip install -e vendor/aggrescan3d` in the `aggrescan3d` env.
+- **Vendor backup mirrors (insurance against upstream disappearing).** The two
+  third-party submodules have independent mirrors (NOT forks) on the `soldatmat` GitHub:
+  `github.com/dauparas/ProteinMPNN` → `soldatmat/ProteinMPNN`, and
+  `bitbucket.org/lcbio/aggrescan3d` → `soldatmat/aggrescan3d`. (`cif_to_pdb` and
+  `pymol_scripts` are already soldatmat-owned.) `.gitmodules` URLs point at upstream —
+  the mirrors are pure insurance. They are point-in-time snapshots: **refresh them only
+  when you bump a vendored submodule pin** (there's no scheduled sync — nothing else can
+  make them stale). One command: `./scripts/refresh_vendor_backups.sh`. If an upstream
+  ever dies, swap the URL: `git config -f .gitmodules submodule.vendor/<name>.url
+  https://github.com/soldatmat/<name> && git submodule sync && git submodule update --init`.
 - **`/data/` is gitignored.** Committable reference artifacts therefore live under `src/`,
   NOT `data/` — e.g. `src/homology_search/tps_uniprot_accessions.txt` (the TPS-accession
   classification set), and the reference-stats JSON. Large DBs (Swiss-Prot/afdb-swissprot,
