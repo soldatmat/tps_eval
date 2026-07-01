@@ -1,0 +1,34 @@
+{
+  "_comment": "The production 3-phase funnel that took ~325k conditioned-DPLM TPS designs to 48 wet-lab candidates (16/class for first-cyclization classes c0/c1/c10), 2026-06. Each tier runs run_eval_pipeline.py with the given fold/cofold + tool set, then run_funnel.py merges the tier's new metric CSVs WITH the previous tier's survivors CSV (carry-forward) and applies the tier's selection spec. Reproduces FILTERING_AND_SELECTION.md on NAS _production_gen_300k_2026-06-21. Compute escalates per tier (CPU sequence metrics on all -> ESMFold on thousands -> AF3 holo on hundreds).",
+  "name": "production_300k",
+  "group_by": "class",
+  "group_from_id": "_(c\\d+)_w",
+  "tiers": [
+    {
+      "name": "phase1",
+      "input": "seed",
+      "fold": null,
+      "only": ["motif", "motif_pair", "esm_ppl", "soluprot", "ee_seq",
+               "maxid_gen_vs_train", "local_sequence_search", "swissprot_search"],
+      "select": "select_phase1.json"
+    },
+    {
+      "name": "phase2",
+      "fold": "esmfold",
+      "only": ["plddt", "pocket_descriptors", "aromatic_lining", "diphosphate_sensor",
+               "motif_struct", "domain_composition", "aggregation", "proteinmpnn",
+               "radius_of_gyration", "structural_identity"],
+      "select": "select_phase2.json"
+    },
+    {
+      "name": "phase3",
+      "fold": "alphafold3",
+      "af3_cofold": "mg_fpp",
+      "cluster_override": "aurum",
+      "only": ["ion_site", "substrate_positioning", "cyclization_geometry",
+               "global_confidence"],
+      "select": "select_phase3.json"
+    }
+  ],
+  "terminal": {"op": "order_preparation", "organism": "yeast", "overhang_type": "Type 3"}
+}

@@ -1,0 +1,38 @@
+{
+  "_comment": "Phase 2 (apo ESMFold structure filter -> diversity) -> 100/class. Per-ARCHITECTURE natural-FPP pocket bands applied BY CLASS (c10 = single-domain band; c0/c1 = two-domain band), shared structure gates, a c10-only geometry gate (when class==c10), then quality score = z(mean_plddt)+z(-proteinmpnn_nll)+z(-a3d_avg_score) and MMseqs2 diversity dedup at the per-class %id that yields >=100 clusters (c0 0.70 / c1 0.60 / c10 0.65), best-quality rep. See FILTERING_AND_SELECTION.md Phase 2 + stage2 FILTERING_PROCEDURE.md.",
+  "group_by": "class",
+  "group_from_id": "_(c\\d+)_w",
+  "n_out_per_group": 100,
+  "ops": [
+    {"op": "band_filter", "metrics": {
+      "catalytic_pocket_volume": {"by": "class",
+        "c0": {"min": 326, "max": 1016}, "c1": {"min": 326, "max": 1016},
+        "c10": {"min": 617, "max": 1377}},
+      "pocket_hydrophobicity": {"by": "class",
+        "c0": {"min": 9.2}, "c1": {"min": 9.2}, "c10": {"min": 8.8}},
+      "pocket_enclosure": {"by": "class",
+        "c0": {"min": 9.0}, "c1": {"min": 9.0}, "c10": {"min": 17.4}},
+      "pocket_depth": {"by": "class",
+        "c0": {"min": 2.4}, "c1": {"min": 2.4}, "c10": {"min": 4.0}}
+    }},
+    {"op": "gate", "conditions": [
+      {"col": "n_pocket_aromatics", "ge": 3},
+      {"col": "fpocket_catalytic_pocket_found", "eq": true},
+      {"col": "p2rank_catalytic_pocket_found", "eq": true},
+      {"col": "n_diphosphate_basic_residues", "ge": 1},
+      {"col": "mean_plddt", "ge": 90},
+      {"col": "a3d_avg_score", "le": -0.62},
+      {"col": "proteinmpnn_nll", "le": 1.94},
+      {"col": "sequence_identity", "le": 0.72},
+      {"when": {"col": "class", "eq": "c10"}, "col": "motif_centroid_distance", "le": 20},
+      {"when": {"col": "class", "eq": "c10"}, "col": "has_RY_pair", "eq": true}
+    ]},
+    {"op": "score", "zscore_within": "class", "terms": [
+      {"col": "mean_plddt", "weight": 1, "direction": "higher"},
+      {"col": "proteinmpnn_nll", "weight": 1, "direction": "lower"},
+      {"col": "a3d_avg_score", "weight": 1, "direction": "lower"}
+    ]},
+    {"op": "diversity_dedup", "quality_col": "score",
+     "id_threshold_per_group": {"c0": 0.70, "c1": 0.60, "c10": 0.65}}
+  ]
+}

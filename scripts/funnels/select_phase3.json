@@ -1,0 +1,21 @@
+{
+  "_comment": "Phase 3 (AF3 mg_fpp holo cofold -> final 16/class = 48). THE CORRECTED scheme (FILTERING_AND_SELECTION.md 3b), VERIFIED to reproduce the archived 48 EXACTLY (48/48): reference-independent holo gate (canonical motif-coordinated Mg by BOTH DDXXD + NSE/DTE carboxylates AND FPP diphosphate coordinating it, diphosphate_to_nearest_ion<=3.0) + novelty gate (id<=0.72) -> pass c0 91 / c1 96 / c10 88; quality-only rank SCORE = z(mean_plddt)+z(-proteinmpnn_nll)+z(-a3d_avg_score)+z(iptm) (novelty is NOT scored); MMseqs2 diversity dedup -> 16/class. NOT the superseded tiered v1 (which leaned on the apo metal-point). Cyclization geometry (foldback_c1_to_distal, n_aromatics_lining) is computed as a REPORTED QC sanity check but deliberately NOT a filter/ranker here: necessary-not-sufficient with a non-monotonic optimum, and applying it as a hard filter WOULD bind (only 40/48 of the real finalists satisfy foldback<=7.0 AND n_aromatics_lining>=3), so it would change the set rather than sanity-confirm it. Column names use the INTEGRATED tps_eval tools: mg_canonical_motif_coordination from ion_site_check; diphosphate_to_nearest_ion from substrate_positioning; iptm from global_confidence; mean_plddt/proteinmpnn_nll/a3d_avg_score carried from Phase 2. (The archived 2026-06 run named these canonical / diphos_to_nearest_ion / af3_iptm in ad-hoc CSVs.)",
+  "group_by": "class",
+  "group_from_id": "_(c\\d+)_w",
+  "n_out_per_group": 16,
+  "ops": [
+    {"op": "gate", "conditions": [
+      {"col": "mg_canonical_motif_coordination", "eq": true},
+      {"col": "diphosphate_to_nearest_ion", "le": 3.0},
+      {"col": "sequence_identity", "le": 0.72}
+    ]},
+    {"op": "score", "zscore_within": "class", "terms": [
+      {"col": "mean_plddt", "weight": 1, "direction": "higher"},
+      {"col": "proteinmpnn_nll", "weight": 1, "direction": "lower"},
+      {"col": "a3d_avg_score", "weight": 1, "direction": "lower"},
+      {"col": "iptm", "weight": 1, "direction": "higher"}
+    ]},
+    {"op": "diversity_dedup", "quality_col": "score",
+     "id_threshold_per_group": {"c0": 0.70, "c1": 0.60, "c10": 0.66}}
+  ]
+}

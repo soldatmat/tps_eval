@@ -1,0 +1,37 @@
+{
+  "_comment": "Phase 1 (sequence gates + novelty score) -> 2000/class. Faithful port of the production run's dashboard export SS-055 MINUS the four lever metrics (FPP_p_calibrated + sequence_similarity move into the score; TPS_p_calibrated dropped as saturated; sequence_identity becomes the 0.72 novelty guardrail), then score = z(FPP_p_calibrated) - z(sequence_similarity) within class. See FILTERING_AND_SELECTION.md Phase 1 and stage2_candidate_selection/select_candidates.py.",
+  "group_by": "class",
+  "group_from_id": "_(c\\d+)_w",
+  "n_out_per_group": 2000,
+  "ops": [
+    {"op": "gate", "conditions": [
+      {"col": "FPP_score", "ge": 0.307},
+      {"col": "TPS_score", "ge": 0.677},
+      {"col": "2xFPP_score", "le": 0.0038},
+      {"col": "2xGGPP_score", "le": 0.0039},
+      {"col": "CPP_score", "le": 0.23},
+      {"col": "EDSQ_score", "le": 0.0045},
+      {"col": "GFPP_score", "le": 0.19},
+      {"col": "GGPP_score", "le": 0.673},
+      {"col": "GPP_score", "le": 0.829},
+      {"col": "IDS_score", "le": 0.049},
+      {"col": "2xFPP_p_calibrated", "le": 8.9e-05},
+      {"col": "2xGGPP_p_calibrated", "le": 1.3e-06},
+      {"col": "CPP_p_calibrated", "le": 0.109},
+      {"col": "EDSQ_p_calibrated", "le": 0.00011},
+      {"col": "GFPP_p_calibrated", "le": 0.084},
+      {"col": "GGPP_p_calibrated", "le": 0.05},
+      {"col": "GPP_p_calibrated", "le": 0.865},
+      {"col": "IDS_p_calibrated", "le": 0.00036},
+      {"col": "soluble", "ge": 0.5},
+      {"col": "D[DE]..[DE]", "eq": true},
+      {"col": "[DE][DE]..[DE]", "eq": true},
+      {"col": "(N|D)D(L|I|V).(S|T)...E", "eq": true},
+      {"col": "sequence_identity", "le": 0.72}
+    ]},
+    {"op": "score", "zscore_within": "class", "terms": [
+      {"col": "FPP_p_calibrated", "weight": 1, "direction": "higher"},
+      {"col": "sequence_similarity", "weight": 1, "direction": "lower"}
+    ]}
+  ]
+}

@@ -422,3 +422,40 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Method** — Submits the existing per-tool job scripts on the staged MARTS-DB inputs, then chains [`aggregate_reference_stats.py`](../src/reference_stats/aggregate_reference_stats.py) (column-type-driven, metric-agnostic) as a dependent job.
 - **External dependency** — [MARTS-DB](https://marts-db.org/) (the natural-TPS reference set).
 - **Env + source** — `tps_eval` (aggregator); [`scripts/compute_reference_stats.sh`](../scripts/compute_reference_stats.sh) + [`src/reference_stats/aggregate_reference_stats.py`](../src/reference_stats/aggregate_reference_stats.py).
+
+## Selection & funnel
+
+The **selection layer** (`src/selection/`) narrows a pool of designs using the merged metric
+table — the missing piece between the eval pipeline's *compute* and a shortlist. Every op is
+CSV-keyed-by-ID (composes like the metric tools), CPU-only, and runs on a login node (no SLURM).
+The **funnel** (`run_funnel`) chains metric-compute + selection across tiers of escalating cost.
+All are dispatched via `scripts/run_selection.sh <merge|select> …`. The production 3-phase funnel
+(325k designs → 48 ordering candidates) is version-controlled under `scripts/funnels/` and is
+verified to reproduce the archived run (Phase-1 exact; Phase-2 filter counts exact; Phase-3 48/48).
+
+### merge_metrics
+- **Purpose** — Merge the scattered `<base>_<tool>.csv` (sequence) and `<structs>_<tool>.csv` (structure) outputs into ONE wide table keyed by `ID`, the input every selection op consumes.
+- **Method** — Mirrors the dashboard's merge conventions (ID-column candidates `ID/id/fa_id/reference_id`, `_self` column-suffixing, missing-token normalisation). Collisions resolve per-`(ID, column)` FIRST-WINS over the UNION of IDs (so the same tool run on several FASTAs with disjoint IDs is unioned, not blanked). Numeric-looking columns coerce to float; `sequence` is kept (needed to emit FASTAs).
+- **Inputs/usage** — `scripts/run_selection.sh merge --entries <csv|dir|glob> [...] --output merged.csv`.
+- **Env + source** — `tps_eval`; [`src/selection/merge.py`](../src/selection/merge.py).
+
+### select
+- **Purpose** — The composite selector: apply an ordered pipeline of selection ops to a merged table, per group, and take the top-N per group. Emits the surviving rows, their FASTA, and a provenance manifest (each op's parameters + in/out counts per group — auto-generates the SELECTION_PROCEDURE-style record).
+- **Ops** (each independently usable; run in listed order) —
+  - **gate** — keep rows satisfying boolean conditions (ANDed). Leaf ops: `eq/ne/lt/le/gt/ge/in/not_in/notnull/isnull/between`; groups `all_of`/`any_of`; a `when` clause makes a condition class-specific (rows not matching `when` auto-pass — e.g. a c10-only geometry gate). A missing value fails every leaf but `isnull`.
+  - **band_filter** — keep rows within `[min,max]` reference bands per metric; a metric's band may be conditioned on a categorical column (`by`) for **per-architecture** bands (single vs two-domain). Bands inline or from an `export_bands` file.
+  - **score** — weighted sum of z-scored metrics (z within the group, sign-flipped so higher = better) → `score` + rank; only reliable monotone quality metrics belong here.
+  - **diversity_dedup** — MMseqs2-cluster per group at the group's %id, keep the best-`quality_col` representative per cluster, top-N; diversity-constrained, quality-prioritised.
+- **Inputs/usage** — `scripts/run_selection.sh select {--merged merged.csv | --entries <globs>} --spec select_phaseN.json --output_prefix <prefix> [--fasta seed.fasta]`. Spec schema: `{group_by, group_from_id (regex→group from ID), n_out_per_group, ops:[...]}`. See `scripts/funnels/select_phase{1,2,3}.json`.
+- **Env + source** — `tps_eval`; [`src/selection/select_designs.py`](../src/selection/select_designs.py) (+ `gate.py`/`band_filter.py`/`score.py`/`diversity_dedup.py`).
+
+### export_bands
+- **Purpose** — Resolve a reference-stats JSON's percentile blocks into a `band_filter` bands_file. Overall bands, or per-category (`--by <labeling>`) for per-architecture bands — pulled straight from the natural-TPS distribution instead of hard-coded.
+- **Inputs/usage** — `python src/selection/export_bands.py --ref_stats marts_db_esmfold_metric_stats.json --output bands.json --metrics catalytic_pocket_volume pocket_depth:p25,none [--by domain_architecture] [--default_lo p25 --default_hi p75]`. Per-metric `metric:lo,hi` overrides the default percentile edges (`none` = one-sided).
+- **Env + source** — `tps_eval`; [`src/selection/export_bands.py`](../src/selection/export_bands.py).
+
+### run_funnel
+- **Purpose** — Stepwise, idempotent driver for a multi-tier selection funnel. Reads a funnel config (ordered tiers, each = fold mode + tool set + selection spec + per-group N-out), runs one tier per invocation, and carries survivors forward (each tier's selection merges the tier's new metrics WITH the previous tier's survivors).
+- **How the SLURM barrier is crossed** — it REUSES `run_eval_pipeline`'s idempotency: for a tier it runs the metric pipeline for real; if that SUBMITS any job, the metrics aren't ready → it stops and tells you to monitor + re-run; if it submits NOTHING (all outputs exist), the metrics are ready → it runs the tier's selection and writes its survivors (the next tier's input). No long-lived orchestration.
+- **Inputs/usage** — `python scripts/run_funnel.py --config scripts/funnels/production_300k.json --cluster <c> --workdir RUN/ --seed_fasta pool.fasta --tier 0 [--train_path …] [--known_structs_dir …] [--select-only] [--terminal] [--dry-run]`. Drive it tier by tier (0,1,2,…); `--select-only` re-selects on existing/archived metrics; `--terminal` runs order-preparation after the last tier.
+- **Env + source** — pure stdlib (login node); [`scripts/run_funnel.py`](../scripts/run_funnel.py) + configs under [`scripts/funnels/`](../scripts/funnels/).

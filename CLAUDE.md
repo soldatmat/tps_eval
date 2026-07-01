@@ -52,6 +52,25 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   Aurum; the AF3 fan-out wiring (incl. co-fold modes + holo tools) is dry-run-verified (a live
   fold is expensive); `build_cofold_input` + `substrate_positioning` unit-tested locally.
 
+## Selection & funnel layer (narrowing, NOT metrics)
+- `src/selection/` is a SEPARATE layer from the metric tools — it CONSUMES the merged metric table
+  and PRODUCES a subset. Its ops are **not** in `pipeline_tools.json` (they aren't metrics) and run
+  on a login node (CPU/pandas + mmseqs, no SLURM). Primitives, all CSV-keyed-by-ID:
+  `merge.py` (merge per-tool CSVs → wide table, per-cell first-wins + ID-union; mirrors the
+  dashboard's merge conventions), `gate.py` (boolean conditions; supports nested `all_of`/`any_of`
+  and a `when` clause for class-specific gates), `band_filter.py` (reference bands, per-architecture
+  via a `by` categorical), `score.py` (weighted z-sum within group), `diversity_dedup.py` (mmseqs
+  best-rep-per-cluster, per-group %id). `select_designs.py` composes them from a JSON spec →
+  survivors CSV + FASTA + provenance manifest. `export_bands.py` bridges reference-stats →
+  `band_filter` bands_file. Dispatch via `scripts/run_selection.sh <merge|select>`.
+  GOTCHA: the composite module is `select_designs.py`, NOT `select.py` — the latter shadows Python's
+  stdlib `select` (imported by `subprocess`/`selectors`) and breaks the subprocess calls.
+- `scripts/run_funnel.py` chains metric-compute + selection across tiers (stepwise/idempotent; reuses
+  `run_eval_pipeline`'s idempotency as the SLURM barrier — see docs/TOOLS.md#run_funnel). Funnel +
+  selection recipes are version-controlled under `scripts/funnels/` (`production_300k.json` +
+  `select_phase{1,2,3}.json`), verified to reproduce the archived 300k→48 run (Phase-1 exact,
+  Phase-2 filter-exact, Phase-3 48/48). Unit tests: `src/selection/test_selection.py`.
+
 ## To add a new metric/tool (the pattern — follow it)
 1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
    - **Structure-branch tool?** Reuse the canonical loader in `src/structure_metrics/plddt.py`

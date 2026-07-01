@@ -92,6 +92,14 @@ These emit a per-`id` feature CSV (first column `id`, then feature dims) for a w
 | [pipeline_tools.json](docs/TOOLS.md#pipeline_tools) | config | Per-tool default on/off + branch + one-liner driving `--list-tools`. | — |
 | [compute_reference_stats](docs/TOOLS.md#compute_reference_stats) | reference | MARTS-DB natural-TPS bands → reference-stats JSON. Standalone. | `src/reference_stats/marts_db_metric_stats.json` |
 
+### Selection & funnel
+| Tool | Branch | Description | Output |
+|------|--------|-------------|--------|
+| [merge_metrics](docs/TOOLS.md#merge_metrics) | selection | Merge the per-tool CSVs into one wide table keyed by ID (per-cell first-wins, ID-union). | `<merged>.csv` |
+| [select](docs/TOOLS.md#select) | selection | Composite selector: run an ordered spec of gate / band_filter / score / diversity_dedup ops per group → survivor IDs + FASTA + provenance manifest. | `<prefix>_survivors.{csv,fasta}` + `_manifest.md` |
+| [export_bands](docs/TOOLS.md#export_bands) | selection | Resolve a reference-stats JSON's percentile blocks (overall or a `by_<labeling>` stratum) into a `band_filter` bands_file. | `<bands>.json` |
+| [run_funnel](docs/TOOLS.md#run_funnel) | orchestrator | Stepwise, idempotent multi-tier funnel: chains `run_eval_pipeline` (metrics) + `select` (narrowing) across tiers, carrying survivors forward; terminal order-preparation. | per-tier `<name>_survivors.*` |
+
 # Order preparation
 A standalone utility (**not** part of the evaluation pipeline) that turns amino-acid
 designs into synthesis-ready DNA for Golden Gate / MoClo construction: codon-optimize for
