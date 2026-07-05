@@ -35,9 +35,18 @@ def pair_ids_and_sequences(sequences_arg):
 
 
 def format_data(args):
-    n_proteins = len(args.proteins) if args.proteins is not None else 0
-    if n_proteins + len(args.ligands) > len(SEQUENCE_IDS):
-        raise ValueError(f"Number of proteins and ligands exceeds the number of predefined sequence ids ({n_proteins} + {len(args.ligands)} > {len(SEQUENCE_IDS)}).")
+    # proteins/ligands/ions arrive as flat [ID, SEQ, ...] token lists (2 tokens/entity); the
+    # single --sequence path is one protein. Ligands AND ions each consume a chain id from the
+    # shared SEQUENCE_IDS pool, so all three count toward the limit.
+    n_proteins = 1 if args.sequence is not None else (len(args.proteins) // 2 if args.proteins else 0)
+    n_ligands = len(args.ligands) // 2
+    n_ions = len(args.ions) // 2
+    n_entities = n_proteins + n_ligands + n_ions
+    if n_entities > len(SEQUENCE_IDS):
+        raise ValueError(
+            f"Number of entities exceeds the {len(SEQUENCE_IDS)} predefined chain ids: "
+            f"proteins {n_proteins} + ligands {n_ligands} + ions {n_ions} = {n_entities}."
+        )
 
     if args.sequence is not None:
         name = args.sequence_id

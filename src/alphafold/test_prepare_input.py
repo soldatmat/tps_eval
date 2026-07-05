@@ -78,6 +78,39 @@ def test_sequence_id_overrides_name_for_proteins():
     assert data["name"] == "custom"
 
 
+def test_capacity_ok_at_limit():
+    # 24 protein entities + 1 ligand + 1 ion = 26 = len(SEQUENCE_IDS): exactly at the limit.
+    proteins = [tok for i in range(24) for tok in (f"p{i}", "MK")]
+    data = format_data(_ns(proteins=proteins, ligands=["l", "CCO"], ions=["i", "MG"]))
+    assert len(data["sequences"]) == 26
+
+
+def test_capacity_overflow_counts_ions():
+    # 26 protein entities alone is fine; adding one ION pushes it to 27 -> must raise.
+    # (Regression: the old guard counted tokens and ignored ions entirely.)
+    proteins = [tok for i in range(26) for tok in (f"p{i}", "MK")]
+    assert len(format_data(_ns(proteins=proteins))["sequences"]) == 26
+    try:
+        format_data(_ns(proteins=proteins, ions=["i", "MG"]))
+    except ValueError as e:
+        assert "exceeds" in str(e)
+    else:
+        raise AssertionError("expected ValueError; ions must count toward the chain-id limit")
+
+
+def test_capacity_counts_single_sequence_protein():
+    # The --sequence path is one protein and must count: 25 ligands + it = 26 OK, 26 -> raise.
+    ligs25 = [tok for i in range(25) for tok in (f"l{i}", "CCO")]
+    assert len(format_data(_ns(sequence_id="p", sequence="MK", ligands=ligs25))["sequences"]) == 26
+    ligs26 = [tok for i in range(26) for tok in (f"l{i}", "CCO")]
+    try:
+        format_data(_ns(sequence_id="p", sequence="MK", ligands=ligs26))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError; the --sequence protein must count")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:
