@@ -16,6 +16,7 @@ from knn_label_transfer import (  # noqa: E402
     ABSTAIN_LABEL,
     _strip_chain_suffix,
     calibrate,
+    load_label_map,
     score_to_similarity,
     transfer_labels,
     vote_space,
@@ -46,6 +47,23 @@ def test_chain_suffix():
     assert _strip_chain_suffix("foo_A", None) == "foo"
     assert _strip_chain_suffix("foo_bar", None) == "foo_bar"  # token too long
     print("ok chain_suffix")
+
+
+def test_load_label_map_header_and_nan_drop():
+    tmp = tempfile.mkdtemp(prefix="knn_labelmap_")
+    # Standard reference_id,label header; a NaN label row must be dropped.
+    p = os.path.join(tmp, "labels.csv")
+    pd.DataFrame({"reference_id": ["r1", "r2", "r3"],
+                  "label": ["B", "A", None]}).to_csv(p, index=False)
+    lm, classes = load_label_map(p)
+    assert lm == {"r1": "B", "r2": "A"}          # r3 dropped (NaN label)
+    assert classes == ["A", "B"]                  # sorted distinct classes
+    # Lenient path: no reference_id/label header -> first two columns used.
+    p2 = os.path.join(tmp, "labels2.csv")
+    pd.DataFrame({"enzyme": ["x1", "x2"], "cls": [1, 2]}).to_csv(p2, index=False)
+    lm2, classes2 = load_label_map(p2)
+    assert lm2 == {"x1": 1, "x2": 2}
+    print("ok load_label_map header + nan drop")
 
 
 def test_vote_unanimous_and_abstain():
@@ -126,6 +144,7 @@ def test_calibrate_and_predict_end_to_end():
 if __name__ == "__main__":
     test_score_to_similarity()
     test_chain_suffix()
+    test_load_label_map_header_and_nan_drop()
     test_vote_unanimous_and_abstain()
     test_structural_chain_join()
     test_calibrate_and_predict_end_to_end()

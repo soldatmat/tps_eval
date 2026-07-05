@@ -62,6 +62,22 @@ def test_ee_column_folding():
     print("ok ee_column_folding")
 
 
+def test_ee_fold_takes_max_not_last_column():
+    # Regression: a folded class (CPP->GGPP) must MERGE with the raw GGPP_score by MAX,
+    # not silently overwrite it. Here the real GGPP_score (0.9) is the true argmax; the
+    # folded CPP_score (0.1) appears later in column order and must NOT clobber it.
+    tmp = tempfile.mkdtemp(prefix="subclass_foldmax_")
+    ee_csv = os.path.join(tmp, "ee.csv")
+    pd.DataFrame([
+        {"ID": "d1", "GGPP_score": 0.9, "CPP_score": 0.1, "FPP_score": 0.5,
+         "TPS_score": 0.99, "isTPS": True},
+    ]).to_csv(ee_csv, index=False)
+    ee = load_ee_substrate(ee_csv)
+    assert ee["d1"][0] == "GGPP", ee["d1"]     # max(GGPP=0.9, CPP=0.1) -> GGPP
+    assert abs(ee["d1"][1] - 0.9) < 1e-9, ee["d1"]
+    print("ok ee_fold_takes_max_not_last_column")
+
+
 def test_combiner_end_to_end():
     tmp = tempfile.mkdtemp(prefix="subclass_")
     # substrate label file: 6 refs, 2 classes (GPP small, GGPP large).
@@ -167,6 +183,7 @@ if __name__ == "__main__":
     test_pocket_volume_band()
     test_within_one_size_class()
     test_ee_column_folding()
+    test_ee_fold_takes_max_not_last_column()
     test_combiner_end_to_end()
     test_ee_fallback_when_knn_abstains()
     print("ALL TESTS PASSED")

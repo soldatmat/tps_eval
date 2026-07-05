@@ -141,10 +141,12 @@ _EE_CLASS_FOLD = {
 }
 
 
-def _ee_substrate_columns(df: pd.DataFrame) -> Dict[str, str]:
-    """Map substrate-class -> EE score column for the per-substrate *_score columns,
-    skipping the TPS/isTPS gate columns and folding EE codes onto the shared vocabulary."""
-    out: Dict[str, str] = {}
+def _ee_substrate_columns(df: pd.DataFrame) -> Dict[str, List[str]]:
+    """Map substrate-class -> list of EE score columns for the per-substrate *_score
+    columns, skipping the TPS/isTPS gate columns and folding EE codes onto the shared
+    vocabulary. A folded class (e.g. GGPP) can collect MULTIPLE columns (GGPP_score AND
+    the folded CPP_score) — the caller merges them by max, so neither is dropped."""
+    out: Dict[str, List[str]] = {}
     for col in df.columns:
         c = str(col).strip()
         if not c.endswith(_EE_SCORE_SUFFIX):
@@ -152,7 +154,7 @@ def _ee_substrate_columns(df: pd.DataFrame) -> Dict[str, str]:
         code = c[: -len(_EE_SCORE_SUFFIX)]
         if code in _EE_NON_SUBSTRATE:
             continue
-        out[_EE_CLASS_FOLD.get(code, code)] = col
+        out.setdefault(_EE_CLASS_FOLD.get(code, code), []).append(col)
     return out
 
 
@@ -172,14 +174,15 @@ def load_ee_substrate(ee_csv: str) -> Dict[str, Tuple[str, float]]:
     out: Dict[str, Tuple[str, float]] = {}
     for _, row in df.iterrows():
         scores: Dict[str, float] = {}
-        for sub, col in cols.items():
-            try:
-                v = float(row[col])
-            except (TypeError, ValueError):
-                continue
-            if np.isnan(v):
-                continue
-            scores[sub] = max(scores.get(sub, float("-inf")), v)
+        for sub, sub_cols in cols.items():
+            for col in sub_cols:
+                try:
+                    v = float(row[col])
+                except (TypeError, ValueError):
+                    continue
+                if np.isnan(v):
+                    continue
+                scores[sub] = max(scores.get(sub, float("-inf")), v)
         if not scores:
             continue
         argmax = max(scores, key=scores.get)
