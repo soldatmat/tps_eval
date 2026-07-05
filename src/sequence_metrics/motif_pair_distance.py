@@ -78,7 +78,7 @@ def motif_pair_distance(fasta_path: str, *, save: bool = True) -> pd.DataFrame:
         load_fasta_sequences(fasta_path, load_identifiers=True)
     )
     rows = [_row(str(i).split(" ", 1)[0], str(s)) for i, s in zip(identifiers, sequences)]
-    df = pd.DataFrame(rows)[COLUMNS]
+    df = pd.DataFrame(rows, columns=COLUMNS)
 
     if save:
         save_path = _get_save_path(fasta_path)

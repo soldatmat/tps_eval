@@ -327,7 +327,7 @@ def local_sequence_search(
                 "local_coverage": float(b["coverage"]),
             })
 
-    df = pd.DataFrame(rows)[METRIC_COLUMNS]
+    df = pd.DataFrame(rows, columns=METRIC_COLUMNS)
     if save_path is None:
         save_path = _default_save_path(fasta_path)
     df.to_csv(save_path, index=False)

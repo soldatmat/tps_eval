@@ -185,7 +185,7 @@ def compute_pseudo_perplexity(
                 "n_residues": s["n_residues"],
             }
         )
-    df = pd.DataFrame(rows)[COLUMNS]
+    df = pd.DataFrame(rows, columns=COLUMNS)
 
     if save_path is None:
         partial = os.path.splitext(fasta_path)[0]
