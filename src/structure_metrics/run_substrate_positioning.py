@@ -6,7 +6,6 @@ from substrate_positioning import (
     DEFAULT_COORD_CUTOFF,
     DEFAULT_ION_RESNAMES,
     DEFAULT_MIN_SUBSTRATE_CARBONS,
-    DEFAULT_SITE_RADIUS,
     substrate_positioning_dir,
 )
 
@@ -33,11 +32,6 @@ def main() -> None:
         help="Output CSV path (default: <structs_dir>_substrate_positioning.csv next to the dir).",
     )
     parser.add_argument(
-        "--site_radius", type=float, default=DEFAULT_SITE_RADIUS,
-        help=f"Reported diphosphate-centroid -> cage-centroid distance band (informational; "
-        f"default {DEFAULT_SITE_RADIUS}).",
-    )
-    parser.add_argument(
         "--coord_cutoff", type=float, default=DEFAULT_COORD_CUTOFF,
         help=f"Diphosphate-atom -> cage-oxygen distance (A) under which substrate_in_site is "
         f"True (the robust in-cage test; default {DEFAULT_COORD_CUTOFF}).",
@@ -61,7 +55,6 @@ def main() -> None:
     substrate_positioning_dir(
         args.structs_dir,
         save_path=args.save_path,
-        site_radius=args.site_radius,
         coord_cutoff=args.coord_cutoff,
         ion_resnames=tuple(args.ion_resnames),
         min_substrate_carbons=args.min_substrate_carbons,

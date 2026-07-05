@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="--structs_dir <structs_dir> [--save_path <save_path>] [--site_radius <A>] [--ion_resnames <R...>] [--min_substrate_carbons <n>] [--substrate_resname <R>]"
+USAGE="--structs_dir <structs_dir> [--save_path <save_path>] [--coord_cutoff <A>] [--ion_resnames <R...>] [--min_substrate_carbons <n>] [--substrate_resname <R>]"
 
 Help()
 {
@@ -9,7 +9,7 @@ Help()
     echo "Arguments:"
     echo "  --structs_dir            Directory of structures (.pdb/.cif) or AF3 af_output; file stem = ID (required)"
     echo "  --save_path              Output CSV path (optional; default <structs_dir>_substrate_positioning.csv)"
-    echo "  --site_radius            In-site distance (A) from the cage centroid (optional; default 6.0)"
+    echo "  --coord_cutoff           Diphosphate-atom -> cage-oxygen distance (A) for substrate_in_site (optional; default 4.0)"
     echo "  --ion_resnames           Ion HETATM residue names to exclude/measure-against (optional; default MG MN)"
     echo "  --min_substrate_carbons  Min carbons (with >=1 P) to count as a prenyl-PP substrate (optional; default 5)"
     echo "  --substrate_resname      Force a specific ligand residue name as the substrate (optional; default auto-detect)"
@@ -23,7 +23,6 @@ while [[ $# -gt 0 ]]; do
     case $key in
         --structs_dir) structs_dir="$2"; shift 2 ;;
         --save_path) save_path="$2"; shift 2 ;;
-        --site_radius) site_radius="$2"; shift 2 ;;
         --coord_cutoff) coord_cutoff="$2"; shift 2 ;;
         --min_substrate_carbons) min_substrate_carbons="$2"; shift 2 ;;
         --substrate_resname) substrate_resname="$2"; shift 2 ;;
@@ -68,7 +67,6 @@ cd src/structure_metrics
 
 args=("$structs_dir")
 if [[ -n "$save_path" ]]; then args+=(--save_path "$save_path"); fi
-if [[ -n "$site_radius" ]]; then args+=(--site_radius "$site_radius"); fi
 if [[ -n "$coord_cutoff" ]]; then args+=(--coord_cutoff "$coord_cutoff"); fi
 if [[ -n "$min_substrate_carbons" ]]; then args+=(--min_substrate_carbons "$min_substrate_carbons"); fi
 if [[ -n "$substrate_resname" ]]; then args+=(--substrate_resname "$substrate_resname"); fi

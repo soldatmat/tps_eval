@@ -31,7 +31,8 @@ Columns (keyed by ``ID``):
 * ``diphosphate_to_nearest_ion``      — closest diphosphate atom -> nearest Mg/Mn ion (A); NaN
   if no ions modelled.
 * ``reactive_carbon_to_cage_dist``    — reactive carbon (C1) -> cage centroid (A).
-* ``substrate_in_site`` (bool)        — diphosphate centroid within ``site_radius`` of the cage.
+* ``substrate_in_site`` (bool)        — a diphosphate atom reaches a cage carboxylate oxygen
+                                        (min diphosphate->cage-oxygen distance <= ``coord_cutoff``).
 * ``n_residues``                      — modelled residue count, for context.
 
 SEMANTICS / NOT-APPLICABLE: apo / ESMFold / Mg-only / mg_ppi structures carry no prenyl-PP
@@ -75,7 +76,6 @@ DEFAULT_MIN_SUBSTRATE_CARBONS = 5
 # Diphosphate centroid within this distance (A) of the cage centroid -> reported as
 # diphosphate_to_cage_dist (informational; inherits the shared metal_point's oxygen-centroid,
 # which can be pulled off-site when the relaxed coordinating set spans a splayed cage).
-DEFAULT_SITE_RADIUS = 6.0
 # The ROBUST "is the diphosphate at the cage" test: closest diphosphate atom -> any cage
 # carboxylate oxygen within this distance (A). Direct PPi...Asp(-Mg) contact is ~2.5-3.5 A;
 # 4.0 is a slightly relaxed cutoff. substrate_in_site is based on THIS, not the centroid.
@@ -173,7 +173,6 @@ def read_substrate_ligand(
 def substrate_positioning(
     structure_path: str,
     *,
-    site_radius: float = DEFAULT_SITE_RADIUS,
     coord_cutoff: float = DEFAULT_COORD_CUTOFF,
     ion_resnames: Tuple[str, ...] = DEFAULT_ION_RESNAMES,
     min_substrate_carbons: int = DEFAULT_MIN_SUBSTRATE_CARBONS,
@@ -260,7 +259,6 @@ def substrate_positioning_dir(
     structs_dir: str,
     *,
     save_path: Optional[str] = None,
-    site_radius: float = DEFAULT_SITE_RADIUS,
     coord_cutoff: float = DEFAULT_COORD_CUTOFF,
     ion_resnames: Tuple[str, ...] = DEFAULT_ION_RESNAMES,
     min_substrate_carbons: int = DEFAULT_MIN_SUBSTRATE_CARBONS,
@@ -276,7 +274,7 @@ def substrate_positioning_dir(
             f"No structures found in {structs_dir} (expected an AlphaFold3 af_output dir with "
             "<job>/<job>_model.cif subfolders, or a flat dir of .pdb/.cif).")
     print(f"Detected {mode} layout: {len(structures)} structure(s) in {structs_dir}")
-    print(f"Site radius {site_radius} A; ions {sorted({r.upper() for r in ion_resnames})}; "
+    print(f"Ions {sorted({r.upper() for r in ion_resnames})}; "
           f"min substrate carbons {min_substrate_carbons}"
           + (f"; forced substrate resname {substrate_resname}" if substrate_resname else ""))
 
@@ -286,7 +284,7 @@ def substrate_positioning_dir(
     for i, (stem, path) in enumerate(structures.items(), start=1):
         try:
             stats = substrate_positioning(
-                path, site_radius=site_radius, coord_cutoff=coord_cutoff, ion_resnames=ion_resnames,
+                path, coord_cutoff=coord_cutoff, ion_resnames=ion_resnames,
                 min_substrate_carbons=min_substrate_carbons, substrate_resname=substrate_resname)
         except Exception as exc:
             print(f"  [warn] failed to parse {os.path.basename(path)}: {exc}")
