@@ -35,8 +35,9 @@ def pair_ids_and_sequences(sequences_arg):
 
 
 def format_data(args):
-    if len(args.proteins) + len(args.ligands) > len(SEQUENCE_IDS):
-        raise ValueError(f"Number of proteins and ligands exceeds the number of predefined sequence ids ({len(args.proteins)} + {len(args.ligands)} > {len(SEQUENCE_IDS)}).")
+    n_proteins = len(args.proteins) if args.proteins is not None else 0
+    if n_proteins + len(args.ligands) > len(SEQUENCE_IDS):
+        raise ValueError(f"Number of proteins and ligands exceeds the number of predefined sequence ids ({n_proteins} + {len(args.ligands)} > {len(SEQUENCE_IDS)}).")
 
     if args.sequence is not None:
         name = args.sequence_id

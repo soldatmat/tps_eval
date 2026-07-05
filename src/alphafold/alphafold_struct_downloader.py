@@ -47,6 +47,7 @@ def download_af_struct(uniprot_id, root_af, fails_count=0, max_fails_count=3):
         save_name = uniprot_id
 
     print(f"Downloading AlphaFold2 structure for {uniprot_id}")
+    response = None
     try:
         URL = f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-model_v6.pdb"
         response = requests.get(URL)
@@ -55,6 +56,10 @@ def download_af_struct(uniprot_id, root_af, fails_count=0, max_fails_count=3):
         if fails_count < max_fails_count:
             download_af_struct(uniprot_id, root_af, fails_count+1)
     finally:
+        # The request may have raised before `response` was assigned (the retry above
+        # handles that case); don't crash the finally with an UnboundLocalError.
+        if response is None:
+            return
         print(f"Response status code: {response.status_code}")
         if response.status_code != 200:
             logger.warning(f"AlphaFold2 structure for {uniprot_id} not found on the server.")
