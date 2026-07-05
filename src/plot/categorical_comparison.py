@@ -50,7 +50,8 @@ def categorical_comparison(
         dfs = [load_results(fp, load=load_list) for fp in fasta_paths]
     all_dfs = dfs
 
-    # Per-dataset value->count, in first-seen order across all datasets.
+    # Per-dataset value->count. Categories are discovered across all datasets, then sorted
+    # below for a stable plot order.
     per_dataset_counts: List[dict] = []
     categories: List[str] = []
     for df in all_dfs:

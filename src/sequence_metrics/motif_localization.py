@@ -57,10 +57,6 @@ class MotifMatch:
     end: int            # 0-based, exclusive (== start + len(matched))
     start_1: int        # 1-based start, for CSV/human use
 
-    @property
-    def coordinating_offsets(self) -> tuple:  # overridden per-motif at build time
-        return tuple(range(len(self.matched)))
-
 
 def _first_match(sequence: str, pattern: Pattern[str]) -> Optional[re.Match]:
     return pattern.search(sequence) if sequence else None
