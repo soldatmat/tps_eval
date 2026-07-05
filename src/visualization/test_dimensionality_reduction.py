@@ -89,6 +89,26 @@ def test_pcoa_2d_variance_percentages_ordered():
     assert p0 >= p1 >= 0.0
 
 
+def test_pca_2d_single_feature_pads_second_axis():
+    # A 1-feature matrix has only one principal component: coords must still be (n, 2)
+    # (2nd axis padded with zeros) and the 2nd variance % is NaN (undefined) -- not an
+    # IndexError on vr[1] (regression).
+    X = np.linspace(0.0, 1.0, 20).reshape(-1, 1)
+    coords, (v0, v1) = pca_2d(X, zscore=False)
+    assert coords.shape == (20, 2)
+    np.testing.assert_allclose(coords[:, 1], 0.0)
+    _approx(v0, 100.0)
+    assert np.isnan(v1)
+
+
+def test_pca_2d_degenerate_input_no_nan_variance():
+    # All-identical rows -> zero spread. The variance % must degrade to 0.0 (guarded),
+    # not NaN from a 0/0 division.
+    X = np.ones((10, 4))
+    _, (v0, v1) = pca_2d(X, zscore=False)
+    assert v0 == 0.0 and v1 == 0.0
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

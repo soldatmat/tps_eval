@@ -26,8 +26,12 @@ def pca_2d(X: np.ndarray, zscore: bool = True):
     Xc = X - X.mean(0, keepdims=True)
     U, S, _ = np.linalg.svd(Xc, full_matrices=False)
     coords = U[:, :2] * S[:2]
-    vr = S ** 2 / (S ** 2).sum()
-    return coords, (100 * vr[0], 100 * vr[1])
+    if coords.shape[1] < 2:  # <2 input features: pad the missing axis with zeros
+        coords = np.hstack([coords, np.zeros((coords.shape[0], 2 - coords.shape[1]))])
+    total = (S ** 2).sum()
+    vr = S ** 2 / total if total > 0 else np.zeros_like(S)  # degenerate (no spread) -> 0%
+    pct = tuple(100 * vr[i] if i < len(vr) else float("nan") for i in range(2))
+    return coords, pct
 
 
 def tsne_2d(data, precomputed: bool = False, perplexity: int = 30,
