@@ -88,6 +88,7 @@ def score_pdb(
         "--pdb_path", pdb_path,
         "--out_folder", out_folder,
         "--score_only", "1",
+        "--model_name", model_name,
         "--num_seq_per_target", str(num_passes),
         "--seed", str(seed),
         "--batch_size", "1",
