@@ -21,9 +21,11 @@ from sdr_divergence import (  # noqa: E402
     Panel,
     ResidueInfo,
     _rank1_neighbours,
+    _strip_chain_suffix,
     _to_similarity,
     load_panel,
     sdr_divergence_one,
+    structure_derived_panel,
 )
 
 AA3 = {
@@ -175,6 +177,74 @@ def test_load_panel_skips_comments():
         print("skip starter-panel test (file absent)")
 
 
+def _write_pdb_with_asp_oxygens(path, seq, ca_coords, asp_oxygens):
+    """Like _write_pdb but also writes OD1/OD2 for the aspartate residues in
+    ``asp_oxygens`` ({idx: (od1_xyz, od2_xyz)}), so the metal point can be placed."""
+    def _line(serial, atom_name, resname, resseq, xyz, element):
+        x, y, z = xyz
+        region = " " + f"{atom_name:^4}" + " "
+        return (f"ATOM  {serial:5d}{region}{resname} A{resseq:4d}    "
+                f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           {element}")
+    lines = []
+    serial = 1
+    for i, (aa, ca) in enumerate(zip(seq, ca_coords)):
+        lines.append(_line(serial, "CA", AA3[aa], i + 1, ca, "C"))
+        serial += 1
+        if i in asp_oxygens:
+            od1, od2 = asp_oxygens[i]
+            lines.append(_line(serial, "OD1", AA3[aa], i + 1, od1, "O"))
+            serial += 1
+            lines.append(_line(serial, "OD2", AA3[aa], i + 1, od2, "O"))
+            serial += 1
+    lines.append("END")
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def test_strip_chain_suffix():
+    """The inline fallback (contract-identical to knn's) strip: with valid_ids it
+    only strips when the full id is unknown but the stem is known; without valid_ids
+    it strips a short (<=2 char) alphanumeric trailing token."""
+    valid = {"5eat", "1ps1"}
+    # Full id already valid -> unchanged even though it has an underscore.
+    assert _strip_chain_suffix("5eat", valid) == "5eat"
+    # Unknown full id, known stem -> strip the chain suffix.
+    assert _strip_chain_suffix("5eat_A", valid) == "5eat"
+    # Neither full nor stem known -> unchanged.
+    assert _strip_chain_suffix("other_A", valid) == "other_A"
+    # Without valid_ids: strip a short alphanumeric trailing token only.
+    assert _strip_chain_suffix("5eat_A") == "5eat"
+    assert _strip_chain_suffix("model_ABC") == "model_ABC"  # token too long -> kept
+    print("ok _strip_chain_suffix")
+
+
+def test_structure_derived_panel_geometry():
+    """With a DDXXD motif + coordinating oxygens, the structure-derived panel returns
+    the residues within ``cutoff`` A of the metal point; a wider cutoff -> more."""
+    with tempfile.TemporaryDirectory() as d:
+        # DDAAD at 0-4 (coordinating D at 0,1,4); tail marches away in x.
+        seq = "DDAADAAAAA"
+        ca = [(float(i) * 3.0, 0.0, 0.0) for i in range(len(seq))]
+        # Place all coordinating oxygens near the origin -> metal point ~ origin.
+        asp_ox = {
+            0: ((0.0, 1.0, 0.0), (0.0, -1.0, 0.0)),
+            1: ((0.5, 1.0, 0.0), (0.5, -1.0, 0.0)),
+            4: ((1.0, 1.0, 0.0), (1.0, -1.0, 0.0)),
+        }
+        p = os.path.join(d, "nbr.pdb")
+        _write_pdb_with_asp_oxygens(p, seq, ca, asp_ox)
+        info = ResidueInfo(p)
+        narrow = structure_derived_panel(info, cutoff=5.0)
+        wide = structure_derived_panel(info, cutoff=30.0)
+        assert narrow is not None and wide is not None, (narrow, wide)
+        assert narrow == sorted(narrow), narrow           # sorted indices
+        assert 0 in narrow and 1 in narrow, narrow        # near the metal point
+        assert 9 not in narrow, narrow                    # far tail excluded
+        assert set(narrow).issubset(set(wide)), (narrow, wide)
+        assert len(wide) > len(narrow), (narrow, wide)    # wider captures more
+    print("ok structure-derived panel geometry (cutoff)")
+
+
 if __name__ == "__main__":
     test_to_similarity()
     test_panel_match_and_indices()
@@ -182,4 +252,6 @@ if __name__ == "__main__":
     test_structure_derived_panel_needs_motifs()
     test_rank1_neighbours_chain_strip_and_preference()
     test_load_panel_skips_comments()
+    test_strip_chain_suffix()
+    test_structure_derived_panel_geometry()
     print("\nAll SDR-divergence tests passed.")
