@@ -63,25 +63,22 @@ def main(args: argparse.Namespace):
         df_foldseek[_num_col] = pd.to_numeric(df_foldseek[_num_col], errors='coerce')
     df_foldseek.to_csv(tsv_path.with_suffix('.csv'), index=False)
     dfg = df_foldseek.groupby('query')
-    dfg.groups.keys(), dfg['alntmscore'].max(), dfg['alntmscore'].idxmax()
+
+    def _val_at(idx, col):
+        # A query whose entire score column is NaN yields a NaN idxmax; guard the lookup so
+        # it produces a NaN cell instead of raising KeyError on df_foldseek.loc[NaN].
+        return df_foldseek.loc[idx, col] if pd.notna(idx) else float("nan")
+
     best_scores = pd.DataFrame({
         'query': dfg.groups.keys(),
-
-        # 'max_alntmscore_idx': dfg['alntmscore'].idxmax().values,
-        'max_alntmscore': dfg['alntmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'alntmscore']),
-        'max_alntmscore_target': dfg['alntmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'target']),
-
-        # 'max_qtmscore_idx': dfg['qtmscore'].idxmax().values,
-        'max_qtmscore': dfg['qtmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'qtmscore']),
-        'max_qtmscore_target': dfg['qtmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'target']),
-
-        # 'max_ttmscore_idx': dfg['ttmscore'].idxmax().values,
-        'max_ttmscore': dfg['ttmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'ttmscore']),
-        'max_ttmscore_target': dfg['ttmscore'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'target']),
-
-        # 'max_lddt_idx': dfg['lddt'].idxmax().values,
-        'max_lddt': dfg['lddt'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'lddt']),
-        'max_lddt_target': dfg['lddt'].idxmax().map(lambda idx: df_foldseek.loc[idx, 'target']),
+        'max_alntmscore': dfg['alntmscore'].idxmax().map(lambda idx: _val_at(idx, 'alntmscore')),
+        'max_alntmscore_target': dfg['alntmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
+        'max_qtmscore': dfg['qtmscore'].idxmax().map(lambda idx: _val_at(idx, 'qtmscore')),
+        'max_qtmscore_target': dfg['qtmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
+        'max_ttmscore': dfg['ttmscore'].idxmax().map(lambda idx: _val_at(idx, 'ttmscore')),
+        'max_ttmscore_target': dfg['ttmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
+        'max_lddt': dfg['lddt'].idxmax().map(lambda idx: _val_at(idx, 'lddt')),
+        'max_lddt_target': dfg['lddt'].idxmax().map(lambda idx: _val_at(idx, 'target')),
     })
     csv_path = output_root / "domain_alignment_scores.csv"
     if args.random_run_id:

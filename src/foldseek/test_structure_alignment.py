@@ -123,11 +123,37 @@ def test_exclude_self_leave_one_out():
     print("ok exclude_self leave-one-out")
 
 
+def test_all_nan_score_column_yields_nan_not_crash():
+    """A query whose entire lddt column is non-numeric (-> all NaN after coercion) yields a
+    NaN idxmax; the tool must report NaN max_lddt for it, not crash on df.loc[NaN] (regression)."""
+    tmp = tempfile.mkdtemp(prefix="sa_nan_")
+    out = os.path.join(tmp, "out")
+    tsv = "\n".join([
+        _row("d1.pdb", "ref_a.pdb", 0.70, 0.60, 0.50, "NA"),
+        _row("d1.pdb", "ref_b.pdb", 0.90, 0.80, 0.70, "NA"),
+    ]) + "\n"
+    _install_fake(tsv)
+
+    args = SimpleNamespace(
+        random_run_id=False, output_root=out, structures_root="/fake/q",
+        known_structures_root="/fake/k", store_intermediate_results=False,
+        exclude_self=False,
+    )
+    main(args)  # must not raise
+
+    scores = pd.read_csv(os.path.join(out, "structure_alignment_scores.csv")).set_index("query")
+    r = scores.loc["d1.pdb"]
+    assert pd.isna(r["max_lddt"]), r.to_dict()        # all-NaN column -> NaN, no KeyError
+    assert r["max_alntmscore"] == 0.90, r.to_dict()   # numeric columns still reduce
+    print("ok all-NaN score column -> NaN (no crash)")
+
+
 def main_all():
     test_structure_stem()
     test_best_hit_reduction()
     test_exclude_self_leave_one_out()
-    print("\nAll 3 tests passed.")
+    test_all_nan_score_column_yields_nan_not_crash()
+    print("\nAll 4 tests passed.")
 
 
 if __name__ == "__main__":
