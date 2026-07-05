@@ -60,10 +60,19 @@ def _eval_leaf(df: pd.DataFrame, cond: dict) -> pd.Series:
         if isinstance(target, bool):
             norm = s.map(lambda v: str(v).strip().lower() in ("true", "1", "1.0")
                          if pd.notna(v) else False)
-            return norm == target
+            # A missing value must FAIL every leaf (except isnull); guard with `present`
+            # so a NaN row does not spuriously satisfy `eq: False`.
+            return present & (norm == target)
         return present & (s == target)
     if "ne" in cond:
-        return present & (s != cond["ne"])
+        target = cond["ne"]
+        # Mirror the `eq` handling: a boolean column merged from a CSV may arrive as the
+        # strings "True"/"False", so normalise before comparing to a bool target.
+        if isinstance(target, bool):
+            norm = s.map(lambda v: str(v).strip().lower() in ("true", "1", "1.0")
+                         if pd.notna(v) else False)
+            return present & (norm != target)
+        return present & (s != target)
     if "in" in cond:
         return present & s.isin(cond["in"])
     if "not_in" in cond:
