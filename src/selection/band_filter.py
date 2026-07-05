@@ -15,7 +15,8 @@ reference-stats pipeline; inline ``metrics`` override/augment it.
 
 A design with a missing metric value FAILS that metric's band (it cannot be shown to be in
 range). A per-``by`` band whose category value is absent from the spec is SKIPPED for that
-design (not applied), with a one-time warning.
+design (not applied), with a one-time warning; a design whose ``by`` category value is itself
+MISSING (NaN) FAILS that metric (it cannot be band-checked without a category).
 """
 from __future__ import annotations
 
@@ -66,6 +67,11 @@ def apply_band_filter(df: pd.DataFrame, metrics: Dict[str, dict],
                     continue
                 sel = cats == cat
                 mmask.loc[sel] = _band_mask(vals[sel], leaf[cat])
+            na_cat = cats.isna()
+            if na_cat.any():
+                print(f"  [band_filter] '{metric}': {int(na_cat.sum())} row(s) with missing "
+                      f"'{by_col}' -> failed (cannot band-check without a category).")
+                mmask[na_cat] = False
         else:
             mmask = _band_mask(vals, leaf)
         per_metric.append({"metric": metric, "passed": int(mmask.sum())})

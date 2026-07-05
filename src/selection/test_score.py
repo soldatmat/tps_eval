@@ -117,6 +117,24 @@ def test_unknown_term_column_raises():
         raise AssertionError("expected ValueError for unknown term column")
 
 
+def test_missing_group_key_retained_with_nan_score():
+    # A row whose group key is NaN can't be z-scored within a class: it is RETAINED
+    # (not silently dropped) with score=NaN / no rank, and counted via n_missing_group_key.
+    df = pd.DataFrame({
+        "ID": ["a", "b", "c"],
+        "g": ["x", "x", np.nan],
+        "v": [1.0, 2.0, 5.0],
+    })
+    out, rep = apply_score(df, [{"col": "v", "weight": 1, "direction": "higher"}],
+                           zscore_within="g")
+    s = out.set_index("ID")
+    assert set(out["ID"]) == {"a", "b", "c"}      # NaN-group row retained, not dropped
+    assert np.isnan(s.loc["c", "score"])
+    assert np.isnan(s.loc["c", "score_rank"])
+    assert rep["n_missing_group_key"] == 1
+    assert s.loc["b", "score"] > s.loc["a", "score"]   # the valid group still scores normally
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

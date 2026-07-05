@@ -34,6 +34,12 @@ def apply_score(df: pd.DataFrame, terms: List[dict],
     out = df.copy()
     if zscore_within and zscore_within not in out.columns:
         raise ValueError(f"score zscore_within references unknown column '{zscore_within}'.")
+    n_missing_key = int(out[zscore_within].isna().sum()) if zscore_within else 0
+    if n_missing_key:
+        # A NaN group key can't be z-scored within its class -> score stays NaN and the row
+        # ranks last. Retain it (for provenance) but warn so bad data isn't silently dropped.
+        print(f"  [score] {n_missing_key} row(s) have a missing '{zscore_within}' group key "
+              f"-> score=NaN, unranked.")
     groups = out.groupby(zscore_within, sort=False) if zscore_within else [(None, out)]
 
     contrib = pd.Series(0.0, index=out.index)
@@ -59,6 +65,7 @@ def apply_score(df: pd.DataFrame, terms: List[dict],
     else:
         out[f"{score_col}_rank"] = out[score_col].rank(ascending=False, method="first")
     report = {"op": "score", "n_in": len(df), "n_scored": int(valid.sum()),
+              "n_missing_group_key": n_missing_key,
               "terms": [{"col": t["col"], "weight": t.get("weight", 1.0),
                          "direction": t.get("direction", "higher")} for t in terms],
               "zscore_within": zscore_within}

@@ -117,6 +117,20 @@ def test_unknown_by_column_raises():
         raise AssertionError("expected ValueError for unknown by-column")
 
 
+def test_per_architecture_missing_category_fails():
+    # A row whose `by` category value is itself missing (NaN) cannot be band-checked, so it
+    # FAILS the metric -- distinct from an *uncovered* category (no band defined), which passes.
+    df = _df().copy()
+    df.loc[df["ID"] == "c", "arch"] = np.nan   # c had a passing 'two' band; now its category is NaN
+    out, _ = apply_band_filter(df, {
+        "vol": {"by": "arch",
+                "single": {"min": 617, "max": 1377},
+                "two": {"min": 326, "max": 1016}},
+    })
+    assert "c" not in _ids(out)   # NaN category -> failed (was passing before its arch went NaN)
+    assert _ids(out) == {"a"}     # a passes single band; b fails; d fails 'two' band
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:
