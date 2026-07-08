@@ -81,6 +81,22 @@ EnzymeExplorer uses `enzyme_explorer`.
 - **External dependency** — [SoluProt](https://loschmidt.chemi.muni.cz/soluprot/) (Hon et al. 2021, *Bioinformatics*). Standalone install via `scripts/setup_soluprot.sh`; path/env set in `paths.sh` (`SOLUPROT_PATH`, `SOLUPROT_ENV`).
 - **Env + source** — `soluprot`; wrapper [`scripts/run_soluprot.sh`](../scripts/run_soluprot.sh) (external tool, no `src/` module).
 
+### tmprot
+- **Purpose** — Predicted melting temperature (Tm) of each sequence — a sequence-based thermostability signal (orthogonal to `soluprot` solubility and structure-based `aggregation`).
+- **Inputs** — FASTA.
+- **Output** — `<fasta>_tmprot.csv`, keyed by `ID`. Column: `tm` (predicted Tm in °C; the `tm` plot target). RAW value only — TmProt's threshold-based `Thermostable` flag and `Rank` are dropped (thresholds/bands are applied downstream). Sequences TmProt cannot score (<20 AA, >2000 AA, or non-standard residues) get a NaN row.
+- **Method** — ESM-2 (650M) fine-tuned with a LoRA adapter (the deployed "ESM2-LoRA" strategy); the base ESM-2 downloads from HuggingFace, the LoRA adapter is bundled in the vendored package.
+- **External dependency** — [TmProt](https://loschmidt.chemi.muni.cz/tmprot/) (Loschmidt Laboratories). VENDORED at `vendor/TmProt`; its standalone CLI is installed editable via `scripts/setup_tmprot.sh` (`pip install -e vendor/TmProt/tmprot-1.0`); env name in `paths.sh` (`TMPROT_ENV`). Like `aggrescan3d`, a `git submodule update` de-registers the editable install — re-run `setup_tmprot.sh` after bumping the pin.
+- **Env + source** — `tmprot`; wrapper [`scripts/run_tmprot.sh`](../scripts/run_tmprot.sh); reshaper [`src/sequence_metrics/tmprot.py`](../src/sequence_metrics/tmprot.py).
+
+### catapro
+- **Purpose** — Predicted steady-state enzyme kinetics — turnover number (kcat), Michaelis constant (Km), and catalytic efficiency (kcat/Km) — of each sequence acting on ONE substrate: the campaign `--target_substrate`.
+- **Inputs** — FASTA + a substrate. The substrate SMILES is resolved from `--target_substrate` via `alphafold.cofold_substrates.SUBSTRATE_SMILES` (or given directly with `--smiles`). One campaign targets one substrate, so designs are scored on the target only; the MARTS-DB reference bands instead sweep the full substrate panel (`<ref>_catapro_<SUB>.csv` per substrate, via `compute_reference_stats.sh`).
+- **Output** — `<fasta>_catapro.csv` (band panel: `<fasta>_catapro_<SUB>.csv`), keyed by `ID`. Columns: `catapro_kcat` (s⁻¹), `catapro_km` (mM), `catapro_kcat_km` (s⁻¹·mM⁻¹) — absolute values (10^ of CataPro's native log10 output; HIGHER kcat / kcat_km = more active on that substrate) — plus `catapro_substrate` (provenance). A substrate with no known SMILES (EDSQ / 2xGGPP / IDS) or an unset target yields NaN rows without invoking the model; sequences CataPro drops also get a NaN row.
+- **Method** — ProtT5 (enzyme) + MolT5 (substrate) + MACCS fingerprint features → a 10-fold model ensemble averaged per parameter. Trained on BRENDA/SABIO-RK kinetics; treat prenyl-PP TPS values as a RELATIVE signal (the training set is general-enzyme, so TPS substrates are somewhat out-of-distribution).
+- **External dependency** — [CataPro](https://github.com/zchwang/CataPro) (Wang et al. 2025, *Nat. Commun.*); backbones [ProtT5-XL-UniRef50](https://huggingface.co/Rostlab/prot_t5_xl_uniref50) + [MolT5](https://huggingface.co/laituan245/molt5-base-smiles2caption). VENDORED at `vendor/CataPro`; conda env + backbone weights installed via `scripts/setup_catapro.sh`; env name in `paths.sh` (`CATAPRO_ENV`).
+- **Env + source** — `catapro`; wrapper [`scripts/run_catapro.sh`](../scripts/run_catapro.sh); reshaper [`src/sequence_metrics/catapro.py`](../src/sequence_metrics/catapro.py).
+
 ### enzyme_explorer_sequence_only
 - **Purpose** — Sequence-only TPS classification — per-class probabilities that a sequence is a terpene synthase, without needing a structure.
 - **Inputs** — FASTA.

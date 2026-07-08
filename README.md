@@ -7,9 +7,11 @@
 The pipeline is a suite of evaluation tools, each writing a CSV keyed by `ID` so metrics merge for filtration. Run the whole suite with the declarative orchestrator:
 ```sh
 python scripts/run_eval_pipeline.py --cluster <aurum|karolina> --fasta_path gen.fasta \
-    [--train_path train.fasta] [--structs_dir structs/] [--known_structs_dir known/]
+    [--train_path train.fasta] [--structs_dir structs/] [--known_structs_dir known/] \
+    [--target_substrate FPP]
 python scripts/run_eval_pipeline.py --list-tools   # show all tools + select with --only/--include/--exclude
 ```
+`--target_substrate` names the prenyl-PP the enzyme is being designed for (full EnzymeExplorer vocabulary: `DMAPP/GPP/FPP/GGPP/GFPP/EDSQ/2xGGPP/IDS/C35`). Setting it adds the `catapro` kinetics step for that substrate and lets the selection layer gate on substrate specificity (on-target EE score high, off-target relaxed — the `substrate_specificity` op, see [`scripts/funnels/`](scripts/funnels/)).
 The table below summarizes each tool; **full per-tool documentation** (inputs, output columns, method, citations, conda env) is in [`docs/TOOLS.md`](docs/TOOLS.md). Branch is `seq` (keyed off a FASTA → `<input>_<tool>.csv`) or `struct` (keyed off a structures dir → `<structs_dir>_<tool>.csv`).
 
 ### Sequence
@@ -22,6 +24,8 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | [max_sequence_identity](docs/TOOLS.md#max_sequence_identity) | seq | Max pairwise sequence identity (self) / vs the train set. | `<fasta>_max_sequence_identity[_self].csv` |
 | [min_embedding_distance](docs/TOOLS.md#min_embedding_distance) | seq | Min ESM-embedding distance (self) / vs train (needs esm). | `<fasta>_embedding_esm1b_min_embedding_distance[_self].csv` |
 | [soluprot](docs/TOOLS.md#soluprot) | seq | SoluProt predicted solubility. | `<fasta>_soluprot.csv` |
+| [tmprot](docs/TOOLS.md#tmprot) | seq | TmProt predicted melting temperature (Tm, °C). | `<fasta>_tmprot.csv` |
+| [catapro](docs/TOOLS.md#catapro) | seq | CataPro predicted enzyme kinetics (kcat, Km, kcat/Km) for the campaign `--target_substrate`. | `<fasta>_catapro.csv` |
 | [enzyme_explorer_sequence_only](docs/TOOLS.md#enzyme_explorer_sequence_only) | seq | EnzymeExplorer sequence-only TPS classification. | `<fasta>_enzyme_explorer_sequence_only.csv` |
 | [swissprot_search](docs/TOOLS.md#swissprot_search) | seq | DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits). | `<fasta>_swissprot_search.csv` |
 | [local_sequence_search](docs/TOOLS.md#local_sequence_search) | seq | Fast LOCAL sequence identity/similarity + top-k neighbours (MMseqs2 default / DIAMOND); feeds the k-NN/SDR sequence space. Complements the global `max_sequence_identity`. | `<fasta>_local_sequence_search.csv` |
@@ -127,6 +131,20 @@ SoluProt (solubility predictor, used by `run_soluprot.sh`) is not a pip/conda pa
 ./scripts/setup_soluprot.sh [install_dir]        # env + SoluProt code + 64-bit USEARCH
 ```
 It creates the `soluprot` env from `scripts/soluprot_environment.yml` (python 3.7, scikit-learn 0.20.1 — pinned, from the anaconda `defaults` channel), downloads the SoluProt standalone, and fetches a **64-bit** USEARCH v11 (public domain, via `rcedgar/usearch_old_binaries`; the legacy 32-bit `usearch11...i86linux32` will not run on modern x86-64 compute nodes). **TMHMM 2.0 remains manual** (academic license: DTU or `git.loschmidt.cz/misc/tmhmm`) — the script prints the exact unpack location and the `#!/usr/bin/env perl` shebang fix; use its 64-bit `bin/decodeanhmm.Linux_x86_64`. After running, set `SOLUPROT_PATH` / `SOLUPROT_ENV` in `paths.sh`. A Karolina-adapted variant (project-storage paths, cache redirects, `envs_dirs`) lives at `scripts/karolina/setup_soluprot.sh`.
+
+## Optional: CataPro (enzyme kinetics)
+CataPro (kcat/Km predictor, used by `run_catapro.sh`) is **vendored** at `vendor/CataPro` (pulled by `git clone --recurse-submodules`). Its conda env and the two HuggingFace backbones (ProtT5-XL-UniRef50, MolT5-base) are installed by:
+```sh
+./scripts/setup_catapro.sh
+```
+This creates the `catapro` env from `scripts/catapro_environment.yml` and downloads the backbones into `vendor/CataPro/models/` (the trained kcat/Km/activity heads already ship in the submodule). Then set `CATAPRO_ENV` in `paths.sh`. Wants a GPU for throughput. CataPro scores each sequence against the campaign `--target_substrate` (see *Running the full pipeline*).
+
+## Optional: TmProt (melting temperature)
+TmProt (Tm predictor, used by `run_tmprot.sh`) is **vendored** at `vendor/TmProt`; its standalone CLI is an editable install:
+```sh
+./scripts/setup_tmprot.sh
+```
+This creates the `tmprot` env from `scripts/tmprot_environment.yml`, runs `pip install -e vendor/TmProt/tmprot-1.0` (the LoRA adapter is bundled; base ESM-2 650M downloads from HuggingFace on first run). Then set `TMPROT_ENV` in `paths.sh`. **Re-run this after any `git submodule update` on `vendor/TmProt`** — a submodule reset de-registers the editable install (same gotcha as `aggrescan3d`).
 
 ## Optional: switch to licensed PyMOL Incentive
 By default `setup.sh` installs `pymol-open-source` (no watermark, no license needed, sufficient for the bundled PyMOL scripts). If you have a Schrödinger PyMOL license and want Incentive features (higher-quality ray-tracing, bundled plugins like APBS), run the add-on script after `setup.sh` to swap `pymol-open-source` for `pymol-bundle`:

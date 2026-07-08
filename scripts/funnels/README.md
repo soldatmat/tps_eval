@@ -18,6 +18,11 @@ JSONs here are the version-controlled recipes.
      (`z(mean_plddt)+z(−proteinmpnn_nll)+z(−a3d_avg_score)+z(iptm)`), MMseqs2 diversity-deduped.
   Terminal: order-preparation (yeast codon-opt + Type-3 Golden Gate overhangs).
 - `select_phase{1,2,3}.json` — the per-tier selection specs (consumed by `src/selection`).
+- `select_substrate_specificity.example.json` — example spec for the `substrate_specificity`
+  op: keep designs whose EnzymeExplorer on-target class score ≥ `t_hi` (default 0.5) AND every
+  off-target class score ≤ a relaxed ceiling `t_off` (default 0.35). The target defaults to the
+  run-level `--target_substrate`. This generalizes phase 1's hardcoded "FPP mono-specificity" to
+  any target substrate. Note EE does not score `DMAPP`/`C35`/`IDS`, so the op fails loud for those.
 
 ## Reproduction (acceptance)
 Verified against the archived run on NAS `_production_gen_300k_2026-06-21/`:

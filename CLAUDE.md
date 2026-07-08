@@ -60,7 +60,9 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   dashboard's merge conventions), `gate.py` (boolean conditions; supports nested `all_of`/`any_of`
   and a `when` clause for class-specific gates), `band_filter.py` (reference bands, per-architecture
   via a `by` categorical), `score.py` (weighted z-sum within group), `diversity_dedup.py` (mmseqs
-  best-rep-per-cluster, per-group %id). `select_designs.py` composes them from a JSON spec →
+  best-rep-per-cluster, per-group %id), `substrate_specificity.py` (op `substrate_specificity`:
+  keep designs whose EnzymeExplorer on-target class score ≥ t_hi AND off-target scores ≤ a relaxed
+  ceiling t_off; target defaults to the run-level `--target_substrate`). `select_designs.py` composes them from a JSON spec →
   survivors CSV + FASTA + provenance manifest. `export_bands.py` bridges reference-stats →
   `band_filter` bands_file. Dispatch via `scripts/run_selection.sh <merge|select>`.
   GOTCHA: the composite module is `select_designs.py`, NOT `select.py` — the latter shadows Python's
@@ -114,21 +116,27 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `TPS_EVAL_ENV` (most tools + foldseek + DIAMOND + ESM), `ESMFOLD_ENV` (ESMFold *and*
   ProteinMPNN — `PROTEINMPNN_ENV` defaults to it), `AGGRESCAN3D_ENV` (**Python 2.7** — A3D
   upstream is Py2-only), `ENZYME_EXPLORER_ENV` (= `enzyme_explorer_prod` on Aurum, the
-  `revision` branch), `SOLUPROT_ENV`. Each `run_<tool>.sh` activates the right one.
+  `revision` branch), `SOLUPROT_ENV`, `CATAPRO_ENV`, `TMPROT_ENV` (both vendored, so env-name
+  only — no `_PATH`). Each `run_<tool>.sh` activates the right one.
 - **SoluProt / EnzymeExplorer are external installs**, not pip/conda packages. SoluProt:
   `scripts/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
   EnzymeExplorer: its own repo's `scripts/setup_env.sh`. tps_eval only calls them via the
   paths/env names in `paths.sh`.
 - `vendor/` holds git submodules — `cif_to_pdb`, `pymol_scripts`, `aggrescan3d` (Py2.7),
-  `ProteinMPNN` (ships its own weights): `git submodule update --init --recursive`.
+  `ProteinMPNN` (ships its own weights), `CataPro` (kcat/Km; backbones downloaded by
+  `setup_catapro.sh`, NOT committed), `TmProt` (Tm; LoRA adapter bundled, base ESM-2 from HF):
+  `git submodule update --init --recursive`. Like `aggrescan3d`, `TmProt` is an EDITABLE install
+  (`pip install -e vendor/TmProt/tmprot-1.0`) — re-run `setup_tmprot.sh` after a submodule reset.
   GOTCHA: the `aggrescan3d` env is an EDITABLE install (`pip install -e vendor/aggrescan3d`);
   a `git submodule update`/reset on that submodule de-registers it (the `aggrescan` launcher
   then dies with `DistributionNotFound`). After any submodule reset, re-run
   `pip install -e vendor/aggrescan3d` in the `aggrescan3d` env.
 - **Vendor backup mirrors (insurance against upstream disappearing).** The two
   third-party submodules have independent mirrors (NOT forks) on the `soldatmat` GitHub:
-  `github.com/dauparas/ProteinMPNN` → `soldatmat/ProteinMPNN`, and
-  `bitbucket.org/lcbio/aggrescan3d` → `soldatmat/aggrescan3d`. (`cif_to_pdb` and
+  `github.com/dauparas/ProteinMPNN` → `soldatmat/ProteinMPNN`,
+  `bitbucket.org/lcbio/aggrescan3d` → `soldatmat/aggrescan3d`,
+  `github.com/zchwang/CataPro` → `soldatmat/CataPro`, and
+  `github.com/loschmidt/TmProt` → `soldatmat/TmProt`. (`cif_to_pdb` and
   `pymol_scripts` are already soldatmat-owned.) `.gitmodules` URLs point at upstream —
   the mirrors are pure insurance. They are point-in-time snapshots: **refresh them only
   when you bump a vendored submodule pin** (there's no scheduled sync — nothing else can
