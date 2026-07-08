@@ -1,0 +1,17 @@
+name: tmprot
+# TmProt (ESM2-650M + LoRA) melting-temperature predictor. The vendored
+# standalone CLI (vendor/TmProt/tmprot-1.0) is pip-installed editable into this
+# env by scripts/setup_tmprot.sh. Torch is installed from pip so the default
+# CUDA-enabled Linux wheel is picked up on the GPU compute nodes.
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch>=2.0
+      - transformers>=4.30
+      - peft>=0.4
+      - biopython>=1.81
+      - click>=8.0
+      - pandas
