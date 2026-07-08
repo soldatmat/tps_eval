@@ -32,6 +32,8 @@ DEFAULT_LOAD: Tuple[str, ...] = (
     "motif_pair_distance",
     "esm_pseudo_perplexity",
     "swissprot_search",
+    "tmprot",
+    "catapro",
 )
 
 
@@ -307,6 +309,21 @@ def load_results(
         if "swissprot_top_hit" in df.columns:
             df = df.drop(columns=["swissprot_top_hit"])
         frames.append(df)
+
+    # TmProt melting temperature (raw °C; column `tm`). Guarded so a run that did
+    # not produce it degrades gracefully rather than crashing the whole load.
+    if "tmprot" in load_set:
+        tmprot_path = _fasta_partial(fasta_path) + "_tmprot.csv"
+        if Path(tmprot_path).exists():
+            frames.append(_strip_column_names(pd.read_csv(tmprot_path)))
+
+    # CataPro kinetics for the campaign substrate (catapro_kcat / catapro_km /
+    # catapro_kcat_km + catapro_substrate provenance). Produced ONLY when the run had
+    # a --target_substrate, so the CSV is optional — skip when absent.
+    if "catapro" in load_set:
+        catapro_path = _fasta_partial(fasta_path) + "_catapro.csv"
+        if Path(catapro_path).exists():
+            frames.append(_strip_column_names(pd.read_csv(catapro_path)))
 
     # Fast LOCAL (MMseqs2) sequence search. gen-vs-train -> default file; within-set
     # (self) -> the _self file written by the pipeline's local_search_{tag} step, with

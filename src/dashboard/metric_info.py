@@ -35,9 +35,11 @@ METRIC_CATEGORY = {
     # Sequence
     "esm_pseudo_perplexity": "Sequence",
     "soluprot": "Sequence",
+    "tmprot": "Sequence",
     "proteinmpnn_score": "Sequence",
     # Function
     "enzyme_explorer_sequence_only": "Function",
+    "catapro": "Function",
     "substrate_class": "Function",
     "knn_label_transfer": "Function",
     # Novelty (comparative — similarity to a reference set)
@@ -245,6 +247,20 @@ METRIC_INFO = {
         "explanation": "SoluProt-predicted E. coli solubility/expressibility of each sequence; higher means more likely to express solubly.",
         "columns": {
             "soluble": "0–1",
+        },
+    },
+    "tmprot": {
+        "explanation": "TmProt-predicted melting temperature (Tm) from sequence (ESM-2 fine-tuned with LoRA); higher means more thermostable.",
+        "columns": {
+            "tm": "°C",
+        },
+    },
+    "catapro": {
+        "explanation": "CataPro-predicted steady-state kinetics for the campaign target substrate (ProtT5 enzyme + MolT5/MACCS substrate); higher kcat and kcat/Km mean more predicted activity on that substrate. Absolute units (exponentiated from CataPro's log10 output).",
+        "columns": {
+            "catapro_kcat": "s⁻¹",
+            "catapro_km": "mM",
+            "catapro_kcat_km": "s⁻¹·mM⁻¹",
         },
     },
     "enzyme_explorer_sequence_only": {

@@ -28,6 +28,12 @@ TARGETS = [
     "isTPS",
     "isTPS_seq",
     "soluble",
+    # --- TmProt melting temperature (°C) ---
+    "tm",
+    # --- CataPro kinetics for the campaign target substrate (absolute units) ---
+    "catapro_kcat",
+    "catapro_km",
+    "catapro_kcat_km",
     # --- motif pair distance ---
     "motif_start_distance",
     "motif_gap",
@@ -68,6 +74,10 @@ LOAD = {
     "isTPS": ["enzyme_explorer"],
     "isTPS_seq": ["enzyme_explorer_sequence_only"],
     "soluble": ["soluprot"],
+    "tm": ["tmprot"],
+    "catapro_kcat": ["catapro"],
+    "catapro_km": ["catapro"],
+    "catapro_kcat_km": ["catapro"],
     "motif_start_distance": ["motif_pair_distance"],
     "motif_gap": ["motif_pair_distance"],
     "esm_pseudo_perplexity": ["esm_pseudo_perplexity"],

@@ -234,6 +234,10 @@ def out_local_search_topk(f): return _base(f) + "_local_sequence_search_topk.csv
 # default <input>_local_sequence_search.csv name. Mirrors maxid_self vs maxid.
 def out_local_search_self(f): return _base(f) + "_local_sequence_search_self.csv"
 def out_soluprot(f): return _base(f) + "_soluprot.csv"
+def out_tmprot(f): return _base(f) + "_tmprot.csv"
+# catapro is keyed off the fasta; the campaign --target_substrate is baked into the
+# metric (one substrate per run), so the default output name is substrate-agnostic.
+def out_catapro(f): return _base(f) + "_catapro.csv"
 def out_ee_seq(f): return _base(f) + "_enzyme_explorer_sequence_only.csv"
 def out_motif_pair(f): return _base(f) + "_motif_pair_distance.csv"
 def out_swissprot_search(f): return _base(f) + "_swissprot_search.csv"
@@ -284,6 +288,8 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "local_sequence_search": {"default": True, "branch": "sequence",  "description": "Fast LOCAL (MMseqs2) sequence identity/similarity/coverage search; self (within-set novelty) + gen-vs-train. Its _topk.csv is the k-NN/SDR sequence-space feeder."},
     "mindist_self":         {"default": True,  "branch": "sequence",  "description": "Min ESM-embedding distance within the dataset (needs esm)."},
     "soluprot":             {"default": True,  "branch": "sequence",  "description": "SoluProt predicted solubility."},
+    "tmprot":               {"default": True,  "branch": "sequence",  "description": "TmProt predicted melting temperature (Tm, degC)."},
+    "catapro":              {"default": True,  "branch": "sequence",  "description": "CataPro predicted enzyme kinetics (kcat, Km, kcat/Km) for the campaign --target_substrate; step generated only when --target_substrate is set, NaN for a substrate with no known SMILES."},
     "ee_seq":               {"default": True,  "branch": "sequence",  "description": "EnzymeExplorer sequence-only TPS classification."},
     "swissprot_search":     {"default": True,  "branch": "sequence",  "description": "DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits)."},
     "maxid_gen_vs_train":   {"default": True,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set."},
@@ -638,6 +644,16 @@ def build_steps(args, enabled: set) -> List[Step]:
                           out_mindist_self(fa), tool="mindist_self", deps=[f"esm_{tag}"]))
         steps.append(Step(f"soluprot_{tag}", "soluprot.sh", ["--fasta_path", fa],
                           out_soluprot(fa), tool="soluprot"))
+        steps.append(Step(f"tmprot_{tag}", "tmprot.sh", ["--fasta_path", fa],
+                          out_tmprot(fa), tool="tmprot"))
+        # CataPro kinetics for the campaign target substrate (one substrate per run). The
+        # step is generated only when --target_substrate is set (without a target there is
+        # nothing to score against); a substrate with no known SMILES still runs but yields
+        # NaN rows (see catapro.py). One substrate -> the substrate-agnostic default name.
+        if args.target_substrate:
+            steps.append(Step(f"catapro_{tag}", "catapro.sh",
+                              ["--fasta_path", fa, "--target_substrate", args.target_substrate],
+                              out_catapro(fa), tool="catapro"))
         steps.append(Step(f"ee_seq_{tag}", "enzyme_explorer_sequence_only.sh",
                           ["--fasta_path", fa], out_ee_seq(fa), tool="ee_seq"))
 
@@ -1015,6 +1031,15 @@ def main() -> None:
                         "the per-install scripts/<cluster>/config.local.sh).")
     p.add_argument("--fasta_path", required=True, help="Generated sequences FASTA.")
     p.add_argument("--train_path", default=None, help="Reference/train FASTA (enables comparisons).")
+    p.add_argument("--target_substrate", default=None,
+                   choices=["DMAPP", "GPP", "FPP", "GGPP", "GFPP", "EDSQ", "2xGGPP", "IDS", "C35"],
+                   help="Campaign target substrate (the prenyl-PP the enzyme is being designed to "
+                        "act on) — full EnzymeExplorer substrate vocabulary. Drives (a) the CataPro "
+                        "kinetics step (predicts kcat/Km for THIS substrate; the step is generated "
+                        "only when this is set, and a substrate with no known SMILES -> NaN, "
+                        "currently EDSQ/2xGGPP/IDS) and (b) substrate-specificity selection "
+                        "(on-target EE class-score gated high, off-target scores gated to a relaxed "
+                        "ceiling). Optional.")
     p.add_argument("--structs_dir", default=None,
                    help="Generated structures dir (AF3 af_output or flat .pdb/.cif) -> "
                         "enables pLDDT and (with --known_structs_dir) structural-identity steps.")

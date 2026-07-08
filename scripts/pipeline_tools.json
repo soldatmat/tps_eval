@@ -9,6 +9,8 @@
   "local_sequence_search": { "default": true, "branch": "sequence",  "description": "Fast LOCAL (MMseqs2) sequence identity/similarity/coverage search; self (within-set novelty) + gen-vs-train. Its _topk.csv is the k-NN/SDR sequence-space feeder." },
   "mindist_self":         { "default": true,  "branch": "sequence",  "description": "Min ESM-embedding distance within the dataset (needs esm)." },
   "soluprot":             { "default": true,  "branch": "sequence",  "description": "SoluProt predicted solubility." },
+  "tmprot":               { "default": true,  "branch": "sequence",  "description": "TmProt predicted melting temperature (Tm, degC)." },
+  "catapro":              { "default": true,  "branch": "sequence",  "description": "CataPro predicted enzyme kinetics (kcat, Km, kcat/Km) for the campaign --target_substrate; its step is generated only when --target_substrate is set, and emits NaN for a substrate with no known SMILES." },
   "ee_seq":               { "default": true,  "branch": "sequence",  "description": "EnzymeExplorer sequence-only TPS classification." },
   "swissprot_search":     { "default": true,  "branch": "sequence",  "description": "DIAMOND search vs Swiss-Prot (gen-only; TPS/non-TPS hits)." },
   "maxid_gen_vs_train":   { "default": true,  "branch": "sequence",  "description": "Max sequence identity of each gen seq vs the train set." },

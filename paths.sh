@@ -34,6 +34,13 @@ P2RANK_PATH="/home/soldat/documents/tools/p2rank_2.5.1"
 SOLUPROT_PATH="/home2/soldat/documents/soluprot"
 SOLUPROT_ENV="soluprot" # SoluProt conda environment name
 
+# CataPro (enzyme kinetics; vendored at vendor/CataPro) and TmProt (melting temperature;
+# vendored at vendor/TmProt) each run in their own conda env, created by
+# scripts/setup_catapro.sh / scripts/setup_tmprot.sh. Env NAMES only — the code is vendored
+# in-repo, so (unlike SoluProt) there is no external _PATH to set.
+CATAPRO_ENV="catapro" # CataPro conda environment name
+TMPROT_ENV="tmprot"   # TmProt conda environment name
+
 ENZYME_EXPLORER_PATH="/home2/soldat/documents/terpene_synthases/EnzymeExplorer"
 ENZYME_EXPLORER_ENV="enzyme_explorer" # Enzyme Explorer conda environment name
 ENZYME_EXPLORER_SEQUENCE_ONLY_PATH=$ENZYME_EXPLORER_PATH

@@ -116,6 +116,10 @@ METRIC_SUFFIXES: Dict[str, str] = {
     "esm_pseudo_perplexity": "esm_pseudo_perplexity",
     "motif_search": "motifs",
     "soluprot": "soluprot",
+    "tmprot": "tmprot",
+    # catapro: the design run writes <input>_catapro.csv; the MARTS band panel writes one
+    # <input>_catapro_<SUB>.csv per substrate, each auto-named catapro_<SUB> via prefix strip.
+    "catapro": "catapro",
     "enzyme_explorer_sequence_only": "enzyme_explorer_sequence_only",
     # structure branch (intrinsic properties; computed only if structures exist)
     "plddt": "plddt",

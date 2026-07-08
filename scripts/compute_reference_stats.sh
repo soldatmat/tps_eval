@@ -20,7 +20,9 @@
 # DEFAULT = run/band ALL intrinsic metrics (a "natural TPS distribution" is
 # meaningful), NOT a curated subset:
 #   sequence : motif_pair_distance, esm_pseudo_perplexity, motif_search,
-#              soluprot, enzyme_explorer_sequence_only
+#              soluprot, tmprot, enzyme_explorer_sequence_only,
+#              catapro (FULL substrate panel: one banded CSV per SMILES-having
+#              substrate DMAPP/GPP/FPP/GGPP/GFPP/C35 -> the substrate x TPS matrix)
 #   structure: plddt, motif_structural_distance, active_site_geometry,
 #              aggregation, domain_composition, proteinmpnn_score,
 #              radius_of_gyration, aromatic_lining, diphosphate_sensor,
@@ -139,7 +141,16 @@ METRIC_JOB_IDS+=("$(submit motif_pair_distance --fasta_path "$REF_FASTA")")
 METRIC_JOB_IDS+=("$(submit esm_pseudo_perplexity --fasta_path "$REF_FASTA")")
 METRIC_JOB_IDS+=("$(submit motif_search --fasta_path "$REF_FASTA")")
 METRIC_JOB_IDS+=("$(submit soluprot --fasta_path "$REF_FASTA")")
+METRIC_JOB_IDS+=("$(submit tmprot --fasta_path "$REF_FASTA")")
 METRIC_JOB_IDS+=("$(submit enzyme_explorer_sequence_only --fasta_path "$REF_FASTA")")
+# CataPro FULL PANEL: one submission per SMILES-having substrate, each writing a distinct
+# <ref>_catapro_<SUB>.csv (auto-banded; grouped by the substrate labeling if a
+# substrate_labels.csv is staged into --ref_dir). This gives the whole substrate x natural-TPS
+# matrix (incl. "wrong"-substrate scores). EDSQ/2xGGPP/IDS have no SMILES -> skipped (all-NaN).
+for _catapro_sub in DMAPP GPP FPP GGPP GFPP C35; do
+    METRIC_JOB_IDS+=("$(submit catapro --fasta_path "$REF_FASTA" \
+        --target_substrate "$_catapro_sub" --out_suffix "catapro_${_catapro_sub}")")
+done
 
 # ---------------------------------------------------------------------------
 # STRUCTURE metrics — only if a MARTS-DB structures dir was supplied.
