@@ -12,9 +12,12 @@ dependencies:
   - numpy
   - pandas
   - rdkit
+  - biopython>=1.81   # src/data/sequences.py does `from Bio import SeqIO` (FASTA loading)
   - pip:
+      # transformers must stay <5: CataPro's predict.py uses tokenizer.batch_encode_plus,
+      # removed in transformers 5.x (the T5Tokenizer legacy API).
       - torch>=1.13
-      - transformers>=4.20
+      - transformers>=4.30,<5
       - sentencepiece
       - protobuf
       - huggingface_hub
