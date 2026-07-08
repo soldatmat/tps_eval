@@ -10,3 +10,9 @@
 [submodule "vendor/ProteinMPNN"]
 	path = vendor/ProteinMPNN
 	url = https://github.com/dauparas/ProteinMPNN.git
+[submodule "vendor/CataPro"]
+	path = vendor/CataPro
+	url = https://github.com/zchwang/CataPro.git
+[submodule "vendor/TmProt"]
+	path = vendor/TmProt
+	url = https://github.com/loschmidt/TmProt.git

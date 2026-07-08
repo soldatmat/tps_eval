@@ -25,6 +25,8 @@ set -euo pipefail
 MIRRORS=(
   "https://github.com/dauparas/ProteinMPNN.git|soldatmat/ProteinMPNN"
   "https://bitbucket.org/lcbio/aggrescan3d.git|soldatmat/aggrescan3d"
+  "https://github.com/zchwang/CataPro.git|soldatmat/CataPro"
+  "https://github.com/loschmidt/TmProt.git|soldatmat/TmProt"
 )
 
 workdir="$(mktemp -d)"
