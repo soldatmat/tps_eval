@@ -5,13 +5,18 @@ Single source of truth for the substrate SMILES used when ``--af3_cofold mg_<sub
 the EnzymeExplorer sequence-only call) co-folds the substrate alongside the trinuclear Mg2+
 cluster.
 
-SMILES are the EnzymeExplorer substrate set (the same ligands used to produce the validated
-candidate co-folds). Codes are UPPERCASE, matching the EE / ``knn.substrate_class`` substrate
-vocabulary (so ``mg_ee`` can map an EE argmax substrate straight to a SMILES). Only the linear
-prenyl-diphosphate substrates that have a single well-defined chain are co-foldable here;
-exotic / multi-molecule EE classes (2xFPP, 2xGGPP, EDSQ epoxysqualene, CPP copalyl-PP, IDS
-prenyltransferase) are intentionally excluded — a design whose EE argmax is one of those falls
-back to Mg-only under ``mg_ee``.
+SMILES are keyed by UPPERCASE code, matching the EE / ``knn.substrate_class`` substrate
+vocabulary (so ``mg_ee`` and the CataPro ``--target_substrate`` parameter can map a substrate
+code straight to a SMILES). ``SUBSTRATE_SMILES`` is the single source of truth for substrate
+SMILES across tps_eval — the full vocabulary shared by two consumers: AF3 co-folding AND CataPro
+kinetics. The clean single-molecule prenyl-diphosphates are present (DMAPP C5, GPP C10, FPP C15,
+GGPP C20, GFPP C25, C35 heptaprenyl-PP). Multi-molecule / non-diphosphate EE classes (EDSQ
+epoxysqualene, 2xGGPP phytoene, IDS prenyltransferase) are intentionally absent — CataPro
+returns NaN for those, and ``mg_ee`` falls back to Mg-only.
+
+Which subset AF3 actually co-folds is a SEPARATE policy: the ``COFOLDABLE`` list below
+(GPP/FPP/GGPP/GFPP), NOT membership in ``SUBSTRATE_SMILES``. So adding a CataPro-only substrate
+SMILES here never changes AF3 co-folding behaviour.
 
 AF3 ligand caveat: SMILES is used (vs a PDB CCD code) for parity with the validated structures;
 AF3 ligand geometry from SMILES is a hypothesis — verify the diphosphate lands at the
@@ -20,12 +25,15 @@ DDXXD/NSE cage downstream (that is exactly what the ``substrate_positioning`` to
 from __future__ import annotations
 from typing import Dict, List
 
-# substrate code (UPPERCASE, EE/substrate_class vocabulary) -> SMILES
+# substrate code (UPPERCASE, EE/substrate_class vocabulary) -> SMILES. Full vocabulary shared
+# by AF3 co-folding and CataPro; co-foldability is governed separately by COFOLDABLE (below).
 SUBSTRATE_SMILES: Dict[str, str] = {
-    "GPP":  "CC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",                       # C10 mono
-    "FPP":  "CC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",               # C15 sesqui
-    "GGPP": "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",       # C20 di
+    "DMAPP": "CC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",                                 # C5  hemi
+    "GPP":  "CC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",                          # C10 mono
+    "FPP":  "CC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",                  # C15 sesqui
+    "GGPP": "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",          # C20 di
     "GFPP": "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",  # C25 sester
+    "C35":  "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCOP([O-])(=O)OP([O-])([O-])=O",  # C35 sesquar
 }
 
 # Co-foldable substrate codes (sorted by chain length) — the set --af3_cofold accepts as
@@ -34,9 +42,13 @@ COFOLDABLE: List[str] = ["GPP", "FPP", "GGPP", "GFPP"]
 
 
 def smiles_for(code: str) -> str:
-    """SMILES for a substrate code (case-insensitive). Raises KeyError if not co-foldable."""
+    """SMILES for a substrate code (case-insensitive). Raises KeyError if the code has no
+    known SMILES (e.g. EDSQ / 2xGGPP / IDS — CataPro treats those as NaN)."""
     return SUBSTRATE_SMILES[code.upper()]
 
 
 def is_cofoldable(code: str) -> bool:
-    return bool(code) and code.upper() in SUBSTRATE_SMILES
+    """Whether AF3 co-folds this substrate. Governed by the explicit COFOLDABLE list, NOT by
+    SUBSTRATE_SMILES membership — a substrate may have a SMILES (usable by CataPro) yet not be
+    co-folded by AF3 (e.g. DMAPP, C35)."""
+    return bool(code) and code.upper() in COFOLDABLE
