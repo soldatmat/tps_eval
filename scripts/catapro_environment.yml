@@ -1,0 +1,20 @@
+# Conda env for CataPro (vendor/CataPro) — enzyme-kinetics prediction.
+# CataPro uses ProtT5 (enzyme) + MolT5 (substrate) T5 encoders + MACCS fingerprints,
+# so it needs torch, transformers, sentencepiece + protobuf (the T5 tokenizers), and
+# RDKit. Create with:  conda env create -n "$CATAPRO_ENV" -f scripts/catapro_environment.yml
+# (scripts/setup_catapro.sh does this and downloads the two HF backbones).
+name: catapro
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - rdkit
+  - pip:
+      - torch>=1.13
+      - transformers>=4.20
+      - sentencepiece
+      - protobuf
+      - huggingface_hub
