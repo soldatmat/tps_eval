@@ -1,0 +1,13 @@
+{
+  "_comment": "Example selection spec using the substrate_specificity op. Keeps designs that are confidently ON-target for the campaign substrate (EE score >= t_hi) AND not strongly predicted for any competing substrate (every off-target EE score <= its relaxed ceiling t_off). Scores are EnzymeExplorer sequence-only per-substrate probabilities in [0,1] (softmax-like over the substrate classes). 'target' may be omitted here and supplied at runtime via `run_select.py --target_substrate <SUB>` (or spec['target_substrate']); an explicit op 'target' overrides both. Use 'per_substrate_ceilings' to loosen/tighten individual competitors, e.g. allow the neighbouring chain-length. EE does NOT score DMAPP/C35/IDS, so this op raises for those targets (use a plain gate instead).",
+  "target_substrate": "FPP",
+  "n_out_per_group": 48,
+  "ops": [
+    {
+      "op": "substrate_specificity",
+      "t_hi": 0.5,
+      "t_off": 0.35,
+      "per_substrate_ceilings": { "GPP": 0.4 }
+    }
+  ]
+}

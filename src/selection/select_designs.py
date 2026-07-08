@@ -23,6 +23,10 @@ Op specs:
   score:           {"op":"score", "terms":[...], "zscore_within":"class"}   # default group_by
   diversity_dedup: {"op":"diversity_dedup", "quality_col":"score",
                     "id_threshold":0.7 | "id_threshold_per_group":{...}}
+  substrate_specificity: {"op":"substrate_specificity", "target":"FPP",
+                    "t_hi":0.5, "t_off":0.35, "per_substrate_ceilings":{...}}
+                    # on-target EE score >= t_hi AND every off-target EE score <= ceiling.
+                    # "target" defaults to the run-level --target_substrate when omitted.
 """
 from __future__ import annotations
 
@@ -41,6 +45,7 @@ from diversity_dedup import apply_diversity_dedup
 from gate import apply_gate
 from io_fasta import read_fasta_map, write_fasta
 from score import apply_score
+from substrate_specificity import DEFAULT_T_HI, DEFAULT_T_OFF, apply_substrate_specificity
 
 _SCORE_COL = "score"
 
@@ -62,10 +67,16 @@ def _synthesise_group(df: pd.DataFrame, spec: dict) -> Tuple[pd.DataFrame, Optio
 
 
 def run_selection(df: pd.DataFrame, spec: dict,
-                  fasta_map: Optional[Dict[str, str]] = None
+                  fasta_map: Optional[Dict[str, str]] = None,
+                  target_substrate: Optional[str] = None
                   ) -> Tuple[pd.DataFrame, List[dict], Optional[str]]:
     """Apply the spec's ops in order, then cap to n_out_per_group. Returns
-    (survivors_df, op_reports, group_col)."""
+    (survivors_df, op_reports, group_col).
+
+    ``target_substrate`` (the campaign substrate) is the default 'target' for any
+    substrate_specificity op that does not set its own; a spec may still fall back to
+    spec['target_substrate'] when neither is given."""
+    target_substrate = target_substrate or spec.get("target_substrate")
     df, group_by = _synthesise_group(df, spec)
     # Inject sequences up front (from the seed FASTA) so ops that need them mid-pipeline —
     # notably diversity_dedup — can use them, not just the final FASTA write.
@@ -95,6 +106,17 @@ def run_selection(df: pd.DataFrame, spec: dict,
                 n_out_per_group=op_spec.get("n_out_per_group", spec.get("n_out_per_group")),
                 seq_col=op_spec.get("seq_col", "sequence"),
                 coverage=op_spec.get("coverage", 0.8))
+        elif op == "substrate_specificity":
+            target = op_spec.get("target", target_substrate)
+            if not target:
+                raise ValueError(
+                    "substrate_specificity op needs a target substrate: set 'target' in the "
+                    "op, spec['target_substrate'], or pass --target_substrate.")
+            cur, rep = apply_substrate_specificity(
+                cur, target,
+                t_hi=op_spec.get("t_hi", DEFAULT_T_HI),
+                t_off=op_spec.get("t_off", DEFAULT_T_OFF),
+                per_substrate_ceilings=op_spec.get("per_substrate_ceilings"))
         else:
             raise ValueError(f"unknown selection op '{op}'")
         rep["group_counts"] = _group_counts(cur, group_by)
@@ -169,8 +191,10 @@ def write_manifest(reports: List[dict], spec: dict, output_path: str,
 
 def select_and_write(df: pd.DataFrame, spec: dict, output_prefix: str,
                      fasta_map: Optional[Dict[str, str]] = None,
-                     title: str = "Selection") -> pd.DataFrame:
-    survivors, reports, group_by = run_selection(df, spec, fasta_map=fasta_map)
+                     title: str = "Selection",
+                     target_substrate: Optional[str] = None) -> pd.DataFrame:
+    survivors, reports, group_by = run_selection(
+        df, spec, fasta_map=fasta_map, target_substrate=target_substrate)
     csv_path = output_prefix + "_survivors.csv"
     survivors.to_csv(csv_path, index=False)
     print(f"[select] {reports[0]['n_in']} → {len(survivors)} survivors "

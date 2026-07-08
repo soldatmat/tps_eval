@@ -41,13 +41,17 @@ def main() -> int:
                    help="Seed FASTA to source sequences from when the merged table lacks a "
                         "'sequence' column (needed to emit the survivor FASTA).")
     p.add_argument("--title", default="Selection", help="Manifest title.")
+    p.add_argument("--target_substrate", default=None,
+                   help="Campaign target substrate (e.g. FPP). Default 'target' for any "
+                        "substrate_specificity op that does not set its own.")
     args = p.parse_args()
 
     with open(args.spec) as fh:
         spec = json.load(fh)
     df = pd.read_csv(args.merged) if args.merged else merge_metrics(args.entries)
     fasta_map = read_fasta_map(args.fasta) if args.fasta else None
-    select_and_write(df, spec, args.output_prefix, fasta_map=fasta_map, title=args.title)
+    select_and_write(df, spec, args.output_prefix, fasta_map=fasta_map, title=args.title,
+                     target_substrate=args.target_substrate)
     return 0
 
 
