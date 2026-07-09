@@ -39,8 +39,8 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.visualization import dimensionality_reduction as dr  # noqa: E402
-from src.visualization import landscape_map  # noqa: E402
+from tps_eval.visualization import dimensionality_reduction as dr  # noqa: E402
+from tps_eval.visualization import landscape_map  # noqa: E402
 
 
 def build_distance(df, ids, qcol, tcol, scol):

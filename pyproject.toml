@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tps_eval"
+version = "0.1.0"
+description = "In-silico evaluation pipeline for proteins on HPC clusters"
+requires-python = ">=3.9"
+# Runtime dependencies are intentionally NOT declared here: they are provisioned
+# per-cluster by conda + the explicit `pip install` steps in `setup.sh`
+# (torch, fair-esm, and the order-preparation extras). Keeping this empty means
+# `pip install -e .` only wires up the `tps_eval` import surface and never tries
+# to resolve/reinstall the conda-managed scientific stack. See README "Installation".
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+# src-layout: the importable package is `src/tps_eval`. The `vendor/` submodules are
+# deliberately NOT part of this package (see CLAUDE.md); the one code-level vendor import
+# (`tps_eval.pymol.plot_residue_similarity` -> `vendor.pymol_scripts`) resolves via the
+# repo-root cwd that every runner `cd`s to, exactly as before this migration.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["tps_eval*"]
+
+# Ship the committed reference artifacts that live under src/ (because /data/ is gitignored):
+# k-NN label CSVs, reference-stats JSON, the TPS-accession set, etc. Editable installs read
+# them from the source tree directly; this makes a real build carry them too.
+[tool.setuptools.package-data]
+tps_eval = ["**/*.csv", "**/*.json", "**/*.txt", "**/*.tsv"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tps_eval"]
