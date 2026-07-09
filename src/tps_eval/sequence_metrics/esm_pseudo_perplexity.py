@@ -40,7 +40,7 @@ import torch
 from esm import pretrained
 
 
-from tps_eval.data.sequences import load_fasta_sequences, separate_identifiers  # noqa: E402
+from tps_eval.data.sequences import load_fasta_sequences, separate_identifiers
 
 # Same model the embedding tool loads, so naturalness is consistent across metrics.
 DEFAULT_MODEL = "esm1b_t33_650M_UR50S"

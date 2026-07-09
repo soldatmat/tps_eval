@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-from tps_eval.data.sequences import load_fasta_sequences  # noqa: E402
+from tps_eval.data.sequences import load_fasta_sequences
 
 
 def read_fasta_map(fasta_path: str) -> Dict[str, str]:

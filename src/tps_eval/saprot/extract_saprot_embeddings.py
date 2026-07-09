@@ -100,7 +100,7 @@ def load_get_struc_seq(saprot_repo):
     """Import SaProt's get_struc_seq (shells out to foldseek to produce 3Di tokens)."""
     if saprot_repo is not None:
         sys.path.insert(0, saprot_repo)
-    from utils.foldseek_util import get_struc_seq  # noqa: E402
+    from utils.foldseek_util import get_struc_seq
 
     return get_struc_seq
 

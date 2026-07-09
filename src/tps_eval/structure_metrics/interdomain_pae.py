@@ -56,7 +56,7 @@ import pandas as pd
 # Reuse the canonical structure-loading / ID-stem conventions and EE domain
 # detection (residue spans) so this tool stays source-agnostic and mirrors the
 # rest of the structure branch.
-from tps_eval.enzyme_explorer.domain_composition import (  # noqa: E402
+from tps_eval.enzyme_explorer.domain_composition import (
     _structure_ids,
     detect_domains_json,
     load_detections_json,

@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 
-from tps_eval.enzyme_explorer.domain_composition import (  # noqa: E402
+from tps_eval.enzyme_explorer.domain_composition import (
     COLUMNS,
     _default_save_path,
     load_detections_json,

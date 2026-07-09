@@ -11,7 +11,7 @@ import tempfile
 import pandas as pd
 
 
-from tps_eval.enzyme_explorer.prepare_csv import fasta_to_csv  # noqa: E402
+from tps_eval.enzyme_explorer.prepare_csv import fasta_to_csv
 
 
 def test_fasta_to_csv_id_and_sequence():

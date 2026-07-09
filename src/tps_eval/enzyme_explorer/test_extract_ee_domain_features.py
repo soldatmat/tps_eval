@@ -15,7 +15,7 @@ import sys
 from types import SimpleNamespace
 
 
-from tps_eval.enzyme_explorer.extract_ee_domain_features import (  # noqa: E402
+from tps_eval.enzyme_explorer.extract_ee_domain_features import (
     _sanitize_id,
     build_feature_matrix,
     build_module_columns,

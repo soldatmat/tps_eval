@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tps_eval.alphafold.extract_pae import (  # noqa: E402
+from tps_eval.alphafold.extract_pae import (
     _coerce_scalar,
     _load_ptm_iptm,
     _resolve_af_output,

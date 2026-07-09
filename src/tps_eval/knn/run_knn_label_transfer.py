@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 
-from tps_eval.knn.knn_label_transfer import (  # noqa: E402
+from tps_eval.knn.knn_label_transfer import (
     calibrate,
     load_calibration,
     save_calibration,

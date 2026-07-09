@@ -79,7 +79,7 @@ try:
     # Reuse the k-NN tool's chain-suffix strip when it's present (single source of
     # truth). It is built in parallel and may not be checked out yet, so fall back to
     # an inline copy with the identical contract.
-    from tps_eval.knn.knn_label_transfer import _strip_chain_suffix  # noqa: E402
+    from tps_eval.knn.knn_label_transfer import _strip_chain_suffix
 except Exception:  # pragma: no cover - exercised only when knn is absent
     def _strip_chain_suffix(neighbour_id, valid_ids=None):  # type: ignore
         """Strip a foldseek ``_<chain>`` suffix from a structural neighbour id.

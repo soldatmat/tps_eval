@@ -11,7 +11,7 @@ import os
 import sys
 
 
-from tps_eval.order_preparation.overhangs import (  # noqa: E402
+from tps_eval.order_preparation.overhangs import (
     DEFAULT_OVERHANG,
     OVERHANGS,
     _strip_leading_stop,

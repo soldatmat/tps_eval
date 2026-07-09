@@ -15,7 +15,7 @@ import sys
 from Bio.Seq import Seq
 
 
-from tps_eval.order_preparation.codon_optimization import (  # noqa: E402
+from tps_eval.order_preparation.codon_optimization import (
     _relaxation_ladder,
     codon_optimize,
     resolve_organism,

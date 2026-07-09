@@ -11,7 +11,7 @@ import tempfile
 import pandas as pd
 
 
-from tps_eval.knn.knn_label_transfer import (  # noqa: E402
+from tps_eval.knn.knn_label_transfer import (
     ABSTAIN_LABEL,
     _strip_chain_suffix,
     calibrate,

@@ -16,7 +16,7 @@ import tempfile
 import pandas as pd
 
 
-import tps_eval.knn.make_first_cyclization_labels as mod  # noqa: E402
+import tps_eval.knn.make_first_cyclization_labels as mod
 
 
 def _run(source_rows) -> pd.DataFrame:

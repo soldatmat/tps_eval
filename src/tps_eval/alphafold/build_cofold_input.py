@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
-from tps_eval.alphafold.cofold_substrates import SUBSTRATE_SMILES, COFOLDABLE, is_cofoldable  # noqa: E402
+from tps_eval.alphafold.cofold_substrates import SUBSTRATE_SMILES, COFOLDABLE, is_cofoldable
 
 ION_ID_COLS = ["ion1_id", "ion2_id", "ion3_id", "ion4_id"]
 ION_CCD_COLS = ["ion1_ccd", "ion2_ccd", "ion3_ccd", "ion4_ccd"]
@@ -89,7 +89,7 @@ def _write_csv(path: str, recs: List[Tuple[str, str]], ions: List[Tuple[str, str
 
 def _ee_substrate_per_design(ee_csv: str) -> Dict[str, str]:
     """{ID: substrate_code} from the EE seq-only argmax (reusing the substrate_class loader)."""
-    from tps_eval.knn.substrate_class import load_ee_substrate  # noqa: E402
+    from tps_eval.knn.substrate_class import load_ee_substrate
     return {cid: code for cid, (code, _score) in load_ee_substrate(ee_csv).items()}
 
 

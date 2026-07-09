@@ -25,8 +25,8 @@ import sys
 from pathlib import Path
 
 
-from tps_eval.knn.knn_label_transfer import load_calibration  # noqa: E402
-from tps_eval.knn.substrate_class import combine_substrate_class  # noqa: E402
+from tps_eval.knn.knn_label_transfer import load_calibration
+from tps_eval.knn.substrate_class import combine_substrate_class
 
 
 def main() -> None:

@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 
 
-from tps_eval.knn.knn_label_transfer import calibrate  # noqa: E402
-from tps_eval.knn.substrate_class import (  # noqa: E402
+from tps_eval.knn.knn_label_transfer import calibrate
+from tps_eval.knn.substrate_class import (
     _within_one_size_class,
     combine_substrate_class,
     load_ee_substrate,

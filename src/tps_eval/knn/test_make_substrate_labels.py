@@ -16,8 +16,8 @@ import tempfile
 import pandas as pd
 
 
-import tps_eval.knn.make_substrate_labels as mod  # noqa: E402
-from tps_eval.knn.make_substrate_labels import TYPE_TO_SUBSTRATE, _carbons  # noqa: E402
+import tps_eval.knn.make_substrate_labels as mod
+from tps_eval.knn.make_substrate_labels import TYPE_TO_SUBSTRATE, _carbons
 
 
 def _run(source_rows) -> pd.DataFrame:

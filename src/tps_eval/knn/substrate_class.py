@@ -54,7 +54,7 @@ import numpy as np
 import pandas as pd
 
 
-from tps_eval.knn.knn_label_transfer import (  # noqa: E402
+from tps_eval.knn.knn_label_transfer import (
     ABSTAIN_LABEL,
     load_calibration,
     transfer_labels,

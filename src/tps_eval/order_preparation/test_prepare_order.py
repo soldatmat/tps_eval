@@ -17,8 +17,8 @@ import pandas as pd
 from Bio.Seq import Seq
 
 
-from tps_eval.order_preparation.overhangs import get_overhangs  # noqa: E402
-from tps_eval.order_preparation.prepare_order import (  # noqa: E402
+from tps_eval.order_preparation.overhangs import get_overhangs
+from tps_eval.order_preparation.prepare_order import (
     _gc_window_extremes,
     _max_homopolymer_run,
     _revcomp,

@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 
-from tps_eval.specificity.sdr_divergence import (  # noqa: E402
+from tps_eval.specificity.sdr_divergence import (
     Panel,
     ResidueInfo,
     _rank1_neighbours,
