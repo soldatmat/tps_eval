@@ -94,7 +94,7 @@ These emit a per-`id` feature CSV (first column `id`, then feature dims) for a w
 |------|--------|-------------|--------|
 | [run_eval_pipeline](docs/TOOLS.md#run_eval_pipeline) | orchestrator | Declarative cluster-agnostic orchestrator (config-driven tool selection). | submits SLURM jobs |
 | [pipeline_tools.json](docs/TOOLS.md#pipeline_tools) | config | Per-tool default on/off + branch + one-liner driving `--list-tools`. | — |
-| [compute_reference_stats](docs/TOOLS.md#compute_reference_stats) | reference | MARTS-DB natural-TPS bands → reference-stats JSON. Standalone. | `src/reference_stats/marts_db_metric_stats.json` |
+| [compute_reference_stats](docs/TOOLS.md#compute_reference_stats) | reference | MARTS-DB natural-TPS bands → reference-stats JSON. Standalone. | `src/tps_eval/reference_stats/marts_db_metric_stats.json` |
 
 ### Selection & funnel
 | Tool | Branch | Description | Output |
@@ -124,6 +124,8 @@ cd tps_eval
 ```
 
 If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your local installations of the tools and the names of the associated Conda environments in `tps_eval/paths.sh`. You have to install the tools yourself (for SoluProt, see *Optional: SoluProt* below; EnzymeExplorer is installed via its own repo's `scripts/setup_env.sh`).
+
+`tps_eval` is a standard src-layout package (`src/tps_eval/`, configured by `pyproject.toml`); `setup.sh` runs `pip install -e .` to expose it. Modules import each other via qualified paths (`from tps_eval.<subdir>.<module> import ...`) and tools run as `python -m tps_eval.<subdir>.run_<tool>` (the `run_<tool>.sh` wrappers do this for you). To run the test suite: `pip install -e ".[dev]"` then `python -m pytest src/tps_eval` from the repo root.
 
 ## Optional: SoluProt
 SoluProt (solubility predictor, used by `run_soluprot.sh`) is not a pip/conda package — it's a standalone download plus an old py3.7 conda env and two external binaries (USEARCH, TMHMM). A helper script automates the parts that can be automated:
@@ -170,21 +172,21 @@ Currently, Alphafold jobs are configured only for the IOCB Aurum cluster.
 
 1) Install https://github.com/soldatmat/tps_eval
 
-2) Run alphafold jobs like so:
+2) Run alphafold jobs like so (from the repo root, with the package installed via `./setup.sh`):
 ```sh
-cd "tps_eval/src/alphafold"
+cd tps_eval
 conda activate tps_eval
 ```
 ```sh
-python run_alphafold_jobs.py \
+python -m tps_eval.alphafold.run_alphafold_jobs \
     --csv_path /path/to/file_with_proteins_and_ligands.csv \
     --working_directory /path/to/directory/for/results/alphafold_structs
 ```
 ## Optional arguments
-For usage, see `python run_alphafold_jobs.py -h`
+For usage, see `python -m tps_eval.alphafold.run_alphafold_jobs -h`
 ### Example of each optional argument:
 ```sh
-python run_alphafold_jobs.py \
+python -m tps_eval.alphafold.run_alphafold_jobs \
     --csv_path /path/to/file_with_proteins_and_ligands.csv \
     --protein_id_column_names Protein_1 Protein_2 \
     --protein_sequence_column_names Sequence_1 Sequence_2 \

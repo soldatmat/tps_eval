@@ -13,7 +13,7 @@ scripts/run_build_dashboard.sh --designs '[name=]path[,path2,...]' [--bands <jso
 scripts/run_build_dashboard.sh --designs 'rfdiffusion=run1/' --designs 'esm3=run2/metrics.csv'
 # reference-only / demo:
 scripts/run_build_dashboard.sh            # bands only
-python3 src/dashboard/build_dashboard.py --demo   # synthetic overlay
+python3 -m tps_eval.dashboard.build_dashboard --demo   # synthetic overlay
 ```
 
 Each `--designs` value is one set: `[name=]path[,path2,...]`, where each path is a merged
@@ -45,7 +45,7 @@ Measured on a 300 000-design synthetic set: ~0.4 s to parse + decode + first ren
 per threshold change. **Payload scales with column count** — large mode keeps every design's value
 for every column, so very wide tables (~150 columns × 10^5) produce a large file; ship only the
 columns you need to filter on for the biggest batches. Validate quickly with
-`python3 src/dashboard/build_dashboard.py --demo --demo-n 300000`.
+`python3 -m tps_eval.dashboard.build_dashboard --demo --demo-n 300000`.
 
 ## Pipeline integration
 
@@ -70,13 +70,13 @@ design-derived axis, tagged "no reference band"), so a batch is always inspectab
 ## What it shows
 
 - **Sources**: ESMFold / AlphaFold3 / Boltz-2 (holo) — the committed band JSONs in
-  `src/reference_stats/marts_db_<source>_metric_stats.json`. Toggle between them.
+  `src/tps_eval/reference_stats/marts_db_<source>_metric_stats.json`. Toggle between them.
 - **Categories**: metrics are grouped into *Fold & confidence · Active site · Sequence ·
   Function · Novelty* (the comparative similarity metrics), in both the left nav and the
-  main view. The grouping lives in `src/dashboard/metric_info.py` (`METRIC_CATEGORY`).
+  main view. The grouping lives in `src/tps_eval/dashboard/metric_info.py` (`METRIC_CATEGORY`).
 - **Per-metric "?"**: hover the `?` by a metric name for a one-line explanation; numeric
   columns show their **mathematical range** (e.g. `range 0–1`) in the header. Both come
-  from `src/dashboard/metric_info.py` (`METRIC_INFO`).
+  from `src/tps_eval/dashboard/metric_info.py` (`METRIC_INFO`).
 - **Numeric metrics** render as a layered *natural band*: min–max hairline → p1–p99 →
   p5–p95 → p25–p75 (IQR) core → median tick (+ a mean diamond).
 - **Categorical metrics** render as stacked-proportion bars of the category frequencies.
@@ -141,10 +141,10 @@ needed — any column that exists in both is overlaid, the rest are ignored.
 
 ## Architecture
 
-- `src/dashboard/build_dashboard.py` — loads the band JSON(s) + optional design batch,
+- `src/tps_eval/dashboard/build_dashboard.py` — loads the band JSON(s) + optional design batch,
   compacts them to the stats the UI needs, and injects the result as inline JSON into
   the template (`/*__DASHBOARD_DATA__*/` token). Non-finite values are sanitised to
   `null` so the embedded JSON is strict.
-- `src/dashboard/template.html` — the editable HTML/CSS/JS (vanilla, SVG charts, no
+- `src/tps_eval/dashboard/template.html` — the editable HTML/CSS/JS (vanilla, SVG charts, no
   external dependencies).
 - `scripts/run_build_dashboard.sh` — the standard wrapper.

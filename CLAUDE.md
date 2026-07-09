@@ -4,13 +4,25 @@ In-silico evaluation pipeline for proteins on HPC clusters. Human setup/usage is
 `README.md`; this file is the quick map for agentic sessions. Keep it terse and
 durable — no cluster *state* (that's per-user), no restatements of the README.
 
+## Package layout — src-layout `tps_eval` package
+- Import package is `src/tps_eval/` (one subdir per tool group, `__init__.py`
+  throughout). Build/tool config is `pyproject.toml` (setuptools src-layout find,
+  no runtime deps — those are conda/`setup.sh`-managed); there is NO `setup.py`.
+- `pip install -e .` exposes the import surface; ALL imports are qualified
+  `from tps_eval.<subdir>.<module> import ...` (no `cd`-into-dir or `sys.path` hacks).
+- `vendor/` submodules are NOT part of the package. The one code-level vendor import
+  (`tps_eval.pymol.plot_residue_similarity` → `vendor.pymol_scripts`) resolves via the
+  repo-root cwd every runner `cd`s to.
+- Tests are co-located `src/tps_eval/**/test_*.py`, run with `python -m pytest`
+  (from repo root; `pip install -e ".[dev]"` provides pytest). No standalone shims.
+
 ## Architecture — every eval tool follows the same shape
 - `scripts/run_<tool>.sh` — cluster-agnostic wrapper: parse args, `cd` to repo root,
   source `paths.sh`, `conda activate "$TPS_EVAL_ENV"`, export the libstdc++ fix, then
-  `cd src/<subdir>` and run the python entry.
+  run `python -m tps_eval.<subdir>.run_<tool>` (from repo root — no `cd` into the tool dir).
 - `scripts/<cluster>/jobs/<tool>.sh` — thin SLURM wrapper: `cd` to repo root, call
   `run_<tool>.sh "$@"` (the `#SBATCH` header is the only cluster-specific part).
-- `src/<subdir>/run_<tool>.py` — argv entry; `src/<subdir>/<tool>.py` — logic.
+- `src/tps_eval/<subdir>/run_<tool>.py` — argv entry; `src/tps_eval/<subdir>/<tool>.py` — logic.
 - **Output is a CSV keyed by `ID`** with the metric column(s), so metrics compose/merge
   for filtration. **Sequence-branch** tools key off the fasta → `<input>_<tool>.csv`;
   **structure-branch** tools key off the structures DIR → `<structs_dir>_<tool>.csv`
@@ -30,12 +42,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   one whole-FASTA job → `<gen>_esmfold_structs/` + `_pae/`) and `alphafold3` (Aurum-only).
   The AF3 fan-out is an Engine **driver Step** (`Step.driver=True`): it runs
   `scripts/run_alphafold_fanout.sh` *on the login node* (not via sbatch), which calls the
-  existing `src/alphafold/run_alphafold_jobs.py` to submit one AF3 job per sequence and
+  existing `src/tps_eval/alphafold/run_alphafold_jobs.py` to submit one AF3 job per sequence and
   prints the N job ids; the Engine captures them (`fanout_ids`) so every structure Step
   `afterok`-waits on all N, then an `extract_pae` step populates the PAE dir (PAE-consumers
   wait on it). AF3 holo co-folding via `--af3_cofold {none,mg,mg_ppi,mg_gpp,mg_fpp,mg_ggpp,
   mg_gfpp,mg_ee}`: `mg`/`mg_ppi` place CCD `MG`/`POP`; `mg_<sub>` co-folds one forced prenyl-PP
-  substrate (SMILES in `src/alphafold/cofold_substrates.py`) for all designs; `mg_ee` co-folds
+  substrate (SMILES in `src/tps_eval/alphafold/cofold_substrates.py`) for all designs; `mg_ee` co-folds
   each design's EnzymeExplorer-predicted substrate (the fan-out groups by substrate + a Mg-only
   fallback). With `--fold alphafold3`, mg_ee AUTO-CHAINS EE->cofold: since the login-node fold
   driver can't afterok-wait on the in-pipeline `ee_seq` job, build_steps defers the fold+structure
@@ -44,7 +56,7 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `scripts/run_eval_pipeline_continuation.sh`, runs from `args._orig_cwd`, only submits jobs). Pass
   `--enzymeexplorer_csv` only for pre-computed EE / non-in-pipeline folds.
   `scripts/run_alphafold_fanout.sh` builds the input via
-  `src/alphafold/build_cofold_input.py` (one CSV per group + manifest) and prints ONE combined
+  `src/tps_eval/alphafold/build_cofold_input.py` (one CSV per group + manifest) and prints ONE combined
   job-id line. Any non-`none` mode enables the holo tools `ion_site_check` + `substrate_positioning`
   (gated on `run_holo` = cofold!=none OR external structs; `--no_holo_tools` force-skips).
   AF3 ion/ligand placement is a hypothesis — verify at DDXXD/NSE downstream. NOT yet ported (v2):
@@ -53,7 +65,7 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   fold is expensive); `build_cofold_input` + `substrate_positioning` unit-tested locally.
 
 ## Selection & funnel layer (narrowing, NOT metrics)
-- `src/selection/` is a SEPARATE layer from the metric tools — it CONSUMES the merged metric table
+- `src/tps_eval/selection/` is a SEPARATE layer from the metric tools — it CONSUMES the merged metric table
   and PRODUCES a subset. Its ops are **not** in `pipeline_tools.json` (they aren't metrics) and run
   on a login node (CPU/pandas + mmseqs, no SLURM). Primitives, all CSV-keyed-by-ID:
   `merge.py` (merge per-tool CSVs → wide table, per-cell first-wins + ID-union; mirrors the
@@ -71,26 +83,29 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `run_eval_pipeline`'s idempotency as the SLURM barrier — see docs/TOOLS.md#run_funnel). Funnel +
   selection recipes are version-controlled under `scripts/funnels/` (`production_300k.json` +
   `select_phase{1,2,3}.json`), verified to reproduce the archived 300k→48 run (Phase-1 exact,
-  Phase-2 filter-exact, Phase-3 48/48). Unit tests: `src/selection/test_selection.py`.
+  Phase-2 filter-exact, Phase-3 48/48). Unit tests: `src/tps_eval/selection/test_selection.py`.
 
 ## To add a new metric/tool (the pattern — follow it)
-1. `src/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) + `run_<tool>.py` (argv).
-   - **Structure-branch tool?** Reuse the canonical loader in `src/structure_metrics/plddt.py`
+1. `src/tps_eval/<subdir>/<tool>.py` (logic → DataFrame keyed by `ID` → CSV) +
+   `run_<tool>.py` (argv). Import siblings/cross-subdir modules via qualified
+   `from tps_eval.<subdir>.<module> import ...` — no bare/`sys.path` imports.
+   - **Structure-branch tool?** Reuse the canonical loader in `src/tps_eval/structure_metrics/plddt.py`
      (af3-`af_output`-vs-flat-dir auto-detection, ID = filename stem, `<structs_dir>_<tool>.csv`
      naming) — `motif_structural_distance.py`/`active_site_geometry.py`/`aggregation.py` all mirror it.
    - **Need the DDXXD / NSE/DTE motif positions?** Use the shared
-     `src/sequence_metrics/motif_localization.py` (the single source of truth — regexes +
+     `src/tps_eval/sequence_metrics/motif_localization.py` (the single source of truth — regexes +
      coordinating-residue offsets). Don't re-encode the motifs.
 2. `scripts/run_<tool>.sh` — copy an existing one (e.g. `run_max_sequence_identity.sh`):
-   keep the `conda activate "$<ENV>"` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."` block.
-   Pick the right env (see Gotchas — not every tool uses `TPS_EVAL_ENV`).
+   keep the `conda activate "$<ENV>"` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."` block,
+   and invoke `python -m tps_eval.<subdir>.run_<tool>` (from repo root — do NOT `cd` into the
+   tool dir). Pick the right env (see Gotchas — not every tool uses `TPS_EVAL_ENV`).
 3. `scripts/<cluster>/jobs/<tool>.sh` per cluster — Aurum uses `--constraint=gen-a` for CPU,
    `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1` for GPU (NО `-p`); Karolina uses
    `--partition=qcpu`/`qgpu`. `--time` + `--mem` mandatory.
 4. **Wire it into `scripts/run_eval_pipeline.py`**: add an `out_<tool>()` helper + a `Step(...)`
    in `build_steps` (sequence-branch in the per-dataset loop; structure-branch in the
    `if structs:` block). Dry-run to confirm it appears, then add its column(s) to the plots
-   (`src/plot/constants.py`) and the reference-stats pipeline if it's an intrinsic property.
+   (`src/tps_eval/plot/constants.py`) and the reference-stats pipeline if it's an intrinsic property.
    Also add the one-liner/branch/default to `scripts/pipeline_tools.json` (powers `--list-tools`).
 5. **Document it for end users:** add a `docs/TOOLS.md` section (anchored by tool name —
    purpose/inputs/output columns/method/citation/env+source) and a row in the README "## Tools"
@@ -143,9 +158,11 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   make them stale). One command: `./scripts/refresh_vendor_backups.sh`. If an upstream
   ever dies, swap the URL: `git config -f .gitmodules submodule.vendor/<name>.url
   https://github.com/soldatmat/<name> && git submodule sync && git submodule update --init`.
-- **`/data/` is gitignored.** Committable reference artifacts therefore live under `src/`,
-  NOT `data/` — e.g. `src/homology_search/tps_uniprot_accessions.txt` (the TPS-accession
-  classification set), and the reference-stats JSON. Large DBs (Swiss-Prot/afdb-swissprot,
+- **`/data/` is gitignored.** Committable reference artifacts therefore live under the
+  package `src/tps_eval/`, NOT `data/` — e.g. `src/tps_eval/homology_search/tps_uniprot_accessions.txt`
+  (the TPS-accession classification set), and the reference-stats JSON. They ship as
+  package-data (declared in `pyproject.toml`) and are read via `__file__`-relative or
+  `REPO/src/tps_eval/...` paths. Large DBs (Swiss-Prot/afdb-swissprot,
   AFDB structures) live OUTSIDE the repo on each cluster, pointed to by `paths.sh`.
 - **Folding:** AlphaFold3 is **Aurum-only**; ESMFold (`run_esmfold.sh`) runs on both
   clusters. ESMFold writes pLDDT on a **0–1 scale** — `esmfold.py` rescales the B-factor

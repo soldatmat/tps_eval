@@ -6,16 +6,16 @@ construction: codon-optimize each protein, then add the fixed flanking overhangs
 This is a **standalone ordering utility**, *not* part of the evaluation / submit-all
 pipeline — it is not an orchestrator Step, does not emit an `ID`-keyed metric CSV, and
 needs no SLURM (it runs on a login node in seconds). Logic lives in
-[`src/order_preparation/`](../src/order_preparation); the wrapper is
+[`src/tps_eval/order_preparation/`](../src/tps_eval/order_preparation); the wrapper is
 [`scripts/run_prepare_order.sh`](../scripts/run_prepare_order.sh).
 
 ## Pipeline (per design)
 
 1. **Codon-optimize** the protein into a CDS for the target organism, *removing internal
-   BsaI/BsmBI sites* — [`codon_optimization.py`](../src/order_preparation/codon_optimization.py)
+   BsaI/BsmBI sites* — [`codon_optimization.py`](../src/tps_eval/order_preparation/codon_optimization.py)
 2. **Add the fixed overhangs** around the CDS (the flanks are never modified) —
-   [`overhangs.py`](../src/order_preparation/overhangs.py)
-3. **Validate** the assembled construct — [`prepare_order.py`](../src/order_preparation/prepare_order.py)
+   [`overhangs.py`](../src/tps_eval/order_preparation/overhangs.py)
+3. **Validate** the assembled construct — [`prepare_order.py`](../src/tps_eval/order_preparation/prepare_order.py)
 
 ## Usage
 
@@ -72,7 +72,7 @@ construct is never silently submitted.
 
 Backend: **[DNAChisel](https://edinburgh-genome-foundry.github.io/DnaChisel/)** + codon
 tables from `python_codon_tables` (both pinned in
-[`requirements.txt`](../src/order_preparation/requirements.txt)). For each protein it
+[`requirements.txt`](../src/tps_eval/order_preparation/requirements.txt)). For each protein it
 reverse-translates, enforces the translation, and optimizes synonymous codons for the
 target organism subject to three **hard constraints** (codon usage is a soft objective
 optimized within them):
@@ -164,7 +164,7 @@ Findings are split by severity:
 ## Dependencies
 
 ```sh
-pip install -r src/order_preparation/requirements.txt   # into the tps_eval conda env
+pip install -r src/tps_eval/order_preparation/requirements.txt   # into the tps_eval conda env
 ```
 
 `dnachisel` + `python_codon_tables`; `biopython` and `pandas` already ship with the
