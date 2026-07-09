@@ -82,7 +82,7 @@ if [[ "$return_counts" == "True" ]]; then
 else
     return_counts_arg="--no-return_counts"
 fi
-python "$SCRIPT_DIR/../src/sample_length/sample_length.py" \
+python "$SCRIPT_DIR/../src/tps_eval/sample_length/sample_length.py" \
     --fasta_path "$fasta_path" \
     --num_seqs "$num_seqs" \
     --save_to "$save_to" \

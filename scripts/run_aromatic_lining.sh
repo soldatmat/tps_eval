@@ -86,7 +86,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/structure_metrics
 
 args=("$structs_dir")
 if [[ -n "$save_path" ]]; then
@@ -105,4 +104,4 @@ if [[ -n "$face_angle_deg" ]]; then
     args+=(--face_angle_deg "$face_angle_deg")
 fi
 
-python run_aromatic_lining.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_aromatic_lining "${args[@]}"

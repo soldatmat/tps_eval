@@ -74,10 +74,9 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/knn
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting knn_label_transfer ($cmd)..."
-python run_knn_label_transfer.py "$cmd" "${passthru[@]}"
+python -m tps_eval.knn.run_knn_label_transfer "$cmd" "${passthru[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished knn_label_transfer ($cmd)."
 # Propagate python's exit code so a failed run FAILS the SLURM job (else the

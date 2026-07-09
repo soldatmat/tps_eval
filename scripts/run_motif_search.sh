@@ -86,6 +86,5 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/sequence_metrics
 
-python run_motif_search.py "$fasta_path" "${motifs[@]}"
+python -m tps_eval.sequence_metrics.run_motif_search "$fasta_path" "${motifs[@]}"

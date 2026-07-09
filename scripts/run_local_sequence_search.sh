@@ -91,7 +91,6 @@ echo "Using python: $(which python)"
 # Default backend threads to the SLURM allocation when available.
 threads="${threads:-${SLURM_CPUS_PER_TASK:-4}}"
 
-cd src/sequence_metrics
 
 args=("$fasta_path")
 [[ -n "$train_path" ]] && args+=("$train_path")
@@ -103,7 +102,7 @@ args+=(--threads "$threads")
 [[ -n "$topk_save_path" ]] && args+=(--topk_save_path "$topk_save_path")
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting local_sequence_search (backend=${backend:-mmseqs2})..."
-python run_local_sequence_search.py "${args[@]}"
+python -m tps_eval.sequence_metrics.run_local_sequence_search "${args[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished local_sequence_search."
 # Propagate python's exit code so a failed search FAILS the SLURM job (else the

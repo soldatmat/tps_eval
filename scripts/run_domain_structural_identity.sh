@@ -80,7 +80,6 @@ if [[ -z "$known_domain_structures_root" ]]; then
     known_domain_structures_root="$ENZYME_EXPLORER_PATH/data/detected_domains/martsDB_detected_domains/domains"
 fi
 
-cd src/structure_metrics
 
 args=("$structs_dir" "$known_domain_structures_root")
 [[ -n "$save_path" ]] && args+=(--save_path "$save_path")
@@ -89,4 +88,4 @@ args=("$structs_dir" "$known_domain_structures_root")
 [[ -n "$keep_detected_domains" ]] && args+=(--keep_detected_domains "$keep_detected_domains")
 [[ -n "$self_mode" ]] && args+=(--self_mode)
 
-python run_domain_structural_identity.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_domain_structural_identity "${args[@]}"

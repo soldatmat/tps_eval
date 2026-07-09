@@ -81,7 +81,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/sequence_metrics
 
 args=("$fasta_path")
 if [[ -n "$save_path" ]]; then
@@ -97,4 +96,4 @@ if [[ -n "$nogpu_flag" ]]; then
     args+=("$nogpu_flag")
 fi
 
-python run_esm_pseudo_perplexity.py "${args[@]}"
+python -m tps_eval.sequence_metrics.run_esm_pseudo_perplexity "${args[@]}"

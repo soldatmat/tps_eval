@@ -67,12 +67,11 @@ if [[ -z "$SWISSPROT_DIAMOND_DB" ]]; then
     exit 1
 fi
 # TPS_ACCESSIONS defaults to the committed reference file if unset.
-TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/homology_search/tps_uniprot_accessions.txt}"
+TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/tps_eval/homology_search/tps_uniprot_accessions.txt}"
 
 # Default DIAMOND threads to the SLURM allocation when available.
 threads="${threads:-${SLURM_CPUS_PER_TASK:-4}}"
 
-cd src/homology_search
 
 args=("$fasta_path" "$SWISSPROT_DIAMOND_DB" "$TPS_ACCESSIONS" --threads "$threads")
 [[ -n "$save_path" ]] && args+=(--save_path "$save_path")
@@ -80,7 +79,7 @@ args=("$fasta_path" "$SWISSPROT_DIAMOND_DB" "$TPS_ACCESSIONS" --threads "$thread
 [[ -n "$sensitivity" ]] && args+=(--sensitivity "$sensitivity")
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting swissprot_search (DIAMOND blastp)..."
-python run_swissprot_search.py "${args[@]}"
+python -m tps_eval.homology_search.run_swissprot_search "${args[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished swissprot_search."
 # Propagate python's exit code so a failed search FAILS the SLURM job (else the

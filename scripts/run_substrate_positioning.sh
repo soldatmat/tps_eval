@@ -63,7 +63,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/structure_metrics
 
 args=("$structs_dir")
 if [[ -n "$save_path" ]]; then args+=(--save_path "$save_path"); fi
@@ -72,4 +71,4 @@ if [[ -n "$min_substrate_carbons" ]]; then args+=(--min_substrate_carbons "$min_
 if [[ -n "$substrate_resname" ]]; then args+=(--substrate_resname "$substrate_resname"); fi
 if [[ ${#ion_resnames[@]} -gt 0 ]]; then args+=(--ion_resnames "${ion_resnames[@]}"); fi
 
-python run_substrate_positioning.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_substrate_positioning "${args[@]}"

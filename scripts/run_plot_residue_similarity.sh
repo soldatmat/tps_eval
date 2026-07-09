@@ -120,7 +120,7 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 echo "Using python: $(which python)"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting plot_residue_similarity..."
-python -m src.pymol.plot_residue_similarity \
+python -m tps_eval.pymol.plot_residue_similarity \
     --structures_selection_csv "$structures_selection_csv" \
     --structures_root "$structures_root" \
     --known_structures_root "$known_structures_root" \

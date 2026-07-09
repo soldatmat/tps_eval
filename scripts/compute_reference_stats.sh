@@ -6,7 +6,7 @@
 # submit-all orchestrator). It runs the APPLICABLE metric tools on the MARTS-DB
 # known-TPS reference set and aggregates each metric column into summary
 # statistics ("natural TPS" bands), producing the committable reference-stats
-# JSON (src/reference_stats/marts_db_metric_stats.json) that the rest of the
+# JSON (src/tps_eval/reference_stats/marts_db_metric_stats.json) that the rest of the
 # project loads to compare generated designs against the natural distribution.
 #
 # It does NOT reimplement any metric — it submits the existing per-tool SLURM job
@@ -98,7 +98,7 @@ fi
 mkdir -p "$REF_DIR"
 REF_DIR="$(cd "$REF_DIR" && pwd)"
 
-OUTPUT_JSON="$REPO_ROOT/src/reference_stats/marts_db_metric_stats.json"
+OUTPUT_JSON="$REPO_ROOT/src/tps_eval/reference_stats/marts_db_metric_stats.json"
 
 # ---------------------------------------------------------------------------
 # Aggregate-only fast path (no SLURM, runs locally in the tps_eval env).
@@ -199,8 +199,8 @@ else
     echo "=== STRUCTURE metrics SKIPPED (no --structs_dir) ==="
     echo "    Sequence-metric stats only. To add structure stats, supply a dir"
     echo "    of MARTS-DB structures via --structs_dir (see Step-1 report:"
-    echo "    download via src/alphafold/alphafold_struct_downloader.py keyed"
-    echo "    by src/homology_search/tps_uniprot_accessions.txt)."
+    echo "    download via src/tps_eval/alphafold/alphafold_struct_downloader.py keyed"
+    echo "    by src/tps_eval/homology_search/tps_uniprot_accessions.txt)."
 fi
 
 # Build the afterok dependency list of all submitted metric jobs.

@@ -16,7 +16,7 @@ Help()
     echo "Arguments:"
     echo "  --input_dir         Directory holding the per-metric reference CSVs (required)"
     echo "  --output            Output JSON path (optional; default"
-    echo "                      src/reference_stats/marts_db_metric_stats.json)"
+    echo "                      src/tps_eval/reference_stats/marts_db_metric_stats.json)"
     echo "  --reference_name    Reference-set label embedded in the JSON (default marts_db)"
     echo "  --group_by          'reference_id,label' CSV label file for per-class"
     echo "                      stratification (adds a by_<name> block to each metric"
@@ -73,11 +73,10 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/reference_stats
 
 args=("$input_dir")
 [[ -n "$output" ]] && args+=(--output "$output")
 [[ -n "$reference_name" ]] && args+=(--reference_name "$reference_name")
 [[ ${#passthrough[@]} -gt 0 ]] && args+=("${passthrough[@]}")
 
-python aggregate_reference_stats.py "${args[@]}"
+python -m tps_eval.reference_stats.aggregate_reference_stats "${args[@]}"

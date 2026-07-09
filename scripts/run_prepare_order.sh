@@ -1,7 +1,7 @@
 #!/bin/bash
 # Codon-optimize protein designs and add Golden Gate overhangs, producing an order-ready
 # CSV + txt. Standalone ordering utility (NOT part of the eval / submit-all pipeline);
-# runs on a login node. See src/order_preparation/ for the logic.
+# runs on a login node. See src/tps_eval/order_preparation/ for the logic.
 
 USAGE="<input.fasta|input.csv> [-o <output_prefix>] [--organism <name>] [--overhang_type <type>] [--seq-column <col>] [--id-column <col>]   OR   --sequence <AA> [--id <name>]"
 
@@ -83,7 +83,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/order_preparation
 
 out_args=()
 if [[ -n "$output_prefix" ]]; then
@@ -99,7 +98,7 @@ else
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Preparing order from a single --sequence"
 fi
 
-python run_prepare_order.py "${input_args[@]}" "${out_args[@]}" "${passthrough[@]}"
+python -m tps_eval.order_preparation.run_prepare_order "${input_args[@]}" "${out_args[@]}" "${passthrough[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished order preparation (rc=$rc)."
 exit $rc

@@ -101,7 +101,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/esmfold
 
 args=("$fasta_path" --save_dir "$save_dir")
 if [[ -n "$skip_existing_flag" ]]; then
@@ -120,4 +119,4 @@ if [[ -n "$save_pae_flag" ]]; then
     args+=("$save_pae_flag")
 fi
 
-python run_esmfold.py "${args[@]}"
+python -m tps_eval.esmfold.run_esmfold "${args[@]}"

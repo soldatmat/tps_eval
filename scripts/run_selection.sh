@@ -17,8 +17,8 @@ fi
 
 op="$1"; shift
 case "$op" in
-    merge)  entry="run_merge.py"  ;;
-    select) entry="run_select.py" ;;
+    merge)  entry="tps_eval.selection.run_merge"  ;;
+    select) entry="tps_eval.selection.run_select" ;;
     -h|--help)
         echo "Usage: $0 $USAGE"
         exit 0
@@ -40,6 +40,5 @@ conda activate "$TPS_EVAL_ENV"
 # for mmseqs (diversity_dedup) which links the env's libstdc++.
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 
-cd src/selection
-python "$entry" "$@"
+python -m "$entry" "$@"
 exit $?

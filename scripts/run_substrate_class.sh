@@ -66,10 +66,9 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/knn
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting substrate_class..."
-python run_substrate_class.py "${passthru[@]}"
+python -m tps_eval.knn.run_substrate_class "${passthru[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished substrate_class."
 # Propagate python's exit code so a failed run FAILS the SLURM job (else the

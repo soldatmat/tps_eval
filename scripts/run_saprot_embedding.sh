@@ -71,7 +71,7 @@ echo "Using python: $(which python)"
 echo "foldseek: $FOLDSEEK_PATH"
 echo "SaProt repo: $SAPROT_REPO"
 
-python src/saprot/extract_saprot_embeddings.py \
+python -m tps_eval.saprot.extract_saprot_embeddings \
     --structs_dir "$structs_dir" \
     --output_csv "$output_csv" \
     --foldseek "$FOLDSEEK_PATH" \

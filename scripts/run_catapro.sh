@@ -64,7 +64,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/sequence_metrics
 
 args=("$fasta_path")
 if [[ -n "$target_substrate" ]]; then args+=(--target_substrate "$target_substrate"); fi
@@ -75,4 +74,4 @@ if [[ -n "$batch_size" ]]; then args+=(--batch_size "$batch_size"); fi
 if [[ -n "$out_suffix" ]]; then args+=(--out_suffix "$out_suffix"); fi
 if [[ -n "$save_path" ]]; then args+=(--save_path "$save_path"); fi
 
-python run_catapro.py "${args[@]}"
+python -m tps_eval.sequence_metrics.run_catapro "${args[@]}"

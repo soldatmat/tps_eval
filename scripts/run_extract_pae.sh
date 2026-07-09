@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cluster-agnostic wrapper for src/alphafold/extract_pae.py: extract the per-structure
+# Cluster-agnostic wrapper for src/tps_eval/alphafold/extract_pae.py: extract the per-structure
 # PAE matrices (+ pTM/iPTM) from an AlphaFold3 af_output tree into the shared
 # <ID>_pae.npz schema consumed by interdomain_pae / global_confidence. Used as the
 # post-fold step of the orchestrator's `--fold alphafold3` path (after all AF3 jobs).
@@ -47,10 +47,9 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/alphafold
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Extracting AlphaFold3 PAE..."
-python extract_pae.py "${passthru[@]}"
+python -m tps_eval.alphafold.extract_pae "${passthru[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished extract_pae (rc=$rc)."
 # Propagate python's exit code so a failed extraction FAILS the SLURM job (else the

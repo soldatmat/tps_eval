@@ -91,8 +91,7 @@ echo "Using python: $(which python)"
 # PYTHONPATH too in case the env was installed non-editable.
 export PYTHONPATH="$ENZYME_EXPLORER_PATH:${PYTHONPATH:-}"
 
-# Run the python entry from the tool dir (so `import domain_composition` resolves).
-cd src/enzyme_explorer
+# Run the python entry as an installed module (imports resolve via the tps_eval package).
 
 args=("$structs_dir")
 [[ -n "$save_path" ]] && args+=(--save_path "$save_path")
@@ -100,4 +99,4 @@ args=("$structs_dir")
 [[ -n "$n_jobs" ]] && args+=(--n_jobs "$n_jobs")
 [[ -n "$n_iters" ]] && args+=(--n_iters "$n_iters")
 
-python run_domain_composition.py "${args[@]}"
+python -m tps_eval.enzyme_explorer.run_domain_composition "${args[@]}"

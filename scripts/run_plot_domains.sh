@@ -119,7 +119,7 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 echo "Using python: $(which python)"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting plot_domains..."
-python -m src.pymol.plot_domains \
+python -m tps_eval.pymol.plot_domains \
     --structures_selection_csv "$structures_selection_csv" \
     --structures_root "$structures_root" \
     --domain_structures_root "$domain_structures_root" \

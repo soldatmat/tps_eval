@@ -72,10 +72,9 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/specificity
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting sdr_divergence..."
-python run_sdr_divergence.py "$structs_dir" "$known_structs_dir" "${opts[@]}"
+python -m tps_eval.specificity.run_sdr_divergence "$structs_dir" "$known_structs_dir" "${opts[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished sdr_divergence."
 # Propagate python's exit code so a failed run FAILS the SLURM job (else the

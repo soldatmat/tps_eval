@@ -63,5 +63,4 @@ conda activate "$TMPROT_ENV"
 # (required by the env's pandas/numpy/torch C extensions). Prepend the env's own libstdc++.
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 
-cd src/sequence_metrics
-python run_tmprot.py --fasta_path "$fasta_path" ${device:+--device "$device"}
+python -m tps_eval.sequence_metrics.run_tmprot --fasta_path "$fasta_path" ${device:+--device "$device"}

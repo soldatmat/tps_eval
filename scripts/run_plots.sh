@@ -105,7 +105,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/plot
 
 fasta_paths_str="$(IFS=,; echo "${fasta_paths[*]}")"
 data_names_str="$(IFS=,; echo "${data_names[*]}")"
@@ -120,4 +119,4 @@ if [[ -n "$save_dir" ]]; then
     args+=("--save_dir" "$save_dir")
 fi
 
-python run_plots.py "${args[@]}"
+python -m tps_eval.plot.run_plots "${args[@]}"

@@ -88,16 +88,16 @@ DEFAULT_TOP_K = 15
 # carries signal on AF3 holo folds, not ESMFold/apo). Labels are structure-independent
 # (no _esmfold/_af3 split). Release + structure are also recorded inside the band JSONs
 # (marts_db_{esmfold,af3}_metric_stats.json -> structure_source / marts_db_release).
-DEFAULT_KNN_LABEL_FILE = os.path.join(REPO, "src", "knn", "first_cyclization_labels.csv")
+DEFAULT_KNN_LABEL_FILE = os.path.join(REPO, "src", "tps_eval", "knn", "first_cyclization_labels.csv")
 DEFAULT_KNN_CALIBRATION = os.path.join(
-    REPO, "src", "reference_stats", "knn_calibration_first_cyclization_esmfold.json")
+    REPO, "src", "tps_eval", "reference_stats", "knn_calibration_first_cyclization_esmfold.json")
 
 # Default substrate-class combiner reference artifacts (the substrate label file is the
 # MARTS `Type`-derived GPP/FPP/GGPP/... map; its own calibration mirrors the k-NN one but
 # over the substrate label vocabulary).
-DEFAULT_SUBSTRATE_LABEL_FILE = os.path.join(REPO, "src", "knn", "substrate_labels.csv")
+DEFAULT_SUBSTRATE_LABEL_FILE = os.path.join(REPO, "src", "tps_eval", "knn", "substrate_labels.csv")
 DEFAULT_SUBSTRATE_CALIBRATION = os.path.join(
-    REPO, "src", "reference_stats", "knn_calibration_substrate_esmfold.json")
+    REPO, "src", "tps_eval", "reference_stats", "knn_calibration_substrate_esmfold.json")
 
 
 # --------------------------------------------------------------------------- #

@@ -2,7 +2,7 @@
 
 A **funnel** narrows a large design pool to a small ordering set through tiers of escalating
 compute, applying a selection spec between tiers. `scripts/run_funnel.py` chains the metric
-compute (`run_eval_pipeline.py`) and the selection layer (`src/selection/`) tier by tier; the
+compute (`run_eval_pipeline.py`) and the selection layer (`src/tps_eval/selection/`) tier by tier; the
 JSONs here are the version-controlled recipes.
 
 ## Files
@@ -17,7 +17,7 @@ JSONs here are the version-controlled recipes.
      (canonical motif-coordinated Mg + FPP coordination) + novelty gate, quality-ranked
      (`z(mean_plddt)+z(−proteinmpnn_nll)+z(−a3d_avg_score)+z(iptm)`), MMseqs2 diversity-deduped.
   Terminal: order-preparation (yeast codon-opt + Type-3 Golden Gate overhangs).
-- `select_phase{1,2,3}.json` — the per-tier selection specs (consumed by `src/selection`).
+- `select_phase{1,2,3}.json` — the per-tier selection specs (consumed by `src/tps_eval/selection`).
 - `select_substrate_specificity.example.json` — example spec for the `substrate_specificity`
   op: keep designs whose EnzymeExplorer on-target class score ≥ `t_hi` (default 0.5) AND every
   off-target class score ≤ a relaxed ceiling `t_off` (default 0.35). The target defaults to the

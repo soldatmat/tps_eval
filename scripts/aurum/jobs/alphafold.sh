@@ -128,7 +128,7 @@ fi
 if [ -n "$IONS" ]; then
     JOB_ARGS+=" --ions $IONS"
 fi
-python ../../../src/alphafold/prepare_input.py $JOB_ARGS
+python -m tps_eval.alphafold.prepare_input $JOB_ARGS
 
 
 ############################################################
@@ -175,6 +175,6 @@ echo "Converting CIF to PDB for sequence ${SEQUENCE_ID} from ${STRUCT_PATH} to $
 # Use the sanitizing converter (NOT vendor/cif_to_pdb): AF3 holo folds carry a >3-char
 # ligand comp_id (e.g. LIG_B) that overflows PDB's resName field and yields an unparseable
 # .pdb; extract_pdb_files truncates it (LIG_B -> LIG) so every downstream structure tool reads.
-python ../../../src/alphafold/extract_pdb_files.py \
+python -m tps_eval.alphafold.extract_pdb_files \
     --input_cif "$STRUCT_PATH" \
     --output_pdb "$STRUCT_SAVE_PATH"

@@ -2,8 +2,8 @@
 
 # Login-node FAN-OUT driver wrapper for the orchestrator's `--fold alphafold3`.
 # Builds the AlphaFold3 input CSV(s) (apo / Mg / Mg+PPi / Mg+substrate / per-design EE
-# substrate) via src/alphafold/build_cofold_input.py, then runs the existing
-# src/alphafold/run_alphafold_jobs.py for each input group, submitting ONE AF3 SLURM job
+# substrate) via src/tps_eval/alphafold/build_cofold_input.py, then runs the existing
+# src/tps_eval/alphafold/run_alphafold_jobs.py for each input group, submitting ONE AF3 SLURM job
 # per sequence (skipping designs whose <ID>.pdb already exists). The orchestrator's Engine
 # runs THIS script directly (not via sbatch) and parses the SINGLE final line
 #   AlphaFold job IDs: [123, 456]
@@ -76,7 +76,7 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 # Build the AF3 input CSV(s) + manifest (single source of truth for the co-fold encoding).
 # AF3 free-ion/ligand placement is a HYPOTHESIS -- verify the Mg/diphosphate land at the
 # DDXXD/NSE cage downstream (ion_site_check / substrate_positioning).
-build_out=$(python src/alphafold/build_cofold_input.py \
+build_out=$(python -m tps_eval.alphafold.build_cofold_input \
     --fasta "$fasta_path" --cofold "$cofold" --output_dir "$working_directory" \
     ${ee_csv:+--enzymeexplorer_csv "$ee_csv"} 2>&1)
 build_rc=$?
@@ -103,7 +103,7 @@ while IFS=$'\t' read -r csv has_lig n_designs; do
         lig_args+=(--ligand_id_column_names $LIG_ID_COL --ligand_smiles_column_names $LIG_SMILES_COL)
     fi
     echo "[fanout] folding group $(basename "$csv") ($n_designs design(s), ligand=$has_lig)"
-    out=$(python src/alphafold/run_alphafold_jobs.py \
+    out=$(python -m tps_eval.alphafold.run_alphafold_jobs \
         --csv_path "$csv" \
         --working_directory "$working_directory" \
         --use_protein_id_as_filename \

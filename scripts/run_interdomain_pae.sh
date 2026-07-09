@@ -104,8 +104,7 @@ echo "Using python: $(which python)"
 # so run with the EE repo on PYTHONPATH (mirrors run_domain_composition.sh).
 export PYTHONPATH="$ENZYME_EXPLORER_PATH:${PYTHONPATH:-}"
 
-# Run the python entry from the tool dir (so `import interdomain_pae` resolves).
-cd src/structure_metrics
+# Run the python entry as an installed module (imports resolve via the tps_eval package).
 
 args=("$structs_dir" --pae_dir "$pae_dir")
 [[ -n "$save_path" ]] && args+=(--save_path "$save_path")
@@ -114,4 +113,4 @@ args=("$structs_dir" --pae_dir "$pae_dir")
 [[ -n "$n_jobs" ]] && args+=(--n_jobs "$n_jobs")
 [[ -n "$n_iters" ]] && args+=(--n_iters "$n_iters")
 
-python run_interdomain_pae.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_interdomain_pae "${args[@]}"

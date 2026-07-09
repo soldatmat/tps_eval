@@ -91,7 +91,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/sequence_metrics
 
 topk_args=()
 if [[ -n "$top_k" ]]; then
@@ -100,9 +99,9 @@ fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting max_sequence_identity computation..."
 if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
-    python run_max_sequence_identity.py "$fasta_path" "$train_path" "${topk_args[@]}"
+    python -m tps_eval.sequence_metrics.run_max_sequence_identity "$fasta_path" "$train_path" "${topk_args[@]}"
 else
-    python run_max_sequence_identity.py "$fasta_path" "${topk_args[@]}"
+    python -m tps_eval.sequence_metrics.run_max_sequence_identity "$fasta_path" "${topk_args[@]}"
 fi
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."

@@ -75,7 +75,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/structure_metrics
 
 args=(--pae_dir "$pae_dir")
 if [[ -n "$structs_dir" ]]; then
@@ -85,4 +84,4 @@ if [[ -n "$save_path" ]]; then
     args+=(--save_path "$save_path")
 fi
 
-python run_global_confidence.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_global_confidence "${args[@]}"

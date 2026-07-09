@@ -53,7 +53,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/structure_metrics
 
 args=("$structs_dir" "$known_structs_dir")
 if [[ -n "$save_path" ]]; then
@@ -63,4 +62,4 @@ if [[ -n "$top_k" ]]; then
     args+=(--top_k "$top_k")
 fi
 
-python run_structural_identity.py "${args[@]}"
+python -m tps_eval.structure_metrics.run_structural_identity "${args[@]}"

@@ -91,7 +91,6 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-cd src/sequence_metrics
 
 topk_args=()
 if [[ -n "$top_k" ]]; then
@@ -99,9 +98,9 @@ if [[ -n "$top_k" ]]; then
 fi
 
 if [[ -n "$train_embeddings_path" ]] && [[ "$train_embeddings_path" != "" ]]; then
-    python run_min_embedding_distance.py "$embeddings_path" "$train_embeddings_path" "${topk_args[@]}"
+    python -m tps_eval.sequence_metrics.run_min_embedding_distance "$embeddings_path" "$train_embeddings_path" "${topk_args[@]}"
 else
-    python run_min_embedding_distance.py "$embeddings_path" "${topk_args[@]}"
+    python -m tps_eval.sequence_metrics.run_min_embedding_distance "$embeddings_path" "${topk_args[@]}"
 fi
 rc=$?
 

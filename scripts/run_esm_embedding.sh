@@ -60,7 +60,7 @@ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
 echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
 echo "Using python: $(which python)"
 
-python src/esm/extract_embeddings.py \
+python -m tps_eval.esm.extract_embeddings \
     esm1b_t33_650M_UR50S \
     "$fasta_path" \
     --repr_layers 33 \

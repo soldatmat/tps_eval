@@ -4,7 +4,7 @@
 A funnel narrows a large design pool to a small ordering set through several tiers of
 escalating compute (cheap sequence metrics on everything -> ESMFold on thousands -> AF3 holo
 on hundreds), applying a selection spec between tiers. tps_eval already has the per-tier
-COMPUTE (run_eval_pipeline.py) and the SELECTION layer (src/selection); this driver is the
+COMPUTE (run_eval_pipeline.py) and the SELECTION layer (src/tps_eval/selection); this driver is the
 thin connective tissue that chains them and carries survivors forward.
 
 It is deliberately STEPWISE (one `--tier N` invocation at a time), mirroring
@@ -26,7 +26,7 @@ Usage (drive it tier by tier):
 
 Config schema: see scripts/funnels/production_300k.json. Each tier =
 {name, [input], [fold], [af3_cofold], [cluster_override], only:[...tool keys...], select:<spec>.json}.
-Selection specs: see scripts/funnels/select_phaseN.json (consumed by src/selection).
+Selection specs: see scripts/funnels/select_phaseN.json (consumed by src/tps_eval/selection).
 
 Pure stdlib (runs on a login node). It shells out to run_eval_pipeline.py (metrics),
 scripts/run_selection.sh (merge + select, in the tps_eval conda env), and

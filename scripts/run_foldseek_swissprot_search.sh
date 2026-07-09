@@ -62,9 +62,8 @@ if [[ -z "$AFDB_SWISSPROT_DB" ]]; then
     echo "Error: AFDB_SWISSPROT_DB is not set in paths.sh."
     exit 1
 fi
-TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/homology_search/tps_uniprot_accessions.txt}"
+TPS_ACCESSIONS="${TPS_ACCESSIONS:-$(pwd)/src/tps_eval/homology_search/tps_uniprot_accessions.txt}"
 
-cd src/homology_search
 
 args=("$structs_dir" "$AFDB_SWISSPROT_DB" "$TPS_ACCESSIONS")
 [[ -n "$save_path" ]] && args+=(--save_path "$save_path")
@@ -72,7 +71,7 @@ args=("$structs_dir" "$AFDB_SWISSPROT_DB" "$TPS_ACCESSIONS")
 [[ -n "$max_seqs" ]] && args+=(--max_seqs "$max_seqs")
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting foldseek_swissprot_search..."
-python run_foldseek_swissprot_search.py "${args[@]}"
+python -m tps_eval.homology_search.run_foldseek_swissprot_search "${args[@]}"
 rc=$?
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished foldseek_swissprot_search."
 # Propagate python's exit code so a failed search FAILS the SLURM job (else the
