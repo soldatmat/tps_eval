@@ -52,8 +52,8 @@ def load_tps_accessions(path: str) -> frozenset:
     if not os.path.isfile(path):
         raise FileNotFoundError(
             f"TPS accession file not found: {path}. Point TPS_ACCESSIONS in paths.sh "
-            "at src/homology_search/tps_uniprot_accessions.txt (regenerate via the UniProt "
-            "REST query documented in src/homology_search/tps_accessions.py)."
+            "at src/tps_eval/homology_search/tps_uniprot_accessions.txt (regenerate via the UniProt "
+            "REST query documented in src/tps_eval/homology_search/tps_accessions.py)."
         )
     accs: Set[str] = set()
     with open(path) as fh:
