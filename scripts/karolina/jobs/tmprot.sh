@@ -19,4 +19,4 @@ cd "$(dirname "$SCRIPT_PATH")/../.."
 export HF_HOME=/mnt/proj2/fta-26-15/.cache/huggingface
 export TORCH_HOME=/mnt/proj2/fta-26-15/.cache/torch
 
-sh run_tmprot.sh "$@"
+sh tool_wrappers/run_tmprot.sh "$@"

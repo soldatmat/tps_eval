@@ -22,6 +22,6 @@ export TORCH_HOME="$TPS_EVAL_ROOT/.cache/torch"
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_proteinmpnn_score.sh with args: $args"
-sh run_proteinmpnn_score.sh $args
+sh tool_wrappers/run_proteinmpnn_score.sh $args
 
 clean_scratch

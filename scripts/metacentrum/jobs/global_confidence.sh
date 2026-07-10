@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_global_confidence.sh with args: $args"
-sh run_global_confidence.sh $args
+sh tool_wrappers/run_global_confidence.sh $args
 
 clean_scratch

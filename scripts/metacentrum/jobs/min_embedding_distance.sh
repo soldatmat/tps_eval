@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_min_embedding_distance.sh with args: $args"
-sh run_min_embedding_distance.sh $args
+sh tool_wrappers/run_min_embedding_distance.sh $args
 
 clean_scratch

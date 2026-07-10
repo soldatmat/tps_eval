@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_interdomain_pae.sh with args: $args"
-sh run_interdomain_pae.sh $args
+sh tool_wrappers/run_interdomain_pae.sh $args
 
 clean_scratch

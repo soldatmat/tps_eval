@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_structural_identity.sh with args: $args"
-sh run_structural_identity.sh $args
+sh tool_wrappers/run_structural_identity.sh $args
 
 clean_scratch

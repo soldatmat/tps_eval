@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_plots.sh with args: $args"
-sh run_plots.sh $args
+sh tool_wrappers/run_plots.sh $args
 
 clean_scratch

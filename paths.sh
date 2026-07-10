@@ -36,7 +36,7 @@ SOLUPROT_ENV="soluprot" # SoluProt conda environment name
 
 # CataPro (enzyme kinetics; vendored at vendor/CataPro) and TmProt (melting temperature;
 # vendored at vendor/TmProt) each run in their own conda env, created by
-# scripts/setup_catapro.sh / scripts/setup_tmprot.sh. Env NAMES only — the code is vendored
+# scripts/setup/setup_catapro.sh / scripts/setup/setup_tmprot.sh. Env NAMES only — the code is vendored
 # in-repo, so (unlike SoluProt) there is no external _PATH to set.
 CATAPRO_ENV="catapro" # CataPro conda environment name
 TMPROT_ENV="tmprot"   # TmProt conda environment name

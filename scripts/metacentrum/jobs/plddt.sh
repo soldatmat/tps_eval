@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_plddt.sh with args: $args"
-sh run_plddt.sh $args
+sh tool_wrappers/run_plddt.sh $args
 
 clean_scratch

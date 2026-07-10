@@ -18,4 +18,4 @@
 SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}')
 cd $(dirname "$SCRIPT_PATH")/../..
 
-sh run_tmprot.sh "$@"
+sh tool_wrappers/run_tmprot.sh "$@"

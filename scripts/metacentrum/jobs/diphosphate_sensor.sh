@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_diphosphate_sensor.sh with args: $args"
-sh run_diphosphate_sensor.sh $args
+sh tool_wrappers/run_diphosphate_sensor.sh $args
 
 clean_scratch

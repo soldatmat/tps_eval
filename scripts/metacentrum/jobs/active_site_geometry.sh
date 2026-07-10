@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_active_site_geometry.sh with args: $args"
-sh run_active_site_geometry.sh $args
+sh tool_wrappers/run_active_site_geometry.sh $args
 
 clean_scratch

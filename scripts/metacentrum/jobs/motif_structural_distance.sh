@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_motif_structural_distance.sh with args: $args"
-sh run_motif_structural_distance.sh $args
+sh tool_wrappers/run_motif_structural_distance.sh $args
 
 clean_scratch

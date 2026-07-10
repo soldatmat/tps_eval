@@ -1,7 +1,7 @@
 # tps_eval tools reference
 
 End-user documentation for every evaluation tool in `tps_eval`. Each tool follows
-the repo's 3-layer shape (cluster-agnostic `scripts/run_<tool>.sh` → per-cluster
+the repo's 3-layer shape (cluster-agnostic `scripts/tool_wrappers/run_<tool>.sh` → per-cluster
 `scripts/<cluster>/jobs/<tool>.sh` → `src/<subdir>/run_<tool>.py`) and writes a
 **CSV keyed by `ID`** so metrics compose/merge for filtration.
 
@@ -28,7 +28,7 @@ EnzymeExplorer uses `enzyme_explorer`.
 ### motif_search
 - **Purpose** — Flag presence of the two class-I TPS metal-binding motifs (the aspartate-rich DDXXD family and the NSE/DTE second triad) per sequence.
 - **Inputs** — FASTA.
-- **Output** — `<fasta>_motifs.csv`. Columns: `ID`, `sequence`, and one **boolean column per motif regex**. Default regexes (`scripts/run_motif_search.sh`): `DD..D` (strict), `D[DE]..[DE]`, `[DE][DE]..[DE]` (graded relaxations of DDXXD that tolerate conservative D→E substitutions), and `(N|D)D(L|I|V).(S|T)...E` (NSE/DTE). Extra motifs can be passed as positional args.
+- **Output** — `<fasta>_motifs.csv`. Columns: `ID`, `sequence`, and one **boolean column per motif regex**. Default regexes (`scripts/tool_wrappers/run_motif_search.sh`): `DD..D` (strict), `D[DE]..[DE]`, `[DE][DE]..[DE]` (graded relaxations of DDXXD that tolerate conservative D→E substitutions), and `(N|D)D(L|I|V).(S|T)...E` (NSE/DTE). Extra motifs can be passed as positional args.
 - **Method** — Compiles each motif string as a regex and records `bool(regex.search(seq))` per sequence. The relaxed DDXXD variants are nested supersets and kept as separate columns to grade hits.
 - **External dependency** — none (stdlib `re` + pandas).
 - **Env + source** — `tps_eval`; [`src/tps_eval/sequence_metrics/motif_search.py`](../src/tps_eval/sequence_metrics/motif_search.py). Motif definitions are centralized in [`motif_localization.py`](../src/tps_eval/sequence_metrics/motif_localization.py).
@@ -78,24 +78,24 @@ EnzymeExplorer uses `enzyme_explorer`.
 - **Inputs** — FASTA.
 - **Output** — `<fasta>_soluprot.csv`, keyed by id, with SoluProt's predicted solubility score (the `soluble` target consumed by the plots). Exact column names come from the external SoluProt tool, not this repo.
 - **Method** — Shells out to the external SoluProt predictor (gradient-boosted model over sequence/HMM features); needs USEARCH + TMHMM helpers and a per-job tmp dir.
-- **External dependency** — [SoluProt](https://loschmidt.chemi.muni.cz/soluprot/) (Hon et al. 2021, *Bioinformatics*). Standalone install via `scripts/setup_soluprot.sh`; path/env set in `paths.sh` (`SOLUPROT_PATH`, `SOLUPROT_ENV`).
-- **Env + source** — `soluprot`; wrapper [`scripts/run_soluprot.sh`](../scripts/run_soluprot.sh) (external tool, no `src/` module).
+- **External dependency** — [SoluProt](https://loschmidt.chemi.muni.cz/soluprot/) (Hon et al. 2021, *Bioinformatics*). Standalone install via `scripts/setup/setup_soluprot.sh`; path/env set in `paths.sh` (`SOLUPROT_PATH`, `SOLUPROT_ENV`).
+- **Env + source** — `soluprot`; wrapper [`scripts/tool_wrappers/run_soluprot.sh`](../scripts/tool_wrappers/run_soluprot.sh) (external tool, no `src/` module).
 
 ### tmprot
 - **Purpose** — Predicted melting temperature (Tm) of each sequence — a sequence-based thermostability signal (orthogonal to `soluprot` solubility and structure-based `aggregation`).
 - **Inputs** — FASTA.
 - **Output** — `<fasta>_tmprot.csv`, keyed by `ID`. Column: `tm` (predicted Tm in °C; the `tm` plot target). RAW value only — TmProt's threshold-based `Thermostable` flag and `Rank` are dropped (thresholds/bands are applied downstream). Sequences TmProt cannot score (<20 AA, >2000 AA, or non-standard residues) get a NaN row.
 - **Method** — ESM-2 (650M) fine-tuned with a LoRA adapter (the deployed "ESM2-LoRA" strategy); the base ESM-2 downloads from HuggingFace, the LoRA adapter is bundled in the vendored package.
-- **External dependency** — [TmProt](https://loschmidt.chemi.muni.cz/tmprot/) (Loschmidt Laboratories). VENDORED at `vendor/TmProt`; its standalone CLI is installed editable via `scripts/setup_tmprot.sh` (`pip install -e vendor/TmProt/tmprot-1.0`); env name in `paths.sh` (`TMPROT_ENV`). Like `aggrescan3d`, a `git submodule update` de-registers the editable install — re-run `setup_tmprot.sh` after bumping the pin.
-- **Env + source** — `tmprot`; wrapper [`scripts/run_tmprot.sh`](../scripts/run_tmprot.sh); reshaper [`src/tps_eval/sequence_metrics/tmprot.py`](../src/tps_eval/sequence_metrics/tmprot.py).
+- **External dependency** — [TmProt](https://loschmidt.chemi.muni.cz/tmprot/) (Loschmidt Laboratories). VENDORED at `vendor/TmProt`; its standalone CLI is installed editable via `scripts/setup/setup_tmprot.sh` (`pip install -e vendor/TmProt/tmprot-1.0`); env name in `paths.sh` (`TMPROT_ENV`). Like `aggrescan3d`, a `git submodule update` de-registers the editable install — re-run `setup_tmprot.sh` after bumping the pin.
+- **Env + source** — `tmprot`; wrapper [`scripts/tool_wrappers/run_tmprot.sh`](../scripts/tool_wrappers/run_tmprot.sh); reshaper [`src/tps_eval/sequence_metrics/tmprot.py`](../src/tps_eval/sequence_metrics/tmprot.py).
 
 ### catapro
 - **Purpose** — Predicted steady-state enzyme kinetics — turnover number (kcat), Michaelis constant (Km), and catalytic efficiency (kcat/Km) — of each sequence acting on ONE substrate: the campaign `--target_substrate`.
 - **Inputs** — FASTA + a substrate. The substrate SMILES is resolved from `--target_substrate` via `alphafold.cofold_substrates.SUBSTRATE_SMILES` (or given directly with `--smiles`). One campaign targets one substrate, so designs are scored on the target only; the MARTS-DB reference bands instead sweep the full substrate panel (`<ref>_catapro_<SUB>.csv` per substrate, via `compute_reference_stats.sh`).
 - **Output** — `<fasta>_catapro.csv` (band panel: `<fasta>_catapro_<SUB>.csv`), keyed by `ID`. Columns: `catapro_kcat` (s⁻¹), `catapro_km` (mM), `catapro_kcat_km` (s⁻¹·mM⁻¹) — absolute values (10^ of CataPro's native log10 output; HIGHER kcat / kcat_km = more active on that substrate) — plus `catapro_substrate` (provenance). A substrate with no known SMILES (EDSQ / 2xGGPP / IDS) or an unset target yields NaN rows without invoking the model; sequences CataPro drops also get a NaN row.
 - **Method** — ProtT5 (enzyme) + MolT5 (substrate) + MACCS fingerprint features → a 10-fold model ensemble averaged per parameter. Trained on BRENDA/SABIO-RK kinetics; treat prenyl-PP TPS values as a RELATIVE signal (the training set is general-enzyme, so TPS substrates are somewhat out-of-distribution).
-- **External dependency** — [CataPro](https://github.com/zchwang/CataPro) (Wang et al. 2025, *Nat. Commun.*); backbones [ProtT5-XL-UniRef50](https://huggingface.co/Rostlab/prot_t5_xl_uniref50) + [MolT5](https://huggingface.co/laituan245/molt5-base-smiles2caption). VENDORED at `vendor/CataPro`; conda env + backbone weights installed via `scripts/setup_catapro.sh`; env name in `paths.sh` (`CATAPRO_ENV`).
-- **Env + source** — `catapro`; wrapper [`scripts/run_catapro.sh`](../scripts/run_catapro.sh); reshaper [`src/tps_eval/sequence_metrics/catapro.py`](../src/tps_eval/sequence_metrics/catapro.py).
+- **External dependency** — [CataPro](https://github.com/zchwang/CataPro) (Wang et al. 2025, *Nat. Commun.*); backbones [ProtT5-XL-UniRef50](https://huggingface.co/Rostlab/prot_t5_xl_uniref50) + [MolT5](https://huggingface.co/laituan245/molt5-base-smiles2caption). VENDORED at `vendor/CataPro`; conda env + backbone weights installed via `scripts/setup/setup_catapro.sh`; env name in `paths.sh` (`CATAPRO_ENV`).
+- **Env + source** — `catapro`; wrapper [`scripts/tool_wrappers/run_catapro.sh`](../scripts/tool_wrappers/run_catapro.sh); reshaper [`src/tps_eval/sequence_metrics/catapro.py`](../src/tps_eval/sequence_metrics/catapro.py).
 
 ### enzyme_explorer_sequence_only
 - **Purpose** — Sequence-only TPS classification — per-class probabilities that a sequence is a terpene synthase, without needing a structure.
@@ -103,7 +103,7 @@ EnzymeExplorer uses `enzyme_explorer`.
 - **Output** — `<fasta>_enzyme_explorer_sequence_only.csv`. Schema (from EnzymeExplorer's `predict_sequences_only` console script): `id`, `sequence`, `<class>_score`, `<class>_p_calibrated`. The plots consume the calibrated TPS probability as the `isTPS_seq` target.
 - **Method** — Runs EnzymeExplorer's protein-language-model classifier (`predict_sequences_only`) with its bundled checkpoints + calibration.
 - **External dependency** — [EnzymeExplorer](https://github.com/SamusRam/EnzymeExplorer) (revision branch). Installed via its own `scripts/setup_env.sh`; path/env in `paths.sh`.
-- **Env + source** — `enzyme_explorer`; wrapper [`scripts/run_enzyme_explorer_sequence_only.sh`](../scripts/run_enzyme_explorer_sequence_only.sh).
+- **Env + source** — `enzyme_explorer`; wrapper [`scripts/tool_wrappers/run_enzyme_explorer_sequence_only.sh`](../scripts/tool_wrappers/run_enzyme_explorer_sequence_only.sh).
 
 ### swissprot_search
 - **Purpose** — Broad off-target / specificity check: what *else* does each generated sequence look like? Each top hit is labelled TPS vs non-TPS to flag function drift. Gen-only (real train TPS are trivially TPS hits).
@@ -300,7 +300,7 @@ These produce the `structs/` dir of `<ID>.pdb` consumed unchanged by the structu
 - **Output** — One `<ID>.pdb` per FASTA record in the structs dir (ID = record id = filename stem), mirroring the AlphaFold `structs/` layout, plus one `<ID>_pae.npz` per record in the PAE dir (consumed by `global_confidence` + `interdomain_pae`). Per-residue pLDDT is written to the B-factor field, rescaled 0–1 → 0–100 so `plddt` reads it.
 - **Method** — Runs `facebook/esmfold_v1` (HuggingFace transformers); sequences > ~600 aa trigger chunked attention to bound GPU memory. When driven by the orchestrator, the pipeline derives `<gen>_esmfold_structs/` + `<gen>_esmfold_structs_pae/` and makes every structure Step depend on the `esmfold_gen` producer.
 - **External dependency** — [ESMFold](https://github.com/facebookresearch/esm) / `facebook/esmfold_v1` (Lin et al. 2023, *Science*).
-- **Env + source** — `esmfold`; [`src/tps_eval/esmfold/esmfold.py`](../src/tps_eval/esmfold/esmfold.py) (wrapper `scripts/run_esmfold.sh`).
+- **Env + source** — `esmfold`; [`src/tps_eval/esmfold/esmfold.py`](../src/tps_eval/esmfold/esmfold.py) (wrapper `scripts/tool_wrappers/run_esmfold.sh`).
 
 ---
 
@@ -314,7 +314,7 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Output** — Feature CSV keyed by `id` (PDB filename stem): first column `id`, then embedding dims `0..1279` (mean-pooled layer-output over real residues, excluding BOS/EOS). Failed structures are skipped (reported, not NaN rows).
 - **Method** — For each PDB, SaProt's `get_struc_seq` shells out to foldseek to build the structure-aware (SA) token sequence (AA + 3Di interleaved; `plddt_mask="auto"` masks low-pLDDT residues only for self-identifying AlphaFold PDBs, so ESMFold PDBs are unmasked), then runs `EsmForMaskedLM` and mean-pools `last_hidden_state` over real residues. Mirrors `src/tps_eval/esm/extract_embeddings.py` conventions (first column `id`, then dims `0..D-1`).
 - **External dependency** — [SaProt](https://github.com/westlake-repl/SaProt) (Su et al., *ICLR* 2024), model `westlake-repl/SaProt_650M_AF2` (ESM-2 650M backbone, vocab = AA × 3Di); [foldseek](https://github.com/steineggerlab/foldseek) (3Di tokens); HuggingFace transformers.
-- **Env + source** — `saprot` (separate env; defaults point at the Karolina shared-project install); [`src/tps_eval/saprot/extract_saprot_embeddings.py`](../src/tps_eval/saprot/extract_saprot_embeddings.py) (wrapper [`scripts/run_saprot_embedding.sh`](../scripts/run_saprot_embedding.sh)).
+- **Env + source** — `saprot` (separate env; defaults point at the Karolina shared-project install); [`src/tps_eval/saprot/extract_saprot_embeddings.py`](../src/tps_eval/saprot/extract_saprot_embeddings.py) (wrapper [`scripts/tool_wrappers/run_saprot_embedding.sh`](../scripts/tool_wrappers/run_saprot_embedding.sh)).
 
 ### ee_domain_features
 - **Purpose** — EnzymeExplorer **domain-comparison** features: the structure/function feature block of EE's production model (`PlmDomainsRandomForest__tps_esm-1v-subseq_..._domains_subset`). Each detected TPS structural domain is compared to EE's curated reference functional-domain modules by foldseek TM-score, yielding a per-protein `1 − TM-score` profile over the production `domains_subset` modules.
@@ -350,7 +350,7 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Output** — An `<input>_enzyme_explorer/` output *directory* (the revision-branch `predict_with_structures` schema — no longer a single `_enzyme_explorer.csv`). The plots consume the TPS probability as the `isTPS` target.
 - **Method** — Runs EnzymeExplorer's structure-aware predictor (`predict_with_structures`), combining the PLM classifier with structural domain features.
 - **External dependency** — [EnzymeExplorer](https://github.com/SamusRam/EnzymeExplorer) (revision branch).
-- **Env + source** — `enzyme_explorer`; wrapper [`scripts/run_enzyme_explorer.sh`](../scripts/run_enzyme_explorer.sh).
+- **Env + source** — `enzyme_explorer`; wrapper [`scripts/tool_wrappers/run_enzyme_explorer.sh`](../scripts/tool_wrappers/run_enzyme_explorer.sh).
 
 ---
 
@@ -370,7 +370,7 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Output** — Per-design PNGs (and optional `.pse` PyMOL sessions) under `--output_root`.
 - **Method** — Loads each full structure and its per-domain PDBs in PyMOL, colors/overlays the detected domains, and ray-traces images.
 - **External dependency** — PyMOL (`pymol-open-source` by default; see README "licensed PyMOL Incentive").
-- **Env + source** — `tps_eval`; `src/tps_eval/pymol/plot_domains.py` (wrapper [`scripts/run_plot_domains.sh`](../scripts/run_plot_domains.sh)).
+- **Env + source** — `tps_eval`; `src/tps_eval/pymol/plot_domains.py` (wrapper [`scripts/tool_wrappers/run_plot_domains.sh`](../scripts/tool_wrappers/run_plot_domains.sh)).
 
 ### plot_residue_similarity
 - **Purpose** — For each (query, matched-known) pair, render PyMOL images coloring the new structure by per-residue sequence similarity (BLOSUM90) to its matched known structure, plus a side-by-side alignment (visual companion to `structural_identity`). Standalone.
@@ -378,7 +378,7 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Output** — Per-pair PNGs (and optional `.pse` sessions) under `--output_root`.
 - **Method** — Aligns each query to its matched known structure, scores per-residue BLOSUM90 similarity, and colors/ray-traces the structure plus an alignment view in PyMOL.
 - **External dependency** — PyMOL; BLOSUM90.
-- **Env + source** — `tps_eval`; `src/tps_eval/pymol/plot_residue_similarity.py` (wrapper [`scripts/run_plot_residue_similarity.sh`](../scripts/run_plot_residue_similarity.sh)).
+- **Env + source** — `tps_eval`; `src/tps_eval/pymol/plot_residue_similarity.py` (wrapper [`scripts/tool_wrappers/run_plot_residue_similarity.sh`](../scripts/tool_wrappers/run_plot_residue_similarity.sh)).
 
 ### run_visualization
 - **Purpose** — Dataset-level **landscape-map** visualization: project a whole protein set (MARTS-DB-style) into 2D from any representation and render it coloured by first-cyclization class, with a carbon-ordered substrate-type palette so the ESM / SaProt / EE / active-site / similarity maps are directly comparable. Standalone (not orchestrator-wired). Distinct from `plots` (per-design metric-comparison charts) and the `src/tps_eval/pymol/` 3D renders — this lays out a *dataset* in 2D representation space.
@@ -398,7 +398,7 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 - **Output** — `predict`: CSV keyed by `ID` with `predicted_label`, `confidence` (calibrated), and per space `predicted_label_<space>`, `conf_<space>`, `nn_similarity_<space>`. Designs below τ in **all** spaces **abstain** (`predicted_label = "unknown"`, `confidence = 0`) — novel designs should land here. `calibrate`: a committable JSON artifact (`src/tps_eval/reference_stats/knn_calibration_<labeling>.json`) with per-space + ensemble accuracy, the chosen τ, and the binned nn_similarity→P(correct) calibration curve.
 - **Method** — Per space: convert each neighbour's score to a similarity in [0,1] (`identity%/100`; TM-score as-is; embedding distance → `1/(1+d)`), strip the foldseek `_<chain>` suffix from structural `neighbour_id` (only when the stripped stem is a known label id) before joining to the label file, **ignore neighbours below a space-specific τ** (abstain if none qualify), distance-weight the vote, and normalize to a per-class posterior (argmax = predicted). Confidence = `winning_fraction × top-k_agreement × nearest-neighbour_similarity`, reported **calibrated** via the LOO curve. Ensemble = average of the per-space posteriors (each space's argmax contributes only when it does not abstain). Calibration: leave-one-out over the labeled MARTS-DB set (self top-k **excluding self**), measuring accuracy vs nearest-neighbour similarity per space and ensembled; τ is the lowest nn_similarity at which empirical P(correct) ≥ `--target_accuracy` (default 0.5), floored at the literature prior (≈40 % identity for class transfer, TM≈0.5 fold floor; embedding has no prior so it is purely empirical).
 - **External dependency** — none for the transfer itself (pandas/numpy); the top-k CSVs come from the three existing tools. The first-cyclization label file is derived from the companion `tps-first-cyclization-knn` table via [`make_first_cyclization_labels.py`](../src/tps_eval/knn/make_first_cyclization_labels.py).
-- **Env + source** — `tps_eval`; [`src/tps_eval/knn/knn_label_transfer.py`](../src/tps_eval/knn/knn_label_transfer.py) (logic) + [`run_knn_label_transfer.py`](../src/tps_eval/knn/run_knn_label_transfer.py) (argv) + [`scripts/run_knn_label_transfer.sh`](../scripts/run_knn_label_transfer.sh).
+- **Env + source** — `tps_eval`; [`src/tps_eval/knn/knn_label_transfer.py`](../src/tps_eval/knn/knn_label_transfer.py) (logic) + [`run_knn_label_transfer.py`](../src/tps_eval/knn/run_knn_label_transfer.py) (argv) + [`scripts/tool_wrappers/run_knn_label_transfer.sh`](../scripts/tool_wrappers/run_knn_label_transfer.sh).
 
 ### sdr_divergence
 - **Purpose** — Flags designs that are **globally close to a known-product TPS but diverge at the specificity-determining active-site residues** — the TEAS/HPS single-residue-switch regime that global-similarity transfer misses. The companion negative-filter to the k-NN.

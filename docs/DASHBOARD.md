@@ -8,11 +8,11 @@ of the eval / submit-all pipeline. Runs locally (Python stdlib only, no conda en
 
 ```sh
 # one design set:
-scripts/run_build_dashboard.sh --designs '[name=]path[,path2,...]' [--bands <json...>] [--output <out.html>]
+scripts/tool_wrappers/run_build_dashboard.sh --designs '[name=]path[,path2,...]' [--bands <json...>] [--output <out.html>]
 # several sets (repeat --designs; each becomes a distinctly-outlined overlay):
-scripts/run_build_dashboard.sh --designs 'rfdiffusion=run1/' --designs 'esm3=run2/metrics.csv'
+scripts/tool_wrappers/run_build_dashboard.sh --designs 'rfdiffusion=run1/' --designs 'esm3=run2/metrics.csv'
 # reference-only / demo:
-scripts/run_build_dashboard.sh            # bands only
+scripts/tool_wrappers/run_build_dashboard.sh            # bands only
 python3 -m tps_eval.dashboard.build_dashboard --demo   # synthetic overlay
 ```
 
@@ -147,4 +147,4 @@ needed — any column that exists in both is overlaid, the rest are ignored.
   `null` so the embedded JSON is strict.
 - `src/tps_eval/dashboard/template.html` — the editable HTML/CSS/JS (vanilla, SVG charts, no
   external dependencies).
-- `scripts/run_build_dashboard.sh` — the standard wrapper.
+- `scripts/tool_wrappers/run_build_dashboard.sh` — the standard wrapper.

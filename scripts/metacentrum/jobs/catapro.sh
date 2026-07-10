@@ -22,6 +22,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_catapro.sh with args: $args"
-sh run_catapro.sh $args
+sh tool_wrappers/run_catapro.sh $args
 
 clean_scratch

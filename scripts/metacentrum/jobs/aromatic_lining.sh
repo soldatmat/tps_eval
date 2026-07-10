@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_aromatic_lining.sh with args: $args"
-sh run_aromatic_lining.sh $args
+sh tool_wrappers/run_aromatic_lining.sh $args
 
 clean_scratch

@@ -21,4 +21,4 @@ cd $(dirname "$SCRIPT_PATH")/../..
 # dir, NOT $HOME. Edit to a NFS-IB project path; falls back to the default cache.
 export HF_HOME="${HF_HOME:-/home/soldat/documents/.cache/huggingface}"
 
-sh run_esmfold.sh "$@"
+sh tool_wrappers/run_esmfold.sh "$@"

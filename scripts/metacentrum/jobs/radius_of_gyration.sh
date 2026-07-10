@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_radius_of_gyration.sh with args: $args"
-sh run_radius_of_gyration.sh $args
+sh tool_wrappers/run_radius_of_gyration.sh $args
 
 clean_scratch

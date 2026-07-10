@@ -20,4 +20,4 @@ cd $(dirname "$SCRIPT_PATH")/../..
 # ESMFold weights cache off $HOME (set HF_HOME, same as esmfold.sh).
 export HF_HOME="${HF_HOME:-/home/soldat/documents/.cache/huggingface}"
 
-sh run_self_consistency.sh "$@"
+sh tool_wrappers/run_self_consistency.sh "$@"

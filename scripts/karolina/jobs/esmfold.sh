@@ -20,4 +20,4 @@ cd "$(dirname "$SCRIPT_PATH")/../.."
 # this, transformers tries to write into a full $HOME and fails.
 export HF_HOME=/mnt/proj2/fta-26-15/.cache/huggingface
 
-sh run_esmfold.sh "$@"
+sh tool_wrappers/run_esmfold.sh "$@"

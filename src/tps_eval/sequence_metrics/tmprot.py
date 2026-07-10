@@ -5,7 +5,7 @@ from __future__ import annotations
 # TmProt (Loschmidt Laboratories) predicts a protein's melting temperature from
 # sequence alone, using ESM-2 (650M) fine-tuned with a LoRA adapter. It is
 # vendored at vendor/TmProt and its standalone CLI (`tmprot`) is installed into
-# the TMPROT_ENV conda env via scripts/setup_tmprot.sh
+# the TMPROT_ENV conda env via scripts/setup/setup_tmprot.sh
 # (`pip install -e vendor/TmProt/tmprot-1.0`).
 #
 # Implementation: shell out to the installed `tmprot` console command once for

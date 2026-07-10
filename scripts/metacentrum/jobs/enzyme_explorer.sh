@@ -24,4 +24,4 @@ export TORCH_HOME="$ENZYME_EXPLORER_SEQUENCE_ONLY_PATH/data/torch_cache"
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_enzyme_explorer.sh with args: $args"
-sh run_enzyme_explorer.sh $args
+sh tool_wrappers/run_enzyme_explorer.sh $args

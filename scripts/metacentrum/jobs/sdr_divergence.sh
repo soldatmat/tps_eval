@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_sdr_divergence.sh with args: $args"
-sh run_sdr_divergence.sh $args
+sh tool_wrappers/run_sdr_divergence.sh $args
 
 clean_scratch

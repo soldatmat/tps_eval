@@ -17,4 +17,4 @@ cd "$(dirname "$SCRIPT_PATH")/../.."
 # ESMFold weights cache off $HOME (set HF_HOME, same as Karolina esmfold.sh).
 export HF_HOME=/mnt/proj2/fta-26-15/.cache/huggingface
 
-sh run_self_consistency.sh "$@"
+sh tool_wrappers/run_self_consistency.sh "$@"

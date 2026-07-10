@@ -13,4 +13,4 @@ SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}'
 cd "$(dirname "$SCRIPT_PATH")/../.."
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-20}"
-sh run_max_sequence_identity.sh "$@"
+sh tool_wrappers/run_max_sequence_identity.sh "$@"

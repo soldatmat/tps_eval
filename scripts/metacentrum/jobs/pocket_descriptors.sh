@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_pocket_descriptors.sh with args: $args"
-sh run_pocket_descriptors.sh $args
+sh tool_wrappers/run_pocket_descriptors.sh $args
 
 clean_scratch

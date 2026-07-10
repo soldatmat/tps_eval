@@ -22,6 +22,6 @@ export TORCH_HOME="$TPS_EVAL_ROOT/.cache/torch"
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_esm_pseudo_perplexity.sh with args: $args"
-sh run_esm_pseudo_perplexity.sh $args
+sh tool_wrappers/run_esm_pseudo_perplexity.sh $args
 
 clean_scratch

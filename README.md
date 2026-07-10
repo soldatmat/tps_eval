@@ -1,6 +1,6 @@
 # Pipeline for in silico evaluation of proteins on computational clusters
 - Use `tps_eval/scripts/submit_job.sh` to submit jobs on any cluster.
-- Every evaluation tool has its main run script created as `tps_eval/scripts/run_<tool_name>`.
+- Every evaluation tool has its main run script created as `tps_eval/scripts/tool_wrappers/run_<tool_name>`.
 - The main run script can be run from a job script on a computational cluster created as `tps_eval/scripts/<cluster>/jobs/<tool_name>.sh`.
 
 # Tools
@@ -75,7 +75,7 @@ The table below summarizes each tool; **full per-tool documentation** (inputs, o
 | Tool | Branch | Description | Output |
 |------|--------|-------------|--------|
 | [plots](docs/TOOLS.md#plots) | aggregator | Merges all enabled metrics into comparison plots. Effectively always on unless excluded. | plot images in `--save_dir` |
-| [dashboard](docs/DASHBOARD.md) | aggregator | Builds the interactive, self-contained **natural-bands HTML dashboard** with the design batch overlaid on the committed MARTS-DB reference bands (design metrics with no band are still shown). Default last pipeline step; also standalone via `scripts/run_build_dashboard.sh`. Effectively always on unless excluded. | `dashboard/<gen>_dashboard.html` |
+| [dashboard](docs/DASHBOARD.md) | aggregator | Builds the interactive, self-contained **natural-bands HTML dashboard** with the design batch overlaid on the committed MARTS-DB reference bands (design metrics with no band are still shown). Default last pipeline step; also standalone via `scripts/tool_wrappers/run_build_dashboard.sh`. Effectively always on unless excluded. | `dashboard/<gen>_dashboard.html` |
 | [plot_domains](docs/TOOLS.md#plot_domains) | visualization | PyMOL images of detected domains overlaid on the structure. Standalone. | PNGs / `.pse` |
 | [plot_residue_similarity](docs/TOOLS.md#plot_residue_similarity) | visualization | PyMOL images coloring a design by residue similarity to its matched known structure. Standalone. | PNGs / `.pse` |
 | [run_visualization](docs/TOOLS.md#run_visualization) | visualization | Dataset-level class-coloured 2D landscape map of a protein set from any representation (PCA / t-SNE / UMAP / PaCMAP / PCoA; vectors or precomputed distances). Standalone. | PNG figure(s) at `--output` |
@@ -130,23 +130,23 @@ If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your 
 ## Optional: SoluProt
 SoluProt (solubility predictor, used by `run_soluprot.sh`) is not a pip/conda package — it's a standalone download plus an old py3.7 conda env and two external binaries (USEARCH, TMHMM). A helper script automates the parts that can be automated:
 ```sh
-./scripts/setup_soluprot.sh [install_dir]        # env + SoluProt code + 64-bit USEARCH
+./scripts/setup/setup_soluprot.sh [install_dir]  # env + SoluProt code + 64-bit USEARCH
 ```
-It creates the `soluprot` env from `scripts/soluprot_environment.yml` (python 3.7, scikit-learn 0.20.1 — pinned, from the anaconda `defaults` channel), downloads the SoluProt standalone, and fetches a **64-bit** USEARCH v11 (public domain, via `rcedgar/usearch_old_binaries`; the legacy 32-bit `usearch11...i86linux32` will not run on modern x86-64 compute nodes). **TMHMM 2.0 remains manual** (academic license: DTU or `git.loschmidt.cz/misc/tmhmm`) — the script prints the exact unpack location and the `#!/usr/bin/env perl` shebang fix; use its 64-bit `bin/decodeanhmm.Linux_x86_64`. After running, set `SOLUPROT_PATH` / `SOLUPROT_ENV` in `paths.sh`. A Karolina-adapted variant (project-storage paths, cache redirects, `envs_dirs`) lives at `scripts/karolina/setup_soluprot.sh`.
+It creates the `soluprot` env from `scripts/setup/soluprot_environment.yml` (python 3.7, scikit-learn 0.20.1 — pinned, from the anaconda `defaults` channel), downloads the SoluProt standalone, and fetches a **64-bit** USEARCH v11 (public domain, via `rcedgar/usearch_old_binaries`; the legacy 32-bit `usearch11...i86linux32` will not run on modern x86-64 compute nodes). **TMHMM 2.0 remains manual** (academic license: DTU or `git.loschmidt.cz/misc/tmhmm`) — the script prints the exact unpack location and the `#!/usr/bin/env perl` shebang fix; use its 64-bit `bin/decodeanhmm.Linux_x86_64`. After running, set `SOLUPROT_PATH` / `SOLUPROT_ENV` in `paths.sh`. A Karolina-adapted variant (project-storage paths, cache redirects, `envs_dirs`) lives at `scripts/karolina/setup_soluprot.sh`.
 
 ## Optional: CataPro (enzyme kinetics)
 CataPro (kcat/Km predictor, used by `run_catapro.sh`) is **vendored** at `vendor/CataPro` (pulled by `git clone --recurse-submodules`). Its conda env and the two HuggingFace backbones (ProtT5-XL-UniRef50, MolT5-base) are installed by:
 ```sh
-./scripts/setup_catapro.sh
+./scripts/setup/setup_catapro.sh
 ```
-This creates the `catapro` env from `scripts/catapro_environment.yml` and downloads the backbones into `vendor/CataPro/models/` (the trained kcat/Km/activity heads already ship in the submodule). Then set `CATAPRO_ENV` in `paths.sh`. Wants a GPU for throughput. CataPro scores each sequence against the campaign `--target_substrate` (see *Running the full pipeline*).
+This creates the `catapro` env from `scripts/setup/catapro_environment.yml` and downloads the backbones into `vendor/CataPro/models/` (the trained kcat/Km/activity heads already ship in the submodule). Then set `CATAPRO_ENV` in `paths.sh`. Wants a GPU for throughput. CataPro scores each sequence against the campaign `--target_substrate` (see *Running the full pipeline*).
 
 ## Optional: TmProt (melting temperature)
 TmProt (Tm predictor, used by `run_tmprot.sh`) is **vendored** at `vendor/TmProt`; its standalone CLI is an editable install:
 ```sh
-./scripts/setup_tmprot.sh
+./scripts/setup/setup_tmprot.sh
 ```
-This creates the `tmprot` env from `scripts/tmprot_environment.yml`, runs `pip install -e vendor/TmProt/tmprot-1.0` (the LoRA adapter is bundled; base ESM-2 650M downloads from HuggingFace on first run). Then set `TMPROT_ENV` in `paths.sh`. **Re-run this after any `git submodule update` on `vendor/TmProt`** — a submodule reset de-registers the editable install (same gotcha as `aggrescan3d`).
+This creates the `tmprot` env from `scripts/setup/tmprot_environment.yml`, runs `pip install -e vendor/TmProt/tmprot-1.0` (the LoRA adapter is bundled; base ESM-2 650M downloads from HuggingFace on first run). Then set `TMPROT_ENV` in `paths.sh`. **Re-run this after any `git submodule update` on `vendor/TmProt`** — a submodule reset de-registers the editable install (same gotcha as `aggrescan3d`).
 
 ## Optional: switch to licensed PyMOL Incentive
 By default `setup.sh` installs `pymol-open-source` (no watermark, no license needed, sufficient for the bundled PyMOL scripts). If you have a Schrödinger PyMOL license and want Incentive features (higher-quality ray-tracing, bundled plugins like APBS), run the add-on script after `setup.sh` to swap `pymol-open-source` for `pymol-bundle`:
@@ -206,7 +206,7 @@ python -m tps_eval.alphafold.run_alphafold_jobs \
 - All code specific to a computational cluster should be contained within `tps_eval/scripts/<cluster>`.
 - Create a file `tps_eval/scripts/<cluster>/config.sh` with cluster-specific settings.
 - Create individual job scripts as `tps_eval/scripts/<cluster>/jobs/<job_name>.sh`.
-  - These job scripts should ideally call a cluster-agnostic script `tps_eval/scripts/run_<tool_name>.sh` (or `tps_eval/scripts/<tool_name>/<script_name>.sh` in case there are multiple scripts for running the tool).
+  - These job scripts should ideally call a cluster-agnostic script `tps_eval/scripts/tool_wrappers/run_<tool_name>.sh` (or `tps_eval/scripts/<tool_name>/<script_name>.sh` in case there are multiple scripts for running the tool).
 - `tps_eval/scripts/submit_job.sh` is a helper script useful for writing cluster-agnostic scripts which take the cluster as an argument and automatically use the correct job submission commands.
 
 ### config.sh

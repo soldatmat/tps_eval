@@ -14,7 +14,7 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$REPO_ROOT/src"
+SRC="$REPO_ROOT/src/tps_eval"   # src-layout package root (subdirs: sequence_metrics/ …)
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 

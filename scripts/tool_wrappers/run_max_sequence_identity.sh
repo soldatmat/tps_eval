@@ -1,0 +1,117 @@
+#!/bin/bash
+
+USAGE="--fasta_path <fasta_path> [--train_path <train_path> --train --top_k <N>]"
+
+Help()
+{
+    # Display Help
+    echo "Usage: $0 $USAGE"
+    echo
+    echo "If reference sequences are not provided, the script will use the sequences from the FASTA file itself"
+    echo "and return the second maximum sequence identity \(first will be 100% with itself\)."
+    echo
+    echo "Arguments:"
+    echo "  --fasta_path   Path to the FASTA file (required)"
+    echo "  --train_path   Path to the reference FASTA file (optional)"
+    echo "  --train        Turns on train data mode. "_self" results will be also copied as non-"_self" results."
+    echo "  --top_k        If >=1, also write <input>_max_sequence_identity_topk.csv (query_id,rank,neighbour_id,score; score = identity percent, LARGER closer)"
+    echo "  -h, --help     Show this help message and exit"
+    echo
+}
+
+# Parse long options manually
+train_mode=false
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --fasta_path)
+            fasta_path="$2"
+            shift
+            shift
+            ;;
+        --train_path)
+            train_path="$2"
+            shift
+            shift
+            ;;
+        --train)
+            train_mode=true
+            shift
+            ;;
+        --top_k)
+            top_k="$2"
+            shift
+            shift
+            ;;
+        -h|--help)
+            Help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            Help
+            exit 1
+            ;;
+    esac
+done
+
+
+if [[ -z "$fasta_path" ]]; then
+    echo "Usage: $0 $USAGE"
+    exit 1
+fi
+
+if $train_mode && [[ -n "$train_path" ]]; then
+    echo "Error: --train and --train_path cannot be used together."
+    exit 1
+fi
+
+# Convert fasta_path to absolute path if it's relative
+if [[ "$fasta_path" != /* ]]; then
+    fasta_path=$(cd "$(dirname "$fasta_path")" && pwd)/$(basename "$fasta_path")
+fi
+
+# Convert train_path to absolute path if it's set and relative
+if [[ -n "$train_path" ]] && [[ "$train_path" != /* ]]; then
+    train_path=$(cd "$(dirname "$train_path")" && pwd)/$(basename "$train_path")
+fi
+
+############################################################
+# Main                                                     #
+############################################################
+SCRIPT_DIR=$(dirname "$BASH_SOURCE")
+cd "$SCRIPT_DIR/../.."
+. ./paths.sh # Load TPS_EVAL_ENV
+
+eval "$(conda shell.bash hook)"
+conda activate "$TPS_EVAL_ENV"
+# Fix for Karolina compute nodes whose /lib64/libstdc++.so.6 lacks GLIBCXX_3.4.29
+# (required by the env's pandas/numpy C extensions). Prepend the env's own libstdc++.
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
+echo "Active conda environment: $(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix_name'])")"
+echo "Using python: $(which python)"
+
+
+topk_args=()
+if [[ -n "$top_k" ]]; then
+    topk_args=(--top_k "$top_k")
+fi
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting max_sequence_identity computation..."
+if [[ -n "$train_path" ]] && [[ "$train_path" != "" ]]; then
+    python -m tps_eval.sequence_metrics.run_max_sequence_identity "$fasta_path" "$train_path" "${topk_args[@]}"
+else
+    python -m tps_eval.sequence_metrics.run_max_sequence_identity "$fasta_path" "${topk_args[@]}"
+fi
+rc=$?
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finished max_sequence_identity computation."
+
+if $train_mode; then
+    cp "${fasta_path%.fasta}_max_sequence_identity_self.csv" "${fasta_path%.fasta}_max_sequence_identity.csv"
+    echo "Copied self results to non-self results: ${fasta_path%.fasta}_max_sequence_identity_self.csv -> ${fasta_path%.fasta}_max_sequence_identity.csv"
+fi
+
+# Propagate python's exit code so a failed computation FAILS the SLURM job (else the
+# orchestrator's afterok dependents run on missing output -- the trailing echo/cp
+# would otherwise mask the failure with exit 0).
+exit $rc

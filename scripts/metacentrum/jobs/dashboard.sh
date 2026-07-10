@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_build_dashboard.sh with args: $args"
-sh run_build_dashboard.sh $args
+sh tool_wrappers/run_build_dashboard.sh $args
 
 clean_scratch

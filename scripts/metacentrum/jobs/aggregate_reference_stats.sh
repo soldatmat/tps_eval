@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_aggregate_reference_stats.sh with args: $args"
-sh run_aggregate_reference_stats.sh $args
+sh tool_wrappers/run_aggregate_reference_stats.sh $args
 
 clean_scratch

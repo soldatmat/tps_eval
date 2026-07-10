@@ -16,12 +16,31 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
 - Tests are co-located `src/tps_eval/**/test_*.py`, run with `python -m pytest`
   (from repo root; `pip install -e ".[dev]"` provides pytest). No standalone shims.
 
+## `scripts/` layout — two axes: kind (run / setup / orchestrate) × scope (generic / per-cluster)
+- **Top level = generic orchestrators/drivers + standalone tools.** Orchestrators/drivers
+  (`run_eval_pipeline.py`, `run_funnel.py`, `run_visualization.py`, `run_selection.sh`,
+  `run_prepare_order.sh`, `run_eval_pipeline_continuation.sh`, `run_alphafold_fanout.sh`,
+  `submit_job.sh`) and standalone tools (`compute_reference_stats.sh`,
+  `refresh_vendor_backups.sh`, `integration_smoke_test.sh`).
+- **`scripts/tool_wrappers/` = the per-tool `run_<tool>.sh` wrappers** — cluster-agnostic shims
+  that activate the right conda env and dispatch to `python -m tps_eval.<subdir>.run_<tool>`.
+  They compute repo root as `$SCRIPT_DIR/../..` (two levels up now) and are invoked by the
+  cluster job scripts as `sh tool_wrappers/run_<tool>.sh`.
+- **`scripts/setup/` = generic env setup** — the `setup_<tool>.sh` installers + their
+  `<tool>_environment.yml` conda specs (CataPro, SoluProt, TmProt). They compute
+  `REPO_ROOT="$SCRIPT_DIR/../.."` and load the yml as `$SCRIPT_DIR/<tool>_environment.yml`.
+- **`scripts/<cluster>/` (aurum/karolina/metacentrum) = self-contained per-cluster bundle** —
+  `config.sh` (+ uncommitted `config.local.sh`), `jobs/<tool>.sh` SLURM wrappers, and any
+  cluster-*adapted* setup (e.g. `karolina/setup_soluprot.sh`, the override of the generic one).
+  Rule: cluster-specific anything lives here, next to that cluster's config/jobs — don't scatter it.
+- **`scripts/funnels/` = selection recipes (JSON); `scripts/generation/` = gen helpers.**
+
 ## Architecture — every eval tool follows the same shape
-- `scripts/run_<tool>.sh` — cluster-agnostic wrapper: parse args, `cd` to repo root,
-  source `paths.sh`, `conda activate "$TPS_EVAL_ENV"`, export the libstdc++ fix, then
-  run `python -m tps_eval.<subdir>.run_<tool>` (from repo root — no `cd` into the tool dir).
-- `scripts/<cluster>/jobs/<tool>.sh` — thin SLURM wrapper: `cd` to repo root, call
-  `run_<tool>.sh "$@"` (the `#SBATCH` header is the only cluster-specific part).
+- `scripts/tool_wrappers/run_<tool>.sh` — cluster-agnostic wrapper: parse args, `cd` to repo
+  root (`$SCRIPT_DIR/../..`), source `paths.sh`, `conda activate "$TPS_EVAL_ENV"`, export the
+  libstdc++ fix, then run `python -m tps_eval.<subdir>.run_<tool>` (from repo root — no `cd` into the tool dir).
+- `scripts/<cluster>/jobs/<tool>.sh` — thin SLURM wrapper: `cd` into `scripts/`, call
+  `tool_wrappers/run_<tool>.sh "$@"` (the `#SBATCH` header is the only cluster-specific part).
 - `src/tps_eval/<subdir>/run_<tool>.py` — argv entry; `src/tps_eval/<subdir>/<tool>.py` — logic.
 - **Output is a CSV keyed by `ID`** with the metric column(s), so metrics compose/merge
   for filtration. **Sequence-branch** tools key off the fasta → `<input>_<tool>.csv`;
@@ -95,9 +114,10 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
    - **Need the DDXXD / NSE/DTE motif positions?** Use the shared
      `src/tps_eval/sequence_metrics/motif_localization.py` (the single source of truth — regexes +
      coordinating-residue offsets). Don't re-encode the motifs.
-2. `scripts/run_<tool>.sh` — copy an existing one (e.g. `run_max_sequence_identity.sh`):
-   keep the `conda activate "$<ENV>"` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."` block,
-   and invoke `python -m tps_eval.<subdir>.run_<tool>` (from repo root — do NOT `cd` into the
+2. `scripts/tool_wrappers/run_<tool>.sh` — copy an existing one (e.g.
+   `tool_wrappers/run_max_sequence_identity.sh`): keep the `cd "$SCRIPT_DIR/../.."` (two levels
+   up to repo root), the `conda activate "$<ENV>"` + `export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:..."`
+   block, and invoke `python -m tps_eval.<subdir>.run_<tool>` (from repo root — do NOT `cd` into the
    tool dir). Pick the right env (see Gotchas — not every tool uses `TPS_EVAL_ENV`).
 3. `scripts/<cluster>/jobs/<tool>.sh` per cluster — Aurum uses `--constraint=gen-a` for CPU,
    `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1` for GPU (NО `-p`); Karolina uses
@@ -134,7 +154,7 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `revision` branch), `SOLUPROT_ENV`, `CATAPRO_ENV`, `TMPROT_ENV` (both vendored, so env-name
   only — no `_PATH`). Each `run_<tool>.sh` activates the right one.
 - **SoluProt / EnzymeExplorer are external installs**, not pip/conda packages. SoluProt:
-  `scripts/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
+  `scripts/setup/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
   EnzymeExplorer: its own repo's `scripts/setup_env.sh`. tps_eval only calls them via the
   paths/env names in `paths.sh`.
 - `vendor/` holds git submodules — `cif_to_pdb`, `pymol_scripts`, `aggrescan3d` (Py2.7),

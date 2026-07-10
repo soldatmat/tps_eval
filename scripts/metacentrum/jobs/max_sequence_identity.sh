@@ -21,6 +21,6 @@ export OMP_NUM_THREADS="${PBS_NCPUS:-20}"
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_max_sequence_identity.sh with args: $args"
-sh run_max_sequence_identity.sh $args
+sh tool_wrappers/run_max_sequence_identity.sh $args
 
 clean_scratch

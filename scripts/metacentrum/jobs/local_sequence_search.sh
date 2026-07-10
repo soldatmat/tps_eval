@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_local_sequence_search.sh with args: $args"
-sh run_local_sequence_search.sh $args
+sh tool_wrappers/run_local_sequence_search.sh $args
 
 clean_scratch

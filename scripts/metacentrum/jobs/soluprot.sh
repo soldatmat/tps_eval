@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_soluprot.sh with args: $args"
-sh run_soluprot.sh $args
+sh tool_wrappers/run_soluprot.sh $args
 
 clean_scratch

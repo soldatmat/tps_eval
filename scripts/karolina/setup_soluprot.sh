@@ -1,5 +1,5 @@
 #!/bin/bash
-# Karolina-specific SoluProt setup. Same end result as scripts/setup_soluprot.sh
+# Karolina-specific SoluProt setup. Same end result as scripts/setup/setup_soluprot.sh
 # (py3.7 env from soluprot_environment.yml + SoluProt standalone + 64-bit USEARCH;
 # TMHMM manual), with Karolina adaptations:
 #   * loads the Anaconda3 module
@@ -28,7 +28,7 @@ eval "$(conda shell.bash hook)"
 
 echo "[$(date '+%H:%M:%S')] 1/3 creating soluprot env at $SOLUPROT_ENV_DIR"
 [ -d "$SOLUPROT_ENV_DIR" ] && rm -rf "$SOLUPROT_ENV_DIR"
-conda env create -p "$SOLUPROT_ENV_DIR" -f "$SCRIPT_DIR/../soluprot_environment.yml"
+conda env create -p "$SOLUPROT_ENV_DIR" -f "$SCRIPT_DIR/../setup/soluprot_environment.yml"
 # So `conda activate soluprot` by name resolves (run_soluprot.sh uses the name):
 conda config --append envs_dirs "$PROJECT/.conda/envs" 2>/dev/null || true
 

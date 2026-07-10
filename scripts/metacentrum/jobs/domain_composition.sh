@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_domain_composition.sh with args: $args"
-sh run_domain_composition.sh $args
+sh tool_wrappers/run_domain_composition.sh $args
 
 clean_scratch

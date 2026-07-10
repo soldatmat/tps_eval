@@ -18,4 +18,4 @@ cd "$(dirname "$SCRIPT_PATH")/../.."
 # tries to download 7.8 GB of weights into a full $HOME and fails.
 export TORCH_HOME=/mnt/proj2/fta-26-15/.cache/torch
 
-sh run_esm_embedding.sh "$@"
+sh tool_wrappers/run_esm_embedding.sh "$@"

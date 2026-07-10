@@ -20,6 +20,6 @@ export TMPDIR=$SCRATCHDIR
 
 cd "$TPS_EVAL_ROOT/scripts"
 echo "Calling run_aggregation.sh with args: $args"
-sh run_aggregation.sh $args
+sh tool_wrappers/run_aggregation.sh $args
 
 clean_scratch
