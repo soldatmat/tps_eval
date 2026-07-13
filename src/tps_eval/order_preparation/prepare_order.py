@@ -1,6 +1,9 @@
 """Order preparation: amino-acid designs -> codon-optimized, overhang-flanked DNA.
 
 Pipeline (per design):
+    0. normalize the amino-acid termini so the design is a complete ORF — prepend a start
+       Met (-> ATG start codon) and ensure a C-terminal stop codon are present, ADDING
+       either if missing                                 (``normalize_termini``)
     1. codon-optimize the protein into a CDS for the target organism, removing internal
        BsaI/BsmBI sites          (``codon_optimization.codon_optimize``)
     2. wrap the CDS with the fixed Golden Gate flanks  (``overhangs.add_overhangs``)
@@ -11,7 +14,8 @@ utility. It runs on a login node (fast, no SLURM).
 
 Input  : a FASTA of protein sequences, or a CSV with id + amino-acid columns
          (auto-detected by extension), or a single inline sequence.
-Output : ``<prefix>_order.csv``  — id, protein, cds, ordered_sequence, length_nt, warnings
+Output : ``<prefix>_order.csv``  — id, status, start_added, stop_added, protein, cds,
+                                   ordered_sequence, length_nt, warnings
          ``<prefix>_order.txt``  — ``id,ordered_sequence`` per line (matches the format of
                                    the previous order's all_candidates_dna_fixed.txt)
 """
@@ -100,6 +104,44 @@ def _typeiis_violations(
                 if not (e <= cds_start or s >= cds_end):  # not wholly inside a flank
                     violations.append(f"{enz} site at nt {s} overlaps the CDS/junction")
     return violations
+
+
+# ---------------------------------------------------------------------------
+# Termini normalization (complete-ORF guarantee)
+# ---------------------------------------------------------------------------
+# The amino acid whose codon is the start codon (ATG). A design must begin with it for its
+# CDS to open with a start codon.
+_START_AA = "M"
+
+
+def normalize_termini(protein: str) -> tuple[str, bool, bool]:
+    """Ensure the amino-acid design encodes a complete ORF: an N-terminal start (Met, i.e.
+    an ``ATG`` start codon) and a C-terminal stop codon. Normalizes both *at the amino-acid
+    level*, before codon optimization, so each fix lands in the correct place — the start
+    codon at the very start of the CDS (just after the 5' overhang) and the stop codon at
+    the very end of the CDS (just before the 3' overhang).
+
+    * **Start** — if the sequence does not begin with ``M``, an ``M`` is prepended; its
+      codon becomes the ``ATG`` start codon.
+    * **Stop** — a trailing ``*`` (if present) marks a design-supplied stop and is stripped
+      here; the stop codon itself is emitted by codon optimization (``add_stop``), which
+      lets the optimizer pick the organism-preferred stop. A design without a trailing
+      ``*`` is treated as lacking a stop, so one is being added.
+
+    Returns ``(protein, start_added, stop_added)``: the normalized amino-acid sequence
+    (Met-prefixed as needed, with any trailing ``*`` removed) plus booleans recording
+    whether a start / stop codon had to be added for this design.
+    """
+    protein = protein.strip().upper()
+    had_stop = protein.endswith("*")
+    protein = protein.rstrip("*")
+    if not protein:
+        raise ValueError("Empty protein sequence.")
+    start_added = not protein.startswith(_START_AA)
+    if start_added:
+        protein = _START_AA + protein
+    stop_added = not had_stop
+    return protein, start_added, stop_added
 
 
 # ---------------------------------------------------------------------------
@@ -239,11 +281,21 @@ def prepare_one(
     the order .txt and exits non-zero). Homopolymer/GC issues are SOFT — they remain
     warnings and never fail a design.
 
-    Returns a dict with ``status`` ("ok" | "FAILED"), ``protein``, ``cds``,
-    ``ordered_sequence``, ``length_nt``, ``warnings``.
+    Before optimizing, the termini are normalized to a complete ORF (``normalize_termini``):
+    a start Met (-> ATG) is prepended if missing and a stop codon is ensured, and the
+    returned dict records whether each was ADDED (``start_added`` / ``stop_added``) — with
+    a matching warning so a silent addition never happens.
+
+    Returns a dict with ``status`` ("ok" | "FAILED"), ``start_added``, ``stop_added``,
+    ``protein``, ``cds``, ``ordered_sequence``, ``length_nt``, ``warnings``.
     """
     prefix, suffix = get_overhangs(overhang_type)
-    protein_clean = protein.strip().upper().rstrip("*")
+    protein_norm, start_added, stop_added = normalize_termini(protein)
+    termini_warnings: list[str] = []
+    if start_added:
+        termini_warnings.append("start codon (ATG) added: design did not begin with Met (M)")
+    if stop_added:
+        termini_warnings.append("stop codon added at the C-terminus: design carried no terminal stop")
     attempts = max(1, max_attempts)
     full = cds = ""
     violations: list[str] = []
@@ -253,7 +305,7 @@ def prepare_one(
         # nondeterministic, advancing the global RNG each call).
         attempt_seed = None if seed is None else seed + attempt
         cds = codon_optimize(
-            protein, organism=organism, avoid_enzymes=avoid_enzymes, method=method,
+            protein_norm, organism=organism, avoid_enzymes=avoid_enzymes, method=method,
             max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max,
             gc_window=gc_window, seed=attempt_seed, warnings=opt_warnings,
         )
@@ -262,15 +314,17 @@ def prepare_one(
         if violations:
             continue  # fatal site present — re-optimize with a new seed
 
-        warnings = opt_warnings + validate_construct(
-            full, protein, overhang_type, avoid_enzymes,
+        warnings = termini_warnings + opt_warnings + validate_construct(
+            full, protein_norm, overhang_type, avoid_enzymes,
             max_homopolymer=max_homopolymer, gc_min=gc_min, gc_max=gc_max, gc_window=gc_window,
         )
         if attempt:
             warnings.insert(0, f"cleared a Type IIS site by re-optimizing (attempt {attempt + 1})")
         return {
             "status": "ok",
-            "protein": protein_clean,
+            "start_added": start_added,
+            "stop_added": stop_added,
+            "protein": protein_norm,
             "cds": cds,
             "ordered_sequence": full,
             "length_nt": len(full),
@@ -278,14 +332,17 @@ def prepare_one(
         }
 
     # Exhausted all attempts — keep the last sequence for inspection but mark it FAILED.
+    fatal = (f"FATAL: unresolved Type IIS site after {attempts} re-optimization "
+             f"attempt(s) ({'; '.join(violations)})")
     return {
         "status": "FAILED",
-        "protein": protein_clean,
+        "start_added": start_added,
+        "stop_added": stop_added,
+        "protein": protein_norm,
         "cds": cds,
         "ordered_sequence": full,
         "length_nt": len(full),
-        "warnings": f"FATAL: unresolved Type IIS site after {attempts} re-optimization "
-                    f"attempt(s) ({'; '.join(violations)})",
+        "warnings": "; ".join(termini_warnings + [fatal]),
     }
 
 
@@ -332,8 +389,21 @@ def prepare_order(
             print(f"  [WARN] {design_id}: {row['warnings']}")
     df = pd.DataFrame(
         rows,
-        columns=["id", "status", "protein", "cds", "ordered_sequence", "length_nt", "warnings"],
+        columns=["id", "status", "start_added", "stop_added", "protein", "cds",
+                 "ordered_sequence", "length_nt", "warnings"],
     )
+
+    # Report termini additions up front (how many out of how many for each), so a silent
+    # start/stop insertion never happens.
+    n = len(df)
+    n_start_added = int(df["start_added"].sum())
+    n_stop_added = int(df["stop_added"].sum())
+    if n_start_added:
+        print(f"  [WARN] added a start codon (ATG) to {n_start_added}/{n} design(s) "
+              f"that did not begin with Met (M).")
+    if n_stop_added:
+        print(f"  [WARN] added a stop codon to {n_stop_added}/{n} design(s) "
+              f"that carried no terminal stop.")
 
     n_failed = int((df["status"] != "ok").sum())
     n_warn = int(((df["status"] == "ok") & (df["warnings"] != "")).sum())

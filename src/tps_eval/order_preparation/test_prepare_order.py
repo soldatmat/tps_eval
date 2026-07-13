@@ -24,6 +24,7 @@ from tps_eval.order_preparation.prepare_order import (
     _revcomp,
     _typeiis_violations,
     load_designs,
+    normalize_termini,
     prepare_one,
     prepare_order,
     validate_construct,
@@ -85,6 +86,57 @@ def test_load_designs_fasta_and_csv():
     pd.DataFrame({"protein": ["MAAK", "MKLV"]}).to_csv(csv2, index=False)
     assert load_designs(csv2) == [("0", "MAAK"), ("1", "MKLV")]
     print("ok load_designs_fasta_and_csv")
+
+
+def test_normalize_termini():
+    # Already a complete ORF at the AA level: begins with Met, ends with an explicit stop.
+    assert normalize_termini("MAAK*") == ("MAAK", False, False)
+    # Met start, no terminal stop -> a stop is being added (the normal design case).
+    assert normalize_termini("MAAK") == ("MAAK", False, True)
+    # No Met start, explicit stop -> a start Met is prepended, stop already present.
+    assert normalize_termini("AAK*") == ("MAAK", True, False)
+    # Neither terminus present -> both added.
+    assert normalize_termini("AAK") == ("MAAK", True, True)
+    # Whitespace / lowercase are normalized; multiple trailing stops collapse.
+    assert normalize_termini("  maak**  ") == ("MAAK", False, False)
+    # Empty (or stop-only) input is rejected.
+    for bad in ("", "   ", "*", "**"):
+        try:
+            normalize_termini(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"expected ValueError for {bad!r}")
+    print("ok normalize_termini")
+
+
+def test_prepare_one_adds_start_and_stop():
+    # A design lacking both an N-terminal Met and a terminal stop: prepare_one must add both,
+    # flag them, warn, and still round-trip (CDS translates to 'M' + the design).
+    design = "AKGEELFTGVVPILVELDGDVNGHK"
+    row = prepare_one(design, organism="yeast", overhang_type="Type 3", seed=0)
+    assert row["status"] == "ok", row["warnings"]
+    assert row["start_added"] is True and row["stop_added"] is True
+    assert "start codon" in row["warnings"] and "stop codon" in row["warnings"]
+    cds = row["cds"]
+    assert cds.upper().startswith("ATG") and cds[-3:].upper() in ("TAA", "TAG", "TGA")
+    assert str(Seq(cds).translate(to_stop=False)).rstrip("*") == "M" + design
+    print("ok prepare_one_adds_start_and_stop")
+
+
+def test_prepare_order_reports_added_counts():
+    # Mixed batch: one complete-ORF design (Met start, explicit stop) and one missing both.
+    # The per-row flags must reflect exactly which terminus each design needed.
+    tmp = tempfile.mkdtemp(prefix="order_termini_")
+    fa = os.path.join(tmp, "designs.fasta")
+    with open(fa, "w") as fh:
+        fh.write(">complete\nMASKGEELFTGVV*\n>bare\nAKGEELFTGVV\n")
+    df = prepare_order(fa, seed=0, save=False)
+    by_id = {r["id"]: r for _, r in df.iterrows()}
+    assert by_id["complete"]["start_added"] == False and by_id["complete"]["stop_added"] == False
+    assert by_id["bare"]["start_added"] == True and by_id["bare"]["stop_added"] == True
+    assert int(df["start_added"].sum()) == 1 and int(df["stop_added"].sum()) == 1
+    print("ok prepare_order_reports_added_counts")
 
 
 def test_prepare_one_assembles_and_roundtrips():

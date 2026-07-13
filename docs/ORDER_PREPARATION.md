@@ -11,6 +11,9 @@ needs no SLURM (it runs on a login node in seconds). Logic lives in
 
 ## Pipeline (per design)
 
+0. **Normalize the termini** to a complete ORF — prepend a start Met (→ `ATG` start codon)
+   if the design does not begin with `M`, and ensure a C-terminal stop codon, **adding
+   either if missing** — [`prepare_order.py`](../src/tps_eval/order_preparation/prepare_order.py) (`normalize_termini`)
 1. **Codon-optimize** the protein into a CDS for the target organism, *removing internal
    BsaI/BsmBI sites* — [`codon_optimization.py`](../src/tps_eval/order_preparation/codon_optimization.py)
 2. **Add the fixed overhangs** around the CDS (the flanks are never modified) —
@@ -57,8 +60,11 @@ Auto-detected by extension:
 
 ## Output
 
-- `<prefix>_order.csv` — one row per design: `id, status, protein, cds, ordered_sequence,
-  length_nt, warnings`. Includes **every** design, even `FAILED` ones (for inspection).
+- `<prefix>_order.csv` — one row per design: `id, status, start_added, stop_added, protein,
+  cds, ordered_sequence, length_nt, warnings`. Includes **every** design, even `FAILED` ones
+  (for inspection). `start_added` / `stop_added` record whether that terminus had to be
+  added (see [Termini normalization](#termini-normalization)); `protein` is the normalized
+  amino-acid sequence the CDS encodes (Met-prefixed if one was added).
 - `<prefix>_order.txt` — `id,ordered_sequence` per line, matching the format of the
   previous order file (`all_candidates_dna_fixed.txt`) for direct submission. Contains
   **only `status == "ok"` designs** — any `FAILED` design is excluded.
@@ -67,6 +73,28 @@ Auto-detected by extension:
 `warnings` is empty when all soft checks pass; any non-empty value is also printed to the
 console (`[WARN]` / `[FAIL]`). The run **exits non-zero if any design FAILED**, so a broken
 construct is never silently submitted.
+
+## Termini normalization
+
+Before codon optimization, every design is normalized to a **complete ORF** at the
+amino-acid level (`normalize_termini`), so a synthesized part always has both a start and a
+stop codon in the right place — the start codon at the very start of the CDS (just after
+the 5′ overhang) and the stop codon at the very end (just before the 3′ overhang):
+
+- **Start codon** — if the design does not begin with `M`, a Met is **prepended** (its
+  codon becomes the `ATG` start codon).
+- **Stop codon** — a trailing `*` marks a design-supplied stop; otherwise the design is
+  treated as lacking a stop and one is **added**. The stop codon itself is emitted by codon
+  optimization (which picks the organism-preferred stop, TAA in yeast); this step only
+  decides whether it counts as an addition.
+
+Every addition is surfaced, never silent: each affected design gets a `[WARN]` line, and
+the run prints an aggregate count — e.g. `added a start codon (ATG) to 3/48 design(s)…` /
+`added a stop codon to 48/48 design(s)…`. The per-design `start_added` / `stop_added`
+booleans are also written to the output CSV. Generative designs are typically bare
+amino-acid strings with no terminal `*`, so a stop is normally added for **all** of them
+(this matches the pre-existing always-append-a-stop behavior — it is now reported); a
+missing N-terminal Met is rarer.
 
 ## Codon optimization
 

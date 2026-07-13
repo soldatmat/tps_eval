@@ -106,9 +106,10 @@ These emit a per-`id` feature CSV (first column `id`, then feature dims) for a w
 
 # Order preparation
 A standalone utility (**not** part of the evaluation pipeline) that turns amino-acid
-designs into synthesis-ready DNA for Golden Gate / MoClo construction: codon-optimize for
-the target organism (default *S. cerevisiae*; internal BsaI/BsmBI removed, homopolymer cap
-+ GC window) + add the fixed overhangs. Runs on a login node:
+designs into synthesis-ready DNA for Golden Gate / MoClo construction: normalize each
+design to a complete ORF (add a start Met / stop codon if missing, reported as `X/N`),
+codon-optimize for the target organism (default *S. cerevisiae*; internal BsaI/BsmBI
+removed, homopolymer cap + GC window) + add the fixed overhangs. Runs on a login node:
 ```sh
 bash scripts/run_prepare_order.sh designs.fasta        # → designs_order.csv + designs_order.txt
 ```
