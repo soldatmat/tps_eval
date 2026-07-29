@@ -19,6 +19,12 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   repo-root cwd every runner `cd`s to.
 - Tests are co-located `src/tps_eval/**/test_*.py`, run with `python -m pytest`
   (from repo root; `pip install -e ".[dev]"` provides pytest). No standalone shims.
+  Several tool tests fake a binary by assigning onto the module's `subprocess`
+  reference (`sws.subprocess.Popen = _FakePopen`) — that is the ONE shared module, so
+  the root `conftest.py` snapshots/restores `subprocess.run/Popen/check_output` around
+  every test. Without it the fake leaked across the session and unrelated tests that
+  shell out failed **only in the full suite** (they passed in isolation). Keep that
+  fixture; if you add a test that patches another global, restore it there too.
 
 ## `scripts/` layout — two axes: kind (run / setup / orchestrate) × scope (generic / per-cluster)
 - **Top level = generic orchestrators/drivers + standalone tools.** Orchestrators/drivers
@@ -182,6 +188,13 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `submit_job.sh` under `src/scripts/`. Use `PACKAGE_DIR` for package data,
   `REPO_ROOT`/`VENDOR_DIR`/`SCRIPTS_DIR`/`REFERENCE_STATS_DIR` for everything outside the
   package. `src/tps_eval/test_repo_paths.py` asserts these anchors resolve to real files.
+- **pandas majors are NOT in lockstep across the clusters** (Aurum 2.3.3 vs a 3.0.3
+  laptop), so a pandas-3 behaviour change reads as "works on the cluster, crashes for
+  whoever upgrades first". Pin such behaviour in `src/tps_eval/pandas_compat.py`, not at
+  the call site. Already there: `group_idxmax_skipna` — `groupby.idxmax()` on an ALL-NA
+  group returned NaN under pandas 2 and **raises** under pandas 3, which would kill the
+  whole foldseek best-hit reduction (i.e. `structural_identity`, the TM-score fold gate)
+  on a single unscorable query.
 - **The vendored ProteinMPNN cannot read mmCIF.** Its `parse_PDB` slices ATOM lines by fixed
   column offsets, so AF3's `af_output/<job>/<job>_model.cif` makes it die with
   `could not convert string to float`. Anything shelling out to it must go through
