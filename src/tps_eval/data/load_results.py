@@ -8,7 +8,6 @@ from typing import Iterable, List, Optional, Tuple
 import pandas as pd
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.sequences import load_fasta_sequences  # noqa: E402
 from tps_eval.data.embeddings import load_embeddings  # noqa: E402

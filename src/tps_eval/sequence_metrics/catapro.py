@@ -37,13 +37,13 @@ import numpy as np
 import pandas as pd
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.sequences import load_fasta_sequences, separate_identifiers
 from tps_eval.alphafold.cofold_substrates import SUBSTRATE_SMILES
 
-REPO_ROOT = SRC_DIR.parent
-CATAPRO_DIR = REPO_ROOT / "vendor" / "CataPro"
+from tps_eval.repo_paths import VENDOR_DIR
+
+CATAPRO_DIR = VENDOR_DIR / "CataPro"
 CATAPRO_INFERENCE_DIR = CATAPRO_DIR / "inference"
 CATAPRO_PREDICT = CATAPRO_INFERENCE_DIR / "predict.py"
 DEFAULT_MODEL_DPATH = CATAPRO_DIR / "models"

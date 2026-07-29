@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.load_results import load_results  # noqa: E402
 

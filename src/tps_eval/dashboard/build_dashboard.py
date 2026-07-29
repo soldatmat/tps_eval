@@ -45,9 +45,11 @@ except ImportError:  # when imported as a module rather than run as a script
     import sys as _sys
     from tps_eval.dashboard.metric_info import METRIC_INFO, METRIC_CATEGORY, CATEGORY_ORDER
 
+from tps_eval.repo_paths import REFERENCE_STATS_DIR as _REFERENCE_STATS_DIR, REPO_ROOT as _REPO_ROOT
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-REFERENCE_STATS_DIR = os.path.join(REPO_ROOT, "src", "reference_stats")
+REPO_ROOT = str(_REPO_ROOT)
+REFERENCE_STATS_DIR = str(_REFERENCE_STATS_DIR)
 TEMPLATE_PATH = os.path.join(HERE, "template.html")
 DATA_TOKEN = "/*__DASHBOARD_DATA__*/"
 

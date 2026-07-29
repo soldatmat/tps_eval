@@ -29,9 +29,10 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-SRC_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = SRC_DIR.parent
-PROTEINMPNN_DIR = REPO_ROOT / "vendor" / "ProteinMPNN"
+from tps_eval.repo_paths import VENDOR_DIR
+from tps_eval.structure_metrics.structure_conversion import is_cif, write_pdb_copy
+
+PROTEINMPNN_DIR = VENDOR_DIR / "ProteinMPNN"
 
 COLUMNS = ["ID", "proteinmpnn_nll", "proteinmpnn_score_designed"]
 
@@ -40,7 +41,8 @@ def _collect_structures(structs_dir: str):
     """Map ID -> structure file. Mirrors plddt.py's af3-vs-flat detection.
 
     * "af3": AlphaFold3 af_output dir with per-job <job>/<job>_model.cif subfolders
-      (ID = job name). ProteinMPNN reads CIF via parse_PDB (handles .cif).
+      (ID = job name). CIF inputs are converted to PDB before scoring —
+      ProteinMPNN's parse_PDB is fixed-column PDB-only (see structure_conversion).
     * "flat": directory of .pdb/.cif files (ID = filename stem); .pdb wins over .cif.
     """
     af3: Dict[str, str] = {}
@@ -133,6 +135,8 @@ def score_dir(
     with tempfile.TemporaryDirectory(prefix="proteinmpnn_score_") as tmp:
         for i, (stem, path) in enumerate(structures.items(), start=1):
             try:
+                if is_cif(path):
+                    path = write_pdb_copy(path, os.path.join(tmp, "inputs", stem + ".pdb"))
                 stats = score_pdb(
                     path, tmp, model_name=model_name, seed=seed, backbone_noise=backbone_noise
                 )

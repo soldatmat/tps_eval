@@ -10,7 +10,6 @@ from pathlib import Path
 import pandas as pd
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.foldseek.structure_alignment import main as _structure_alignment  # noqa: E402
 

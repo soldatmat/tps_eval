@@ -33,7 +33,6 @@ from typing import List, Optional
 import pandas as pd
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 # Reuse the af3-vs-flat input detection + dir-keyed naming from the pLDDT tool.
 from tps_eval.structure_metrics.plddt import _collect_structures  # noqa: E402

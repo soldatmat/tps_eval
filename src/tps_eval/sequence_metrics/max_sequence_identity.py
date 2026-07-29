@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.sequences import load_fasta_sequences, separate_identifiers
 

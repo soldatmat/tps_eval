@@ -11,7 +11,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.load_results import load_results  # noqa: E402
 from tps_eval.plot.constants import LOAD, MAX_VAL, MIN_VAL, THRESHOLD, TICKS  # noqa: E402

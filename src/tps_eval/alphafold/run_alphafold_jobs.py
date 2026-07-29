@@ -3,6 +3,8 @@ import subprocess
 import argparse
 import pandas as pd
 
+from tps_eval.repo_paths import SCRIPTS_DIR
+
 
 ID_SEQUENCE_SEPARATOR = ' '
 SEQUENCE_PAIR_SEPARATOR = ' '
@@ -126,8 +128,9 @@ def run_alphafold_jobs(
         job_submit_args = prepare_submit_args(submit_args, cluster=cluster, default_job_name=combined_protein_ids, working_directory=working_directory)
         cmd = [
             'bash',
-            # submit_job.sh lives under scripts/; this module is src/alphafold/.
-            os.path.join(script_dir, "..", "..", "scripts", "submit_job.sh"),
+            # submit_job.sh lives under <repo>/scripts/; this module is
+            # <repo>/src/tps_eval/alphafold/ -- use the shared anchor, not "..".
+            str(SCRIPTS_DIR / "submit_job.sh"),
             '--cluster', cluster,
             '--job_name', "alphafold",
             '--job_args', job_args,

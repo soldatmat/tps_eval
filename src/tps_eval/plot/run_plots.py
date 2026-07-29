@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.plot.plot_comparison import plot_comparison  # noqa: E402
 

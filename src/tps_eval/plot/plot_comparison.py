@@ -10,7 +10,6 @@ from typing import List, Optional, Sequence
 import matplotlib.colors as mcolors
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
 
 from tps_eval.data.load_results import load_results, load_structure_results  # noqa: E402
 from tps_eval.plot.boxplot_comparison import boxplot_comparison  # noqa: E402

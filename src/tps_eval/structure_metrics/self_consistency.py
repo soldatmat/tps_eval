@@ -31,12 +31,13 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from Bio.PDB import MMCIFParser, PDBIO, PDBParser, Select, Superimposer
+from Bio.PDB import MMCIFParser, PDBParser, Superimposer
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 
-SRC_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = SRC_DIR.parent
-PROTEINMPNN_DIR = REPO_ROOT / "vendor" / "ProteinMPNN"
+from tps_eval.repo_paths import VENDOR_DIR
+from tps_eval.structure_metrics.structure_conversion import is_cif, write_pdb_copy
+
+PROTEINMPNN_DIR = VENDOR_DIR / "ProteinMPNN"
 
 
 COLUMNS = ["ID", "sc_rmsd_min", "sc_rmsd_mean", "n_samples"]
@@ -63,30 +64,13 @@ def _chain_ids(structure_path: str) -> List[str]:
     return ids
 
 
-class _ChainSelect(Select):
-    def __init__(self, chain_id: str):
-        self.chain_id = chain_id
-
-    def accept_chain(self, chain):  # noqa: N802 (Biopython API)
-        return 1 if chain.id == self.chain_id else 0
-
-    def accept_residue(self, residue):  # noqa: N802
-        return 1 if residue.id[0] == " " else 0
-
-
 def _write_single_chain(structure_path: str, chain_id: str, out_path: str) -> None:
     """Write only `chain_id` (standard residues) of `structure_path` as a PDB.
     scRMSD is a single-chain (monomer) designability metric; multimer inputs are
     reduced to one design chain so ProteinMPNN designs / ESMFold folds / RMSD
     compares the SAME single chain (otherwise a complex vs a folded-as-monomer
     concatenation gives meaningless RMSD)."""
-    parser = _parser_for(structure_path)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", PDBConstructionWarning)
-        structure = parser.get_structure("s", structure_path)
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(out_path, _ChainSelect(chain_id))
+    write_pdb_copy(structure_path, out_path, chain_id=chain_id)
 
 
 def _ca_atoms(structure_path: str):
@@ -240,6 +224,13 @@ def self_consistency_for_structure(
         ref_path = os.path.join(workdir, f"{stem}_chain_{design_chain}.pdb")
         _write_single_chain(pdb_path, design_chain, ref_path)
         pdb_chains_arg = design_chain
+    elif is_cif(pdb_path):
+        # ProteinMPNN parses PDB by fixed column offsets and CANNOT read mmCIF —
+        # AF3's af_output/<job>/<job>_model.cif went straight to it and every
+        # structure failed into a NaN row. Materialize a PDB first.
+        ref_path = os.path.join(workdir, f"{stem}_chain_{design_chain}.pdb")
+        _write_single_chain(pdb_path, design_chain, ref_path)
+        pdb_chains_arg = None
     else:
         ref_path = pdb_path
         pdb_chains_arg = None

@@ -172,6 +172,22 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   per-invocation (it is: a `mkdtemp` root, removed in a `finally`) — fixed sibling names
   made the loser die with `FileExistsError: …/_ee_domains_scratch/gamma` and made both jobs
   fight over one secondary-structure pickle.
+- **Never hand-count `..` to the repo root — import `tps_eval.repo_paths`.** A module at
+  `src/tps_eval/<subdir>/<module>.py` is FOUR levels below the checkout, and the
+  hand-rolled `Path(__file__).parent.parent.parent` chains left over from the pre-src-layout
+  package were all one short (they resolved to `<repo>/src`). That silently killed every
+  `vendor/` shell-out: `proteinmpnn_score` + `self_consistency` shipped an ALL-NaN column for
+  two production runs, CataPro's predictor was unreachable, the dashboard rendered with zero
+  MARTS-DB reference bands (`sources: designs (1 sources)`), and the AF3 fan-out looked for
+  `submit_job.sh` under `src/scripts/`. Use `PACKAGE_DIR` for package data,
+  `REPO_ROOT`/`VENDOR_DIR`/`SCRIPTS_DIR`/`REFERENCE_STATS_DIR` for everything outside the
+  package. `src/tps_eval/test_repo_paths.py` asserts these anchors resolve to real files.
+- **The vendored ProteinMPNN cannot read mmCIF.** Its `parse_PDB` slices ATOM lines by fixed
+  column offsets, so AF3's `af_output/<job>/<job>_model.cif` makes it die with
+  `could not convert string to float`. Anything shelling out to it must go through
+  `tps_eval.structure_metrics.structure_conversion.write_pdb_copy` first. Watch for the
+  failure SHAPE here in general: a per-design `try/except -> NaN row` turns a systematic
+  breakage into a plausible-looking all-NaN metric column, and the job still exits 0.
 - **SoluProt / EnzymeExplorer are external installs**, not pip/conda packages. SoluProt:
   `scripts/setup/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
   EnzymeExplorer: its own repo's `scripts/setup_env.sh`. tps_eval only calls them via the
