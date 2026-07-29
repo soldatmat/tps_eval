@@ -30,6 +30,10 @@ fi
 
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd "$SCRIPT_DIR/../.." || exit 1
+# Every tool activates its own conda env, but only the main tps_eval env gets
+# `pip install -e .` -- put the in-repo package on PYTHONPATH so `import tps_eval`
+# works in ALL of them (absolute, so it survives later `cd`s and child processes).
+export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
 
 PY=${PYTHON:-}
 if [[ -z "$PY" ]]; then

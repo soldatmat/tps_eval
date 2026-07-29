@@ -10,6 +10,10 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   no runtime deps — those are conda/`setup.sh`-managed); there is NO `setup.py`.
 - `pip install -e .` exposes the import surface; ALL imports are qualified
   `from tps_eval.<subdir>.<module> import ...` (no `cd`-into-dir or `sys.path` hacks).
+  That editable install is needed in `TPS_EVAL_ENV` ONLY — the per-tool envs get the
+  package via the wrappers' `export PYTHONPATH="$(pwd)/src…"` (see Gotchas). So the
+  post-pull recipe is just: stash `paths.sh` → `git pull --ff-only` → pop →
+  `pip install -e .` in the MAIN env. Nothing to repeat per env.
 - `vendor/` submodules are NOT part of the package. The one code-level vendor import
   (`tps_eval.pymol.plot_residue_similarity` → `vendor.pymol_scripts`) resolves via the
   repo-root cwd every runner `cd`s to.
@@ -37,7 +41,8 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
 
 ## Architecture — every eval tool follows the same shape
 - `scripts/tool_wrappers/run_<tool>.sh` — cluster-agnostic wrapper: parse args, `cd` to repo
-  root (`$SCRIPT_DIR/../..`), source `paths.sh`, `conda activate "$TPS_EVAL_ENV"`, export the
+  root (`$SCRIPT_DIR/../..`), `export PYTHONPATH="$(pwd)/src…"`, source `paths.sh`,
+  `conda activate "$TPS_EVAL_ENV"`, export the
   libstdc++ fix, then run `python -m tps_eval.<subdir>.run_<tool>` (from repo root — no `cd` into the tool dir).
 - `scripts/<cluster>/jobs/<tool>.sh` — thin SLURM wrapper: `cd` into `scripts/`, call
   `tool_wrappers/run_<tool>.sh "$@"` (the `#SBATCH` header is the only cluster-specific part).
@@ -153,6 +158,20 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   upstream is Py2-only), `ENZYME_EXPLORER_ENV` (= `enzyme_explorer_prod` on Aurum, the
   `revision` branch), `SOLUPROT_ENV`, `CATAPRO_ENV`, `TMPROT_ENV` (both vendored, so env-name
   only — no `_PATH`). Each `run_<tool>.sh` activates the right one.
+  **Most of those envs also `import tps_eval`** (the wrapper runs `python -m tps_eval.…`
+  inside them), but only `TPS_EVAL_ENV` is ever `pip install -e .`'d. That gap used to
+  break 5 tools with `ModuleNotFoundError: tps_eval` after every repo pull, so each wrapper
+  now does `export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"` immediately after the
+  `cd` to repo root — env-agnostic, py2.7-safe, and it also overrides a stale editable
+  install. **A new wrapper MUST carry that line** (`src/tps_eval/test_tool_wrappers.py`
+  enforces it).
+- **EE domain detection is called by TWO tools that run concurrently.**
+  `domain_composition` and `interdomain_pae` both go through
+  `tps_eval.enzyme_explorer.domain_composition.detect_domains_json` on the same structures
+  dir, as independent SLURM jobs. Every scratch path handed to EE must therefore be
+  per-invocation (it is: a `mkdtemp` root, removed in a `finally`) — fixed sibling names
+  made the loser die with `FileExistsError: …/_ee_domains_scratch/gamma` and made both jobs
+  fight over one secondary-structure pickle.
 - **SoluProt / EnzymeExplorer are external installs**, not pip/conda packages. SoluProt:
   `scripts/setup/setup_soluprot.sh` (+ external USEARCH/TMHMM, see README "Optional: SoluProt").
   EnzymeExplorer: its own repo's `scripts/setup_env.sh`. tps_eval only calls them via the

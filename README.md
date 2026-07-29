@@ -128,6 +128,8 @@ If you plan to use SoluProt or EnzymeExplorer calls, redefine the paths to your 
 
 `tps_eval` is a standard src-layout package (`src/tps_eval/`, configured by `pyproject.toml`); `setup.sh` runs `pip install -e .` to expose it. Modules import each other via qualified paths (`from tps_eval.<subdir>.<module> import ...`) and tools run as `python -m tps_eval.<subdir>.run_<tool>` (the `run_<tool>.sh` wrappers do this for you). To run the test suite: `pip install -e ".[dev]"` then `python -m pytest src/tps_eval` from the repo root.
 
+**Only the main `TPS_EVAL_ENV` needs that editable install.** Most tools activate their own conda env (`aggrescan3d`, `pocket`, `tmprot`, `catapro`, `enzyme_explorer`, `esmfold`, …) and still `import tps_eval`, so every `run_<tool>.sh` wrapper prepends the repo's `src/` to `PYTHONPATH` right after it `cd`s to the repo root. A `git pull` is therefore enough to update *all* envs — there is no per-env `pip install -e .` to repeat (and no py2.7 `.pth` hack for `aggrescan3d`).
+
 ## Optional: SoluProt
 SoluProt (solubility predictor, used by `run_soluprot.sh`) is not a pip/conda package — it's a standalone download plus an old py3.7 conda env and two external binaries (USEARCH, TMHMM). A helper script automates the parts that can be automated:
 ```sh

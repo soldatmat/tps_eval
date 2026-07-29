@@ -98,6 +98,10 @@ fi
 ############################################################
 SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd "$SCRIPT_DIR/../.."
+# Every tool activates its own conda env, but only the main tps_eval env gets
+# `pip install -e .` -- put the in-repo package on PYTHONPATH so `import tps_eval`
+# works in ALL of them (absolute, so it survives later `cd`s and child processes).
+export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
 . ./paths.sh # Load PROTEINMPNN_ENV (= ESMFOLD_ENV: needs both ProteinMPNN + ESMFold)
 
 eval "$(conda shell.bash hook)"

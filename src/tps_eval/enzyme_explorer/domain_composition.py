@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import tempfile
 from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -124,6 +126,16 @@ def detect_domains_json(
     that need not exist) and the ``run_domain_detection`` wrapper's
     ``str(None)`` bug for ``needed_proteins_csv_path``. Writes EE's pickle +
     JSON sidecar next to `out_json_path`; we parse the JSON.
+
+    CONCURRENCY: every scratch path handed to EE is created fresh per invocation
+    under a ``mkdtemp`` directory and deleted afterwards. `domain_composition`
+    and `interdomain_pae` both call this on the SAME structures dir and the
+    pipeline submits them as independent SLURM jobs that run at the same time —
+    with fixed scratch names (the old ``_ee_domains_scratch`` /
+    ``_ee_secondary_structure_residues.pkl`` siblings of `out_json_path`) the
+    two jobs collided: EE's ``store_domains`` does a check-then-``mkdir`` per
+    domain type, so the loser died with ``FileExistsError: .../_ee_domains_scratch/gamma``,
+    and both jobs wrote/read the same secondary-structure pickle.
     """
     import argparse as _argparse
 
@@ -138,8 +150,14 @@ def detect_domains_json(
     # EE writes the JSON sidecar as <detections_output_path>.json — so point the
     # pickle at <stem>.pkl so the sidecar lands exactly at out_json_path.
     detections_pkl = out_json.with_suffix(".pkl")
-    domains_dir = out_json.parent / "_ee_domains_scratch"
-    ssr_pkl = out_json.parent / "_ee_secondary_structure_residues.pkl"
+
+    # Per-invocation scratch root (mkdtemp -> unique even for two concurrent runs
+    # of the SAME tool), on the same filesystem as the outputs. Removed below.
+    scratch_root = Path(
+        tempfile.mkdtemp(prefix=out_json.stem + "_ee_scratch_", dir=str(out_json.parent))
+    )
+    domains_dir = scratch_root / "domains"
+    ssr_pkl = scratch_root / "secondary_structure_residues.pkl"
 
     templates = [yaml.safe_dump(t) for t in DEFAULT_DOMAIN_TEMPLATES]
     args = _argparse.Namespace(
@@ -153,7 +171,10 @@ def detect_domains_json(
         n_iters=n_iters,
         is_bfactor_confidence=True,  # generated structs carry pLDDT in B-factor
         do_not_store_intermediate_files=True,
-        store_domains=True,
+        # Nothing here reads the per-domain PDBs EE would write to
+        # `domains_output_path` — they only feed `postfilter_domains_by_foldseek`,
+        # which is off. Skipping the write saves a PyMOL save per detected domain.
+        store_domains=False,
         detect_multiple_domains_in_each_iteration=True,
         secondary_structure_residues_path=str(ssr_pkl),
         recompute_existing_secondary_structure_residues=True,
@@ -163,8 +184,11 @@ def detect_domains_json(
         postfilter_e_value=5.0,
         domain_templates=templates,
     )
-    detect_domains(args)
-    return load_detections_json(str(out_json))
+    try:
+        detect_domains(args)
+        return load_detections_json(str(out_json))
+    finally:
+        shutil.rmtree(scratch_root, ignore_errors=True)
 
 
 def _default_save_path(structs_dir: str) -> str:
