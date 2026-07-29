@@ -27,13 +27,24 @@ from tps_eval.alphafold.cofold_substrates import (
 )
 
 
-def test_cofoldable_matches_table_keys():
-    """COFOLDABLE is exactly the set of SMILES-table keys (single source of truth)."""
-    assert set(COFOLDABLE) == set(SUBSTRATE_SMILES), (
-        set(COFOLDABLE), set(SUBSTRATE_SMILES)
-    )
+def test_cofoldable_is_a_subset_of_the_table_keys():
+    """Every co-foldable code must have a SMILES — but NOT the reverse.
+
+    These two were once identical, and this test used to assert equality. They are
+    deliberately different now: ``SUBSTRATE_SMILES`` is the full substrate vocabulary
+    shared with CataPro, while ``COFOLDABLE`` is the narrower AF3 co-folding policy.
+    DMAPP (C5) and C35 have SMILES for CataPro but are not co-folded — see
+    ``is_cofoldable``'s docstring, which names exactly those two.
+    """
+    missing = set(COFOLDABLE) - set(SUBSTRATE_SMILES)
+    assert not missing, f"co-foldable codes with no SMILES: {missing}"
     # No dup entries in the ordered list.
     assert len(COFOLDABLE) == len(set(COFOLDABLE))
+    # Lock in the intended asymmetry so a silent re-merge is caught.
+    assert set(SUBSTRATE_SMILES) - set(COFOLDABLE) == {"DMAPP", "C35"}
+    for code in ("DMAPP", "C35"):
+        assert not is_cofoldable(code)
+        assert smiles_for(code)  # has a SMILES for CataPro
 
 
 def test_codes_uppercase_and_unique_case_insensitive():

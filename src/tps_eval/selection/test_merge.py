@@ -86,13 +86,17 @@ def test_numeric_coercion_all_or_nothing():
         _write(d, "x.csv", pd.DataFrame({
             "ID": ["a", "b"],
             "num": ["1.5", "2.5"],           # all numeric -> float
-            "seq": ["MAA", "MBB"],           # strings -> stay object
+            "seq": ["MAA", "MBB"],           # strings -> stay non-numeric
             "flag": ["True", "False"],       # bool-ish strings -> NOT numeric, stay str
         }))
         df = merge_metrics([d])
     assert df["num"].dtype.kind == "f"
-    assert df["seq"].dtype == object
-    assert df["flag"].dtype == object
+    # The contract is "not coerced to a number", NOT a specific storage dtype: pandas 2
+    # parks strings in `object`, pandas 3 infers a `str` dtype. Assert the contract.
+    for col in ("seq", "flag"):
+        assert not pd.api.types.is_numeric_dtype(df[col]), (col, df[col].dtype)
+    assert sorted(df["seq"]) == ["MAA", "MBB"]
+    assert sorted(df["flag"]) == ["False", "True"]
 
 
 def test_missing_tokens_normalised():

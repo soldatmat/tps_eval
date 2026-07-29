@@ -8,6 +8,8 @@ from shutil import rmtree
 
 import pandas as pd  # type: ignore
 
+from tps_eval.pandas_compat import group_idxmax_skipna
+
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
 
@@ -65,20 +67,21 @@ def main(args: argparse.Namespace):
     dfg = df_foldseek.groupby('query')
 
     def _val_at(idx, col):
-        # A query whose entire score column is NaN yields a NaN idxmax; guard the lookup so
-        # it produces a NaN cell instead of raising KeyError on df_foldseek.loc[NaN].
+        # A query whose entire score column is NaN yields a NaN idxmax (see
+        # group_idxmax_skipna -- pandas 3 would otherwise RAISE on such a group); guard
+        # the lookup so it produces a NaN cell instead of raising KeyError on .loc[NaN].
         return df_foldseek.loc[idx, col] if pd.notna(idx) else float("nan")
 
     best_scores = pd.DataFrame({
         'query': dfg.groups.keys(),
-        'max_alntmscore': dfg['alntmscore'].idxmax().map(lambda idx: _val_at(idx, 'alntmscore')),
-        'max_alntmscore_target': dfg['alntmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
-        'max_qtmscore': dfg['qtmscore'].idxmax().map(lambda idx: _val_at(idx, 'qtmscore')),
-        'max_qtmscore_target': dfg['qtmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
-        'max_ttmscore': dfg['ttmscore'].idxmax().map(lambda idx: _val_at(idx, 'ttmscore')),
-        'max_ttmscore_target': dfg['ttmscore'].idxmax().map(lambda idx: _val_at(idx, 'target')),
-        'max_lddt': dfg['lddt'].idxmax().map(lambda idx: _val_at(idx, 'lddt')),
-        'max_lddt_target': dfg['lddt'].idxmax().map(lambda idx: _val_at(idx, 'target')),
+        'max_alntmscore': group_idxmax_skipna(dfg, 'alntmscore').map(lambda idx: _val_at(idx, 'alntmscore')),
+        'max_alntmscore_target': group_idxmax_skipna(dfg, 'alntmscore').map(lambda idx: _val_at(idx, 'target')),
+        'max_qtmscore': group_idxmax_skipna(dfg, 'qtmscore').map(lambda idx: _val_at(idx, 'qtmscore')),
+        'max_qtmscore_target': group_idxmax_skipna(dfg, 'qtmscore').map(lambda idx: _val_at(idx, 'target')),
+        'max_ttmscore': group_idxmax_skipna(dfg, 'ttmscore').map(lambda idx: _val_at(idx, 'ttmscore')),
+        'max_ttmscore_target': group_idxmax_skipna(dfg, 'ttmscore').map(lambda idx: _val_at(idx, 'target')),
+        'max_lddt': group_idxmax_skipna(dfg, 'lddt').map(lambda idx: _val_at(idx, 'lddt')),
+        'max_lddt_target': group_idxmax_skipna(dfg, 'lddt').map(lambda idx: _val_at(idx, 'target')),
     })
     csv_path = output_root / "domain_alignment_scores.csv"
     if args.random_run_id:
