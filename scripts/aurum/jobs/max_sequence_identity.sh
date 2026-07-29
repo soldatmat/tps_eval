@@ -15,4 +15,4 @@ SCRIPT_PATH=$(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}'
 
 cd $(dirname "$SCRIPT_PATH")/../..
 
-JULIA_NUM_THREADS=20 sh run_max_sequence_identity.sh "$@"
+JULIA_NUM_THREADS=20 sh tool_wrappers/run_max_sequence_identity.sh "$@"
