@@ -4,10 +4,13 @@ Pipeline (per design):
     0. normalize the amino-acid termini so the design is a complete ORF — prepend a start
        Met (-> ATG start codon) and ensure a C-terminal stop codon are present, ADDING
        either if missing                                 (``normalize_termini``)
-    1. codon-optimize the protein into a CDS for the target organism, removing internal
+    1. reject any non-canonical amino-acid character (X, B, Z, J, U, O, gaps, ...) — a
+       design that isn't pure 20-letter protein alphabet is marked FAILED here, before it
+       ever reaches reverse translation               (``check_valid_alphabet``)
+    2. codon-optimize the protein into a CDS for the target organism, removing internal
        BsaI/BsmBI sites          (``codon_optimization.codon_optimize``)
-    2. wrap the CDS with the fixed Golden Gate flanks  (``overhangs.add_overhangs``)
-    3. validate the assembled construct               (``validate_construct``)
+    3. wrap the CDS with the fixed Golden Gate flanks  (``overhangs.add_overhangs``)
+    4. validate the assembled construct               (``validate_construct``)
 
 This is NOT part of the evaluation / submit-all pipeline — it is a standalone ordering
 utility. It runs on a login node (fast, no SLURM).
@@ -112,6 +115,21 @@ def _typeiis_violations(
 # The amino acid whose codon is the start codon (ATG). A design must begin with it for its
 # CDS to open with a start codon.
 _START_AA = "M"
+
+# The 20 canonical amino acids. Anything else — the unknown-residue placeholder ``X``,
+# ambiguity codes (``B``=Asx, ``Z``=Glx, ``J``=Xle), the non-canonical ``U``/``O``
+# (selenocysteine/pyrrolysine), gaps, whitespace, ... — has no fixed codon and must not
+# reach reverse translation: DNAChisel's ``reverse_translate`` either silently maps some of
+# these (X/B/Z/J) to an arbitrary WRONG real amino acid's codon with no error at all, or
+# raises an uncaught ``KeyError`` for others (U/O/gap) that would crash the whole batch.
+_CANONICAL_AA = frozenset("ACDEFGHIKLMNPQRSTVWY")
+
+
+def check_valid_alphabet(protein: str) -> list[str]:
+    """Return the sorted set of characters in ``protein`` that are not one of the 20
+    canonical amino acids (empty == the sequence is clean). Call this on the
+    already-normalized (uppercased, ``*``-stripped) protein."""
+    return sorted(set(protein) - _CANONICAL_AA)
 
 
 def normalize_termini(protein: str) -> tuple[str, bool, bool]:
@@ -286,6 +304,10 @@ def prepare_one(
     returned dict records whether each was ADDED (``start_added`` / ``stop_added``) — with
     a matching warning so a silent addition never happens.
 
+    A design containing any non-canonical amino-acid character (``X``, ambiguity codes,
+    ``U``/``O``, gaps, ...) is also FAILED here, before reverse translation — see
+    ``check_valid_alphabet``.
+
     Returns a dict with ``status`` ("ok" | "FAILED"), ``start_added``, ``stop_added``,
     ``protein``, ``cds``, ``ordered_sequence``, ``length_nt``, ``warnings``.
     """
@@ -296,6 +318,22 @@ def prepare_one(
         termini_warnings.append("start codon (ATG) added: design did not begin with Met (M)")
     if stop_added:
         termini_warnings.append("stop codon added at the C-terminus: design carried no terminal stop")
+
+    bad_chars = check_valid_alphabet(protein_norm)
+    if bad_chars:
+        fatal = (f"FATAL: non-canonical amino-acid character(s) {bad_chars} — not one of "
+                 f"the 20 standard amino acids; cannot be codon-optimized")
+        return {
+            "status": "FAILED",
+            "start_added": start_added,
+            "stop_added": stop_added,
+            "protein": protein_norm,
+            "cds": "",
+            "ordered_sequence": "",
+            "length_nt": 0,
+            "warnings": "; ".join(termini_warnings + [fatal]),
+        }
+
     attempts = max(1, max_attempts)
     full = cds = ""
     violations: list[str] = []

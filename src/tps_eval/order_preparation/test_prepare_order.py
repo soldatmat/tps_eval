@@ -23,6 +23,7 @@ from tps_eval.order_preparation.prepare_order import (
     _max_homopolymer_run,
     _revcomp,
     _typeiis_violations,
+    check_valid_alphabet,
     load_designs,
     normalize_termini,
     prepare_one,
@@ -238,6 +239,38 @@ def test_prepare_one_clears_typeiis_site():
                                ("BsaI", "BsmBI")) == []
     assert str(Seq(row["cds"]).translate(to_stop=False)).rstrip("*") == protein
     print("ok prepare_one_clears_typeiis_site")
+
+
+def test_check_valid_alphabet():
+    assert check_valid_alphabet("MASKGEELFTGVV") == []
+    # X (unknown), B/Z/J (ambiguity codes), U/O (Sec/Pyl), and a gap all get flagged.
+    assert check_valid_alphabet("MXSK") == ["X"]
+    assert check_valid_alphabet("MBZJUO-K") == ["-", "B", "J", "O", "U", "Z"]
+    print("ok check_valid_alphabet")
+
+
+def test_prepare_one_fails_on_non_canonical_aa():
+    # A design containing X must be FAILED before it ever reaches codon optimization —
+    # never silently reverse-translated to a wrong real amino acid's codon.
+    row = prepare_one("MASKGXELFTGVV", organism="yeast", overhang_type="Type 3", seed=0)
+    assert row["status"] == "FAILED", row
+    assert row["cds"] == "" and row["ordered_sequence"] == ""
+    assert "X" in row["warnings"] and "non-canonical" in row["warnings"]
+    print("ok prepare_one_fails_on_non_canonical_aa")
+
+
+def test_prepare_order_excludes_non_canonical_aa_design():
+    tmp = tempfile.mkdtemp(prefix="order_badaa_")
+    fa = os.path.join(tmp, "designs.fasta")
+    with open(fa, "w") as fh:
+        fh.write(">good\nMASKGEELFTGVV\n>bad\nMASKGXELFTGVV\n")
+    df = prepare_order(fa, seed=0, save=False)
+    assert len(df) == 2
+    good = df[df["id"] == "good"].iloc[0]
+    bad = df[df["id"] == "bad"].iloc[0]
+    assert good["status"] == "ok", good.to_dict()
+    assert bad["status"] == "FAILED", bad.to_dict()
+    print("ok prepare_order_excludes_non_canonical_aa_design")
 
 
 def main():
