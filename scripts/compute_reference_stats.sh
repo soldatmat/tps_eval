@@ -105,7 +105,7 @@ OUTPUT_JSON="$REPO_ROOT/src/tps_eval/reference_stats/marts_db_metric_stats.json"
 # ---------------------------------------------------------------------------
 if [[ "$AGGREGATE_ONLY" == "true" ]]; then
     echo "[aggregate-only] Aggregating CSVs in $REF_DIR -> $OUTPUT_JSON"
-    sh "$SCRIPT_DIR/run_aggregate_reference_stats.sh" \
+    sh "$SCRIPT_DIR/tool_wrappers/run_aggregate_reference_stats.sh" \
         --input_dir "$REF_DIR" --output "$OUTPUT_JSON" --reference_name marts_db
     exit 0
 fi
