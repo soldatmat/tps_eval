@@ -240,7 +240,7 @@ METRIC_INFO = {
             "DD..D": "",
             "D[DE]..[DE]": "",
             "[DE][DE]..[DE]": "",
-            "(N|D)D(L|I|V).(S|T)...E": "",
+            "[DN]D..[STG]...E": "",
         },
     },
     "soluprot": {

@@ -106,7 +106,16 @@ def test_coordinating_indices_drops_out_of_span_offsets():
 
 def test_patterns_are_the_documented_regexes():
     assert DDXXD_PATTERN.pattern == r"[DE][DE]..[DE]"
-    assert NSE_DTE_PATTERN.pattern == r"(N|D)D(L|I|V).(S|T)...E"
+    assert NSE_DTE_PATTERN.pattern == r"[DN]D..[STG]...E"
+
+
+def test_nse_dte_relaxed_2026_08_18_cases():
+    # The 2026-08-18 relaxation drops the (L|I|V) restriction at position 3 (now
+    # any residue) and adds G alongside S/T at the (S/T) slot. Lock in both.
+    m = locate_nse_dte("NDGASACDE")  # G at position 3 (was rejected by the old regex)
+    assert m is not None and m.matched == "NDGASACDE"
+    m2 = locate_nse_dte("DDLAGACDE")  # G at the (S/T) slot (was rejected by the old regex)
+    assert m2 is not None and m2.matched == "DDLAGACDE"
 
 
 def main():

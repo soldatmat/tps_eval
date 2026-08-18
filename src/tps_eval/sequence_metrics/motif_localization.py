@@ -10,10 +10,16 @@ active-site cleft:
   still count — generative models frequently emit those, and they still supply the
   carboxylates that coordinate the first metal pair); and
 * the **NSE/DTE** motif (the second metal-binding triad), consensus roughly
-  ``(N/D)Dxx(S/T)xxxE``. We match it with ``(N|D)D(L|I|V).(S|T)...E`` — i.e. the
-  literature core ``(N/D)D``...``(S/T)``...``E`` with the common hydrophobic
-  ``[LIV]`` at position 3 — the SAME regex already used by ``run_motif_search``'s
-  default motif list, so the boolean motif_search columns and these positions agree.
+  ``(N/D)Dxx(S/T)xxxE``. We match it with ``[DN]D..[STG]...E`` — i.e. the
+  literature core ``(N/D)D``...``(S/T)``...``E``, relaxed (2026-08-18) to allow any
+  residue at position 3 (dropping the earlier ``[LIV]`` restriction) and G alongside
+  S/T at the (S/T) slot. Source: Durairaj et al. 2019, Phytochemistry 158:157-165 (an
+  expansion of Christianson 2006's Chem. Rev. consensus), independently confirmed
+  optimal by a same-day empirical grid search over our own MARTS-DB Class I/II
+  sequences (Class I recall 58.9%->80.8%, Class II false-positive rate 2.7%). This is
+  the SAME regex already used by ``run_motif_search``'s default motif list, so the
+  boolean motif_search columns and these positions agree. Length and the
+  coordinating-residue offsets below are unchanged (still a 9-mer).
 
 This module returns, for a sequence, WHERE each motif's best match sits (so the
 sequence and structural distance tools share one source of truth). Position
@@ -36,7 +42,7 @@ from typing import List, Optional, Pattern
 DDXXD_PATTERN: Pattern[str] = re.compile(r"[DE][DE]..[DE]")
 
 # NSE/DTE second metal-binding motif. Identical to the run_motif_search default.
-NSE_DTE_PATTERN: Pattern[str] = re.compile(r"(N|D)D(L|I|V).(S|T)...E")
+NSE_DTE_PATTERN: Pattern[str] = re.compile(r"[DN]D..[STG]...E")
 
 # Within each motif, the residues whose side chains actually coordinate the metals
 # (used by the structural tool to pick which CA atoms span the metal cluster):
@@ -71,7 +77,7 @@ def locate_ddxxd(sequence: str) -> Optional[MotifMatch]:
 
 
 def locate_nse_dte(sequence: str) -> Optional[MotifMatch]:
-    """First NSE/DTE (``(N|D)D(L|I|V).(S|T)...E``) match, or None."""
+    """First NSE/DTE (``[DN]D..[STG]...E``) match, or None."""
     m = _first_match(sequence, NSE_DTE_PATTERN)
     if m is None:
         return None

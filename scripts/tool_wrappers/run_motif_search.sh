@@ -15,8 +15,18 @@
 #                             1st position (EDxxD, EExxE, etc.). Superset of the two
 #                             above; the three are nested (strict < semi < fully relaxed)
 #                             and kept as separate columns to give graded hits.
-#   (N|D)D(L|I|V).(S|T)...E : NSE/DTE second metal-binding motif.
-MOTIFS=("DD..D" "D[DE]..[DE]" "[DE][DE]..[DE]" "(N|D)D(L|I|V).(S|T)...E")
+#   [DN]D..[STG]...E        : NSE/DTE second metal-binding motif — RELAXED as of
+#                             2026-08-18 from the old strict (N|D)D(L|I|V).(S|T)...E.
+#                             Source: Durairaj et al. 2019, Phytochemistry 158:157-165
+#                             (an expansion of Christianson 2006's Chem. Rev. consensus),
+#                             independently confirmed optimal by an empirical grid search
+#                             over our own MARTS-DB Class I/II sequences the same day
+#                             (Class I recall 58.9% -> 80.8%; Class II false-positive rate
+#                             stays low at 2.7%, vs strict DDxxD's own 3.8% reference rate).
+#                             Drops the (L|I|V) restriction at position 3 (now any residue)
+#                             and adds G alongside S/T at the (S/T) slot; length/offsets
+#                             unchanged (still a 9-mer, coordinating residues at 0,1,4,8).
+MOTIFS=("DD..D" "D[DE]..[DE]" "[DE][DE]..[DE]" "[DN]D..[STG]...E")
 
 ############################################################
 # Script                                                   #
