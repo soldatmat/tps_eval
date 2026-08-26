@@ -98,7 +98,7 @@ EnzymeExplorer uses `enzyme_explorer`.
 - **Env + source** — `catapro`; wrapper [`scripts/tool_wrappers/run_catapro.sh`](../scripts/tool_wrappers/run_catapro.sh); reshaper [`src/tps_eval/sequence_metrics/catapro.py`](../src/tps_eval/sequence_metrics/catapro.py).
 
 ### enzyme_explorer_sequence_only
-- **Purpose** — Sequence-only TPS classification — per-class probabilities that a sequence is a terpene synthase, without needing a structure.
+- **Purpose** — Sequence-only TPS classification — per-class probabilities that a sequence is a terpene synthase, without needing a structure. **Fold-free PRE-SCREEN**: cheap enough to triage a large draw before spending fold time, but a degenerate/low-complexity sequence can score high here while having no TPS structural domain at all, so the gated design metric scores on [`enzyme_explorer`](#enzyme_explorer-tool-key-ee_struct) (`ee_struct`) instead.
 - **Inputs** — FASTA.
 - **Output** — `<fasta>_enzyme_explorer_sequence_only.csv`. Schema (from EnzymeExplorer's `predict_sequences_only` console script): `id`, `sequence`, `<class>_score`, `<class>_p_calibrated`. The plots consume the calibrated TPS probability as the `isTPS_seq` target.
 - **Method** — Runs EnzymeExplorer's protein-language-model classifier (`predict_sequences_only`) with its bundled checkpoints + calibration.
@@ -344,13 +344,18 @@ These emit a **per-`id` feature CSV** (first column `id`, then feature dims), ke
 
 ## Function (structure-dependent)
 
-### enzyme_explorer
-- **Purpose** — TPS classification with structures (per-class scores, richer than the sequence-only variant). **Not yet wired into the orchestrator (v2).**
-- **Inputs** — A FASTA *or* a sequences CSV (`ID`,`sequence`) **plus** a `--structs_dir`.
-- **Output** — An `<input>_enzyme_explorer/` output *directory* (the revision-branch `predict_with_structures` schema — no longer a single `_enzyme_explorer.csv`). The plots consume the TPS probability as the `isTPS` target.
-- **Method** — Runs EnzymeExplorer's structure-aware predictor (`predict_with_structures`), combining the PLM classifier with structural domain features.
-- **External dependency** — [EnzymeExplorer](https://github.com/SamusRam/EnzymeExplorer) (revision branch).
-- **Env + source** — `enzyme_explorer`; wrapper [`scripts/tool_wrappers/run_enzyme_explorer.sh`](../scripts/tool_wrappers/run_enzyme_explorer.sh).
+### enzyme_explorer  *(tool key `ee_struct`)*
+- **Purpose** — TPS classification **with structures** — the structure-mode isTPS score. Richer *and stricter* than the sequence-only variant: it asks "does this fold actually contain TPS structural domains?", which the sequence-only classifier cannot ask. This is the leg the gated design metric scores on; `enzyme_explorer_sequence_only` is the fold-free pre-screen.
+- **Inputs** — A FASTA *or* a sequences CSV (`ID`,`sequence`) **plus** a `--structs_dir`. Wired into the orchestrator as `ee_struct` (structure branch, default on).
+- **Output** — Two artifacts:
+  - `<structs_dir>_enzyme_explorer_structure.csv`, keyed by `ID`, **one row per design** — the pipeline-facing metric. Columns: `ee_struct_status` (`scored` / `no_domains` / `missing`), `ee_struct_domain_hit`, `isTPS_struct_raw`, `isTPS_struct_cal`, `<class>_struct_{raw,cal}` for all ten EE classes, and `isTPS_fallback_{raw,cal}`.
+  - `<input>_enzyme_explorer/` — EnzymeExplorer's own two raw CSVs, kept for provenance.
+- **⚠ "No score" is a REJECTION, not a missing datum.** `predict_with_structures` runs two classifiers with separate calibrations and writes one CSV each: `predictions_plm_domains.csv` for designs with ≥1 detected TPS domain, and `predictions_plm_only_fallback.csv` for the rest (EE routes a protein absent from `structural_features_ids` into `fallback_ids`). A design with **zero detected domains never appears in the domains CSV**; the reshaper records `ee_struct_status="no_domains"` and leaves `isTPS_struct_*` **NaN**, so any `>= threshold` test fails it. The fallback score is carried under the separately-named `isTPS_fallback_*` for **diagnostics only** — never substitute it for the structure score. It is a different classifier, and it is precisely the one that gets fooled: on 2026-07-13, 56 composition-artifact designs all scored ≥0.5 sequence-only while **0/56** got any structure-domain score.
+- **Method** — EnzymeExplorer's `predict_with_structures`: detect TPS domains (PyMOL + USalign against seven curated templates) → foldseek-align them to the reference domain library into `1 − TM` features → Ankh-large PLM embeddings → `PlmDomainsRandomForest` fold ensemble → per-class beta calibration.
+- **⚠ Schema differs between EE checkouts** — the `main` branch emits `<class>_raw`/`<class>_p`, the older `revision` branch `<class>_score`/`<class>_p_calibrated`. The reshaper accepts both and normalises to its own `_struct_raw`/`_struct_cal` names, so downstream consumers are insulated from which checkout ran.
+- **Cost** — the expensive metric in the structure branch: needs a GPU for the PLM pass *and* CPU domain detection. Budget from the reference run: ~2 h for ~1600 sequences on one RTX 3090 + 20 CPUs.
+- **External dependency** — [EnzymeExplorer](https://github.com/SamusRam/EnzymeExplorer).
+- **Env + source** — `enzyme_explorer`; wrapper [`scripts/tool_wrappers/run_enzyme_explorer.sh`](../scripts/tool_wrappers/run_enzyme_explorer.sh); reshaper [`src/tps_eval/enzyme_explorer/enzyme_explorer_structure.py`](../src/tps_eval/enzyme_explorer/enzyme_explorer_structure.py) (CLI: `python -m tps_eval.enzyme_explorer.run_enzyme_explorer_structure`).
 
 ---
 

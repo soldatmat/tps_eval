@@ -267,6 +267,10 @@ def out_ion_site_check(d): return d.rstrip(os.sep) + "_ion_site_check.csv"
 def out_substrate_positioning(d): return d.rstrip(os.sep) + "_substrate_positioning.csv"
 def out_cyclization_geometry(d): return d.rstrip(os.sep) + "_cyclization_geometry.csv"
 def out_domain_structural_identity(d): return d.rstrip(os.sep) + "_domain_structural_identity.csv"
+# EnzymeExplorer WITH STRUCTURES. Keyed by the structures dir like the other
+# structure-branch metrics (the sequence-only twin is keyed by the fasta). The
+# wrapper additionally leaves EE's own two raw CSVs in <input_stem>_enzyme_explorer/.
+def out_ee_struct(d): return d.rstrip(os.sep) + "_enzyme_explorer_structure.csv"
 # substrate_class is keyed off the gen FASTA (it fuses sequence + structure signals).
 def out_substrate_class(f): return _base(f) + "_substrate_class.csv"
 
@@ -317,6 +321,7 @@ DEFAULT_TOOLS: Dict[str, dict] = {
     "knn":                  {"default": True,  "branch": "structure", "description": "k-NN coarse-label transfer: ensembled vote over the sequence/embedding/structural top-k neighbours -> predicted coarse label + confidence (needs --train_path + --structs_dir + --known_structs_dir)."},
     "sdr_divergence":       {"default": True,  "branch": "structure", "description": "SDR specificity-divergence: flags designs globally close to a known TPS but divergent at the specificity-determining active-site residues (needs --structs_dir + --known_structs_dir)."},
     "domain_structural_identity": {"default": True, "branch": "structure", "description": "Domain-level structural identity: EE detects each design's TPS domains, then foldseek-aligns them to the known martsDB reference domains (per-domain-type best TM-score/lddt; n_detected_domains)."},
+    "ee_struct":            {"default": True,  "branch": "structure", "description": "EnzymeExplorer TPS classification WITH STRUCTURES (predict_with_structures): domain detection -> PLM+domain features -> per-class probabilities. A design with NO detected TPS domain gets no structure score at all (ee_struct_status='no_domains', NaN isTPS_struct_*) -- a meaningful rejection, and the leg the gated metric uses instead of the sequence-only score. Needs --structs_dir and a GPU."},
     "substrate_class":      {"default": True,  "branch": "structure", "description": "Substrate-class combiner: fuses the SUBSTRATE k-NN vote (3 spaces) with the pocket-volume size band + EnzymeExplorer per-substrate signal -> predicted substrate (GPP/FPP/GGPP/...) + agreement (needs --train_path + --structs_dir + --known_structs_dir)."},
     "plots":                {"default": True,  "branch": "sequence",  "description": "Aggregator: merges all enabled metrics into plots. Effectively always on unless excluded."},
     "dashboard":            {"default": True,  "branch": "sequence",  "description": "Aggregator: builds the interactive natural-bands HTML dashboard with the design batch overlaid against the committed MARTS-DB reference bands. Design metrics that have no reference band are still shown (design-only). Effectively always on unless excluded."},
@@ -785,6 +790,15 @@ def build_steps(args, enabled: set) -> List[Step]:
         steps.append(Step("domain_structural_identity_gen", "domain_structural_identity.sh",
                           ["--structs_dir", structs], out_domain_structural_identity(structs),
                           tool="domain_structural_identity"))
+        # EnzymeExplorer WITH STRUCTURES -- the structure-mode isTPS score. Needs BOTH
+        # the sequences (for the PLM leg) and the structures (for the domain leg), so
+        # unlike its neighbours it takes --fasta_path as well as --structs_dir. Its
+        # sequence-only twin (`ee_seq`, above) is the fold-free pre-screen; this is the
+        # leg the gated metric scores on, because a design with no detectable TPS domain
+        # is rejected outright rather than handed to the foolable PLM-only classifier.
+        steps.append(Step("ee_struct_gen", "enzyme_explorer.sh",
+                          ["--fasta_path", gen, "--structs_dir", structs],
+                          out_ee_struct(structs), tool="ee_struct"))
         # Aggrescan3D structure-based aggregation propensity (expressibility signal).
         steps.append(Step("aggregation_gen", "aggregation.sh",
                           ["--structs_dir", structs], out_aggregation(structs), tool="aggregation"))

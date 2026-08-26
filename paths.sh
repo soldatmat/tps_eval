@@ -41,10 +41,26 @@ SOLUPROT_ENV="soluprot" # SoluProt conda environment name
 CATAPRO_ENV="catapro" # CataPro conda environment name
 TMPROT_ENV="tmprot"   # TmProt conda environment name
 
-ENZYME_EXPLORER_PATH="/home2/soldat/documents/terpene_synthases/EnzymeExplorer"
-ENZYME_EXPLORER_ENV="enzyme_explorer" # Enzyme Explorer conda environment name
+# NOTE: $HOME is /home/soldat since the Aurum3 rebuild -- /home2 no longer exists.
+ENZYME_EXPLORER_PATH="$HOME/documents/terpene_synthases/EnzymeExplorer"
+ENZYME_EXPLORER_ENV="enzyme_explorer_prod" # Enzyme Explorer conda environment name
 ENZYME_EXPLORER_SEQUENCE_ONLY_PATH=$ENZYME_EXPLORER_PATH
 ENZYME_EXPLORER_SEQUENCE_ONLY_ENV=$ENZYME_EXPLORER_ENV # Enzyme Explorer (sequence only) conda environment name
+
+# ⚠ EnzymeExplorer WITH STRUCTURES (`ee_struct`) uses a DIFFERENT checkout on purpose.
+# The `revision` branch above HARDCODES `prefilter_pdbs_by_foldseek=True` in
+# enzymeexplorer/src/prediction/domains.py and does not expose it on the CLI. That
+# prefilter skips (query x template) USalign pairs with no plausible foldseek alignment --
+# its own docstring admits a "small recall loss" -- and for a GATE a recall loss means
+# falsely rejecting real designs. Measured: in the 2026-07-13 run only 1 of 56 structures
+# passed the prefilter, so domain detection never actually ran on the other 55 and the
+# resulting "0/56 domain hits" could not be distinguished from a prefilter artifact.
+# The `main` branch defaults it to False AND exposes `--prefilter-pdbs-by-foldseek` as an
+# opt-in, so pointing ee_struct at that checkout fixes this with no upstream patch.
+# (A/B on matched knobs: revision and main produce bit-identical detection output --
+# see projects/MARTS_domain_detections/README.md, "Vocabulary resolved".)
+ENZYME_EXPLORER_STRUCT_PATH="$HOME/documents/terpene_synthases/EnzymeExplorer_main"
+ENZYME_EXPLORER_STRUCT_ENV="enzyme_explorer_main"
 
 ############################################################
 # Broad homology search (Swiss-Prot + AlphaFold-Swiss-Prot)#

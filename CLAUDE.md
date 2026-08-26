@@ -89,8 +89,11 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
   `src/tps_eval/alphafold/build_cofold_input.py` (one CSV per group + manifest) and prints ONE combined
   job-id line. Any non-`none` mode enables the holo tools `ion_site_check` + `substrate_positioning`
   (gated on `run_holo` = cofold!=none OR external structs; `--no_holo_tools` force-skips).
-  AF3 ion/ligand placement is a hypothesis — verify at DDXXD/NSE downstream. NOT yet ported (v2):
-  EnzymeExplorer-with-structures. Sequence + structure-consuming branches verified end-to-end on
+  AF3 ion/ligand placement is a hypothesis — verify at DDXXD/NSE downstream.
+  **EnzymeExplorer-with-structures IS now ported** — tool key `ee_struct` (structure branch,
+  default on), reshaped to `<structs_dir>_enzyme_explorer_structure.csv`; a design with no
+  detected TPS domain gets `ee_struct_status="no_domains"` + NaN score, i.e. a rejection.
+  Sequence + structure-consuming branches verified end-to-end on
   Aurum; the AF3 fan-out wiring (incl. co-fold modes + holo tools) is dry-run-verified (a live
   fold is expensive); `build_cofold_input` + `substrate_positioning` unit-tested locally.
 

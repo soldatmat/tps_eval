@@ -18,6 +18,8 @@ Help()
     echo "  --detection_threshold        (optional)"
     echo "  --detect_precursor_synthases (optional, flag, true by default, set to false with --no-detect_precursor_synthases)"
     echo "  --plm_batch_size             (optional)"
+    echo "  --prefilter_pdbs_by_foldseek (optional, flag, OFF by default -- opt-in speedup with a"
+    echo "                               stated recall loss; never use for a reported gate number)"
     echo "  -h, --help                   Show this help message and exit"
     echo
 }
@@ -83,6 +85,10 @@ while [[ $# -gt 0 ]]; do
             detect_precursor_synthases=0
             shift
             ;;
+        --prefilter_pdbs_by_foldseek)
+            prefilter_pdbs_by_foldseek=1
+            shift
+            ;;
         --plm_batch_size)
             plm_batch_size="$2"
             extra_args+=(--plm-batch-size "$plm_batch_size")
@@ -128,10 +134,18 @@ cd "$SCRIPT_DIR/../.."
 # `pip install -e .` -- put the in-repo package on PYTHONPATH so `import tps_eval`
 # works in ALL of them (absolute, so it survives later `cd`s and child processes).
 export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
-. ./paths.sh # Load ENZYME_EXPLORER_ENV, ENZYME_EXPLORER_PATH variables
+. ./paths.sh # Load ENZYME_EXPLORER_STRUCT_{ENV,PATH} variables
+
+# ⚠ ee_struct deliberately uses ENZYME_EXPLORER_STRUCT_* (the `main` checkout), NOT the
+# ENZYME_EXPLORER_* used by the sequence-only tool. The `revision` branch hardcodes
+# prefilter_pdbs_by_foldseek=True with no way to turn it off, which silently drops
+# structures before domain detection ever runs -- unacceptable for a gate leg. See the
+# long comment in paths.sh.
+EE_ENV="${ENZYME_EXPLORER_STRUCT_ENV:-$ENZYME_EXPLORER_ENV}"
+EE_REPO="${ENZYME_EXPLORER_STRUCT_PATH:-$ENZYME_EXPLORER_PATH}"
 
 eval "$(conda shell.bash hook)"
-conda activate "$ENZYME_EXPLORER_ENV"
+conda activate "$EE_ENV"
 # Fix for Karolina /lib64/libstdc++.so.6 being too old (missing GLIBCXX_3.4.29
 # required by env's pandas). Prepend the env's libstdc++ (6.0.34, has the symbol).
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"
@@ -139,7 +153,7 @@ echo "Active conda environment: $(conda info --json | python -c "import sys, jso
 echo "Using python: $(which python)"
 
 
-# EnzymeExplorer (revision branch) installs `predict_with_structures` as a
+# EnzymeExplorer installs `predict_with_structures` as a
 # console script (pip install -e .). It takes a FASTA (or CSV) directly — no
 # prepare_csv step — plus a structures dir, and writes an OUTPUT DIRECTORY with
 # TWO CSVs: predictions_plm_domains.csv (structure-based) and
@@ -157,11 +171,44 @@ echo "  output dir:     $output_dir"
 
 # Run from the repo dir so the default reference-domains / model bundles under
 # data/ resolve.
-cd "$ENZYME_EXPLORER_PATH"
+cd "$EE_REPO"
 
-ee_args=(--sequences "$input_path" --structures-dir "$structs_dir" --output-dir "$output_dir")
+# --workdir and --log-dir both DEFAULT INSIDE THE EE REPO ("<repo>/tmp",
+# "<repo>/outputs/logs"). A bulk re-score is ~130 invocations, which would litter a
+# pristine third-party checkout with scratch trees and logs; keep both beside the
+# output instead, where they belong to the run and get cleaned up with it.
+ee_workdir="$output_dir/_workdir"
+ee_logdir="$output_dir/logs"
+mkdir -p "$ee_workdir" "$ee_logdir"
+
+ee_args=(--sequences "$input_path" --structures-dir "$structs_dir" --output-dir "$output_dir"
+         --workdir "$ee_workdir" --log-dir "$ee_logdir")
+
+# The foldseek PREFILTER stays OFF (the `main` default). It is an opt-in speedup with a
+# stated recall loss; passing --prefilter_pdbs_by_foldseek re-enables it, which should only
+# ever be done for a throwaway triage run, never for a reported gate number.
+[[ -n "$prefilter_pdbs_by_foldseek" ]] && ee_args+=(--prefilter-pdbs-by-foldseek)
 [[ -n "$csv_id_column" ]] && ee_args+=(--id-column "$csv_id_column")
 [[ -n "$n_jobs" ]] && ee_args+=(--n-jobs "$n_jobs")
 [[ -n "$plm_batch_size" ]] && ee_args+=(--plm-batch-size "$plm_batch_size")
 
 predict_with_structures "${ee_args[@]}"
+
+# Reshape EE's TWO CSVs into the single per-design CSV the rest of the pipeline
+# consumes: <structs_dir>_enzyme_explorer_structure.csv, keyed by ID, one row per
+# design. Load-bearing semantics: a design whose structure yielded NO TPS domain
+# is absent from predictions_plm_domains.csv, and the reshaper turns that absence
+# into ee_struct_status="no_domains" + a NaN isTPS_struct_* score -- i.e. a FAILED
+# structure-mode filter, not a missing datum. The PLM-only fallback score is kept
+# in a separately-named column for diagnostics and must never substitute for it.
+# Pure pandas (no EnzymeExplorer import), so it runs in this same env.
+reshape_args=(--structs_dir "$structs_dir")
+if [[ -n "$sequences_csv_path" ]]; then
+    reshape_args+=(--sequences_csv_path "$sequences_csv_path")
+    [[ -n "$csv_id_column" ]] && reshape_args+=(--csv_id_column "$csv_id_column")
+else
+    reshape_args+=(--fasta_path "$fasta_path")
+fi
+
+python -m tps_eval.enzyme_explorer.run_enzyme_explorer_structure \
+    "$output_dir" "${reshape_args[@]}"
