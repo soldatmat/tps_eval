@@ -2,10 +2,18 @@
 #SBATCH --time=04:00:00
 #SBATCH --ntasks=8
 #SBATCH --constraint=alphafold3
+#SBATCH --nodelist=b032
 #SBATCH --mem=100G
 #SBATCH --gres=gpu:1
 
 # Usage: sbatch alphafold.sh <working_directory> <proteins> <ligands> [<save_directory>]
+#
+# ⚠ 2026-07-31: bare --constraint=alphafold3 does NOT reliably route to hardware that
+# actually has the AF3 apptainer install — jobs have landed on d061 and b004, both
+# missing /hpcg/local/soft/alphafold3/. Verified live that the install only exists on
+# node b032 (4 GPUs, so up to 4 AF3 jobs run there in parallel); the Aurum wiki agrees
+# AF3 is "only available in b032". Hard-pinning --nodelist=b032 until this is confirmed
+# fixed cluster-side or more nodes are provisioned — re-verify before removing this pin.
 
 ############################################################
 # Argument parsing                                         #
