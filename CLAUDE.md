@@ -147,8 +147,9 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
    `pipeline_tools.json` description. **When the build is split across parallel subagents,
    the agents must NOT edit `README.md`/`docs/TOOLS.md` — the orchestrating session adds all
    the rows/sections in one pass at integration** (concurrent agents clobber these shared files).
-6. **Log the change** as an H2 entry in the Obsidian vault `History.md` (see Gotchas —
-   NOT a repo file), and commit the code per-tool.
+6. **Log the change** in the repo (the README/`docs/TOOLS.md` rows above, plus the umbrella
+   `docs/HISTORY.md` for the narrative; see Gotchas — Obsidian is only a fallback), and commit
+   the code per-tool.
 
 ## Gotchas (not visible from the code)
 - **`paths.sh` is per-install and is NEVER committed with cluster-specific paths.** Each
@@ -242,8 +243,8 @@ durable — no cluster *state* (that's per-user), no restatements of the README.
 - **Aurum GPU routing:** use `--constraint=gen-b --gres=gpu:geforce_rtx_3090:1`. `gen-a`+`gpu:1`
   routes to the single-node `a36_96_gpu` partition (`a233`), which is frequently down →
   jobs stuck PENDING (this bit `esm_pseudo_perplexity`). See the `aurum-connect` skill.
-- **Project history/decisions are NOT in this repo.** They live in the user's Obsidian
-  vault at `/Users/soldatmat/Documents/notes/terpene_generation/History.md` (and `Runs.md`,
-  `Ideas.md`), maintained via the `obsidian-history-notes` / `obsidian-notes` workflow.
-  Do NOT create a `History.md`/`Runs.md` changelog inside this code repo — record
-  project-level changes/decisions as an H2 entry in the vault instead.
+- **Project history/decisions: repo first (policy 2026-10-01).** Record tool-level changes in
+  this repo's `README.md` / `docs/TOOLS.md`, and project-level changes/decisions in the umbrella
+  repo's `docs/HISTORY.md`. Do NOT create a `History.md`/`Runs.md` changelog inside this code
+  repo. The Obsidian vault (`/Users/soldatmat/Documents/notes/terpene_generation/History.md`,
+  `Runs.md`, `Ideas.md`; `obsidian-*` skills) is only a fallback and holds pre-2026-10-01 history.
